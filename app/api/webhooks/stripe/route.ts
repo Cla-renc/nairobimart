@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
         }
 
-    try {
+        // Process the webhook event
         switch (event.type) {
             case "checkout.session.completed": {
                 const session = event.data.object;
@@ -81,10 +81,10 @@ export async function POST(request: NextRequest) {
                 // Unhandled event type — ignore
                 break;
         }
+
+        return NextResponse.json({ received: true });
     } catch (error) {
         console.error("Webhook processing error:", error);
         return NextResponse.json({ error: "Webhook processing failed" }, { status: 500 });
     }
-
-    return NextResponse.json({ received: true });
 }
