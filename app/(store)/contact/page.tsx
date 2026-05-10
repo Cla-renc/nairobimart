@@ -52,6 +52,7 @@ export default function ContactPage() {
 
     const onSubmit = async (data: ContactValues) => {
         setIsSubmitting(true);
+        console.log("Contact form submitted:", data);
         // Simulate API call
         await new Promise((resolve) => setTimeout(resolve, 2000));
         setIsSubmitting(false);
@@ -71,12 +72,12 @@ export default function ContactPage() {
                     <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight mb-4">Contact NairobiMart</h1>
                     <p className="text-white/80 max-w-2xl mx-auto text-lg">
                         Have questions about shipping, an order, or our products?
-                        We're here to help you shop smart in Kenya.
+                        We&apos;re here to help you shop smart in Kenya.
                     </p>
                 </div>
             </div>
 
-            <div className="container px-4 -mt-16 pb-20">
+            <div className="container px-4 -mt-16 pb-20 relative z-20">
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     {/* Info Sidebar */}
                     <div className="space-y-6">
@@ -88,7 +89,7 @@ export default function ContactPage() {
                                     </div>
                                     <div>
                                         <h3 className="font-bold text-primary">Call or WhatsApp</h3>
-                                        <p className="text-muted-foreground mt-1 text-sm">+254 700 000 000</p>
+                                        <p className="text-muted-foreground mt-1 text-sm">0759193674</p>
                                         <p className="text-xs text-muted-foreground mt-1">Mon - Sat, 8am to 6pm</p>
                                     </div>
                                 </div>
@@ -109,9 +110,9 @@ export default function ContactPage() {
                                         <MapPin className="h-6 w-6 text-accent" />
                                     </div>
                                     <div>
-                                        <h3 className="font-bold text-primary">Nairobi Office</h3>
-                                        <p className="text-muted-foreground mt-1 text-sm">CBD Tower, Kimathi St.</p>
-                                        <p className="text-xs text-muted-foreground mt-1">Nairobi, Kenya</p>
+                                        <h3 className="font-bold text-primary">100% Online Store</h3>
+                                        <p className="text-muted-foreground mt-1 text-sm">Direct Dropshipping to your location.</p>
+                                        <p className="text-xs text-muted-foreground mt-1">No physical retail storefront.</p>
                                     </div>
                                 </div>
 
@@ -121,7 +122,7 @@ export default function ContactPage() {
                                     </div>
                                     <div>
                                         <h3 className="font-bold text-primary">Shipping Info</h3>
-                                        <p className="text-muted-foreground mt-1 text-sm italic">"15-30 Business Days"</p>
+                                        <p className="text-muted-foreground mt-1 text-sm italic">&quot;15-30 Business Days&quot;</p>
                                         <p className="text-xs text-muted-foreground mt-1">Standard international transit time</p>
                                     </div>
                                 </div>
@@ -172,7 +173,7 @@ export default function ContactPage() {
                                                 <FormField
                                                     control={form.control}
                                                     name="name"
-                                                    render={({ field }: { field: any }) => (
+                                                    render={({ field }) => (
                                                         <FormItem>
                                                             <FormLabel>Your Full Name</FormLabel>
                                                             <FormControl>
@@ -185,7 +186,7 @@ export default function ContactPage() {
                                                 <FormField
                                                     control={form.control}
                                                     name="email"
-                                                    render={({ field }: { field: any }) => (
+                                                    render={({ field }) => (
                                                         <FormItem>
                                                             <FormLabel>Email Address</FormLabel>
                                                             <FormControl>
@@ -199,7 +200,7 @@ export default function ContactPage() {
                                             <FormField
                                                 control={form.control}
                                                 name="subject"
-                                                render={({ field }: { field: any }) => (
+                                                render={({ field }) => (
                                                     <FormItem>
                                                         <FormLabel>Subject</FormLabel>
                                                         <FormControl>
@@ -212,7 +213,7 @@ export default function ContactPage() {
                                             <FormField
                                                 control={form.control}
                                                 name="message"
-                                                render={({ field }: { field: any }) => (
+                                                render={({ field }) => (
                                                     <FormItem>
                                                         <FormLabel>Detailed Message</FormLabel>
                                                         <FormControl>

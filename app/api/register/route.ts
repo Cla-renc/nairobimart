@@ -35,6 +35,8 @@ export async function POST(req: Request) {
             },
         });
 
+        console.log("Registration Successful for:", { id: user.id, email: user.email, name: user.name });
+
         return NextResponse.json(
             { message: "User created successfully", user: { id: user.id, email: user.email } },
             { status: 201 }

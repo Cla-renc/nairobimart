@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
+import { useState, useEffect } from "react";
 import {
     CreditCard,
     MapPin,
@@ -27,25 +26,121 @@ const steps = ["Delivery", "Payment", "Review"];
 export default function CheckoutPage() {
     const [currentStep, setCurrentStep] = useState(0);
     const [isProcessing, setIsProcessing] = useState(false);
+    const [siteSettings, setSiteSettings] = useState<Record<string, string>>({});
     const [deliveryInfo, setDeliveryInfo] = useState({
         firstName: "",
         lastName: "",
         email: "",
+        country: "Kenya",
         phone: "",
+        tillNumber: "",
         address: "",
         city: "",
         county: "Nairobi",
     });
-    const [paymentMethod, setPaymentMethod] = useState("mpesa");
+    const [paymentMethod, setPaymentMethod] = useState("");
+
+    const countryPlaceholders: Record<string, { phone: string; city: string; address: string; county?: string }> = {
+        Kenya: {
+            phone: "+254 700 000 000",
+            city: "Nairobi",
+            address: "Nairobi West, Apartment 4B",
+            county: "Nairobi",
+        },
+        Uganda: {
+            phone: "+256 700 000 000",
+            city: "Kampala",
+            address: "Kampala Central, Plot 12",
+        },
+        Tanzania: {
+            phone: "+255 700 000 000",
+            city: "Dar es Salaam",
+            address: "Dar es Salaam, Oyster Bay",
+        },
+    };
+
+    const getPhonePlaceholder = () => countryPlaceholders[deliveryInfo.country]?.phone || "+254 700 000 000";
+    const getCityPlaceholder = () => countryPlaceholders[deliveryInfo.country]?.city || "Nairobi";
+    const getAddressPlaceholder = () => countryPlaceholders[deliveryInfo.country]?.address || "Nairobi West, Apartment 4B";
+    const [isMounted, setIsMounted] = useState(false);
 
     const { items, getTotalPrice, clearCart } = useCartStore();
     const router = useRouter();
     const totalPrice = getTotalPrice();
+    const visibleTotalPrice = isMounted ? totalPrice : 0;
     const shippingFee = 500; // Mock shipping fee
 
+    const isMpesaAvailable = deliveryInfo.country === "Kenya" && siteSettings.mpesa_enabled === "true";
+    const isPesapalAvailable = siteSettings.pesapal_enabled === "true";
+
+    useEffect(() => {
+        // Only run this once to set defaults
+        setIsMounted(true);
+
+        const fetchSettings = async () => {
+            try {
+                const response = await fetch("/api/site-settings");
+                if (response.ok) {
+                    const settings = await response.json();
+                    setSiteSettings(settings);
+                    
+                    // Only set default payment method if none is selected yet
+                    if (!paymentMethod) {
+                        const defaultMethod = settings.mpesa_enabled === "true"
+                            ? "mpesa"
+                            : settings.pesapal_enabled === "true"
+                                ? "pesapal"
+                                : "";
+                        if (defaultMethod) {
+                            console.log("Setting default payment method:", defaultMethod);
+                            setPaymentMethod(defaultMethod);
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error("Failed to fetch site settings:", error);
+            }
+        };
+        fetchSettings();
+    }, []); // Empty dependency array - run only once on mount
+
+    // Handle country changes
+    useEffect(() => {
+        if (deliveryInfo.country !== "Kenya" && paymentMethod === "mpesa") {
+            console.log("Country changed away from Kenya, resetting from mpesa");
+            if (siteSettings.pesapal_enabled === "true") {
+                setPaymentMethod("pesapal");
+            } else {
+                setPaymentMethod("");
+            }
+        }
+    }, [deliveryInfo.country, paymentMethod, siteSettings.pesapal_enabled]);
+
+    const [checkoutError, setCheckoutError] = useState<string | null>(null);
+
     const handleConfirmOrder = async () => {
+        setCheckoutError(null);
+        if (!paymentMethod) {
+            setCheckoutError("Please select a payment method before proceeding.");
+            return;
+        }
+        if (!items.length) {
+            setCheckoutError("Your cart is empty. Add items before checking out.");
+            return;
+        }
+        if (!deliveryInfo.firstName || !deliveryInfo.lastName || !deliveryInfo.email || !deliveryInfo.phone || !deliveryInfo.address) {
+            setCheckoutError("Please fill in all required delivery information.");
+            return;
+        }
+        if (paymentMethod === "mpesa" && deliveryInfo.country === "Kenya" && !deliveryInfo.phone && !deliveryInfo.tillNumber) {
+            setCheckoutError("For M-Pesa payments, please provide either a phone number or till number.");
+            return;
+        }
         setIsProcessing(true);
         try {
+            console.log("Submitting checkout with payment method:", paymentMethod);
+            console.log("Items being sent:", items);
+            
             const response = await fetch("/api/checkout", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -58,17 +153,26 @@ export default function CheckoutPage() {
             });
 
             const data = await response.json();
+            console.log("Checkout response:", data);
+            
             if (data.success) {
-                if (data.type === "stripe" && data.url) {
+                if (data.type === "pesapal" && data.url) {
+                    console.log("Redirecting to PesaPal URL:", data.url);
                     window.location.href = data.url;
                 } else {
+                    console.log("Redirecting to order success page");
                     clearCart();
-                    router.push(`/order-success?id=${data.orderId}`);
+                    router.push(`/order-success?id=${data.orderId}&payment=${paymentMethod}`);
                 }
             } else {
-                console.error("Order failed");
+                const message = data.message || "Order failed. Please try again.";
+                const fullMessage = data.details ? `${message}\n\nDetails: ${data.details}` : message;
+                setCheckoutError(fullMessage);
+                console.error("Order failed", message);
             }
         } catch (error) {
+            const message = error instanceof Error ? error.message : "An unexpected error occurred.";
+            setCheckoutError(message);
             console.error(error);
         } finally {
             setIsProcessing(false);
@@ -108,6 +212,25 @@ export default function CheckoutPage() {
                                         <MapPin className="mr-2 h-6 w-6 text-accent" /> Delivery Information
                                     </h2>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="space-y-2 md:col-span-2">
+                                            <Label htmlFor="country">Country</Label>
+                                            <select
+                                                id="country"
+                                                value={deliveryInfo.country}
+                                                onChange={(e) => setDeliveryInfo({
+                                                    ...deliveryInfo,
+                                                    country: e.target.value,
+                                                    city: "",
+                                                    address: "",
+                                                })}
+                                                className="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground"
+                                            >
+                                                <option value="Kenya">Kenya</option>
+                                                <option value="Uganda">Uganda</option>
+                                                <option value="Tanzania">Tanzania</option>
+                                            </select>
+                                        </div>
+
                                         <div className="space-y-2">
                                             <Label htmlFor="firstName">First Name</Label>
                                             <Input
@@ -136,20 +259,50 @@ export default function CheckoutPage() {
                                                 onChange={(e) => setDeliveryInfo({ ...deliveryInfo, email: e.target.value })}
                                             />
                                         </div>
-                                        <div className="space-y-2 md:col-span-2">
-                                            <Label htmlFor="phone">Phone Number (M-Pesa)</Label>
-                                            <Input
-                                                id="phone"
-                                                placeholder="+254 700 000 000"
-                                                value={deliveryInfo.phone}
-                                                onChange={(e) => setDeliveryInfo({ ...deliveryInfo, phone: e.target.value })}
-                                            />
-                                        </div>
+
+                                        {deliveryInfo.country === "Kenya" && siteSettings.mpesa_enabled === "true" && (
+                                            <>
+                                                <div className="space-y-2 md:col-span-2">
+                                                    <Label htmlFor="phone">Phone Number</Label>
+                                                    <Input
+                                                        id="phone"
+                                                        placeholder={getPhonePlaceholder()}
+                                                        value={deliveryInfo.phone}
+                                                        onChange={(e) => setDeliveryInfo({ ...deliveryInfo, phone: e.target.value })}
+                                                    />
+                                                    <p className="text-xs text-muted-foreground">For M-Pesa STK Push payments</p>
+                                                </div>
+                                                <div className="space-y-2 md:col-span-2">
+                                                    <Label htmlFor="tillNumber">M-Pesa Till Number (Optional)</Label>
+                                                    <Input
+                                                        id="tillNumber"
+                                                        placeholder="e.g., 123456"
+                                                        value={deliveryInfo.tillNumber}
+                                                        onChange={(e) => setDeliveryInfo({ ...deliveryInfo, tillNumber: e.target.value })}
+                                                    />
+                                                    <p className="text-xs text-muted-foreground">If you prefer to pay using Buy Goods Till Number instead of phone STK Push</p>
+                                                </div>
+                                            </>
+                                        )}
+
+                                        {deliveryInfo.country !== "Kenya" && (
+                                            <div className="space-y-2 md:col-span-2">
+                                                <Label htmlFor="phone">Phone Number</Label>
+                                                <Input
+                                                    id="phone"
+                                                    placeholder={getPhonePlaceholder()}
+                                                    value={deliveryInfo.phone}
+                                                    onChange={(e) => setDeliveryInfo({ ...deliveryInfo, phone: e.target.value })}
+                                                />
+                                                <p className="text-xs text-muted-foreground">For delivery and payment coordination</p>
+                                            </div>
+                                        )}
+
                                         <div className="space-y-2 md:col-span-2">
                                             <Label htmlFor="address">Full Address (Building, Street)</Label>
                                             <Input
                                                 id="address"
-                                                placeholder="Nairobi West, Apartment 4B"
+                                                placeholder={getAddressPlaceholder()}
                                                 value={deliveryInfo.address}
                                                 onChange={(e) => setDeliveryInfo({ ...deliveryInfo, address: e.target.value })}
                                             />
@@ -158,20 +311,22 @@ export default function CheckoutPage() {
                                             <Label htmlFor="city">City</Label>
                                             <Input
                                                 id="city"
-                                                placeholder="Nairobi"
+                                                placeholder={getCityPlaceholder()}
                                                 value={deliveryInfo.city}
                                                 onChange={(e) => setDeliveryInfo({ ...deliveryInfo, city: e.target.value })}
                                             />
                                         </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="county">County</Label>
-                                            <Input
-                                                id="county"
-                                                placeholder="Nairobi"
-                                                value={deliveryInfo.county}
-                                                onChange={(e) => setDeliveryInfo({ ...deliveryInfo, county: e.target.value })}
-                                            />
-                                        </div>
+                                        {deliveryInfo.country === "Kenya" && (
+                                            <div className="space-y-2">
+                                                <Label htmlFor="county">County</Label>
+                                                <Input
+                                                    id="county"
+                                                    placeholder="Nairobi"
+                                                    value={deliveryInfo.county}
+                                                    onChange={(e) => setDeliveryInfo({ ...deliveryInfo, county: e.target.value })}
+                                                />
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             )}
@@ -181,38 +336,46 @@ export default function CheckoutPage() {
                                     <h2 className="text-2xl font-bold text-primary flex items-center">
                                         <CreditCard className="mr-2 h-6 w-6 text-accent" /> Payment Method
                                     </h2>
-                                    <RadioGroup defaultValue="mpesa" className="grid grid-cols-1 gap-4">
-                                        <div className="flex items-center space-x-4 border rounded-xl p-4 bg-white hover:border-accent transition-colors">
-                                            <RadioGroupItem value="mpesa" id="mpesa" />
-                                            <Label htmlFor="mpesa" className="flex-1 cursor-pointer">
-                                                <div className="flex items-center justify-between">
-                                                    <div className="flex items-center space-x-3">
-                                                        <div className="bg-green-100 p-2 rounded-lg">
-                                                            <Smartphone className="h-6 w-6 text-green-600" />
+                                    <RadioGroup
+                                        value={paymentMethod}
+                                        onValueChange={(val) => setPaymentMethod(val)}
+                                        className="grid grid-cols-1 gap-4"
+                                    >
+                                        {isMpesaAvailable && (
+                                            <div className="flex items-center space-x-4 border rounded-xl p-4 bg-white hover:border-accent transition-colors">
+                                                <RadioGroupItem value="mpesa" id="mpesa" />
+                                                <Label htmlFor="mpesa" className="flex-1 cursor-pointer">
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="flex items-center space-x-3">
+                                                            <div className="bg-green-100 p-2 rounded-lg">
+                                                                <Smartphone className="h-6 w-6 text-green-600" />
+                                                            </div>
+                                                            <div>
+                                                                <p className="font-bold">M-Pesa STK Push</p>
+                                                                <p className="text-xs text-muted-foreground">Pay securely via prompt on your phone</p>
+                                                            </div>
                                                         </div>
-                                                        <div>
-                                                            <p className="font-bold">M-Pesa STK Push</p>
-                                                            <p className="text-xs text-muted-foreground">Pay securely via prompt on your phone</p>
-                                                        </div>
+                                                        <span className="text-xs uppercase font-bold text-accent">Preferred</span>
                                                     </div>
-                                                    <span className="text-xs uppercase font-bold text-accent">Preferred</span>
-                                                </div>
-                                            </Label>
-                                        </div>
+                                                </Label>
+                                            </div>
+                                        )}
+                                        {siteSettings.pesapal_enabled === "true" && (
                                         <div className="flex items-center space-x-4 border rounded-xl p-4 bg-white hover:border-accent transition-colors">
-                                            <RadioGroupItem value="card" id="card" />
-                                            <Label htmlFor="card" className="flex-1 cursor-pointer">
+                                            <RadioGroupItem value="pesapal" id="pesapal" />
+                                            <Label htmlFor="pesapal" className="flex-1 cursor-pointer">
                                                 <div className="flex items-center space-x-3">
                                                     <div className="bg-blue-100 p-2 rounded-lg">
                                                         <CreditCard className="h-6 w-6 text-blue-600" />
                                                     </div>
                                                     <div>
-                                                        <p className="font-bold">Credit/Debit Card</p>
-                                                        <p className="text-xs text-muted-foreground">Visa, Mastercard, American Express</p>
+                                                        <p className="font-bold">Visa/Mastercard</p>
+                                                        <p className="text-xs text-muted-foreground">Secure payments across East Africa</p>
                                                     </div>
                                                 </div>
                                             </Label>
                                         </div>
+                                        )}
                                     </RadioGroup>
                                 </div>
                             )}
@@ -223,22 +386,40 @@ export default function CheckoutPage() {
                                         <Truck className="mr-2 h-6 w-6 text-accent" /> Review Order
                                     </h2>
                                     <div className="space-y-4">
-                                        <p className="text-muted-foreground">Please review your order carefully before confirmation. Items will be shipped from AliExpress in 15-30 days.</p>
+                                        <p className="text-muted-foreground">Please review your order carefully before confirmation. Items will be shipped from our verified suppliers in 15-30 business days.</p>
                                         <div className="bg-white rounded-xl p-6 border space-y-4">
                                             <div className="flex justify-between">
+                                                <span className="font-bold">Country:</span>
+                                                <span className="text-right">{deliveryInfo.country}</span>
+                                            </div>
+                                            <div className="flex justify-between">
                                                 <span className="font-bold">Delivery to:</span>
-                                                <span className="text-right">John Doe, Nairobi West...</span>
+                                                <span className="text-right">{deliveryInfo.firstName} {deliveryInfo.lastName}, {deliveryInfo.city}...</span>
                                             </div>
                                             <div className="flex justify-between">
                                                 <span className="font-bold">Payment Method:</span>
-                                                <span className="text-right">M-Pesa</span>
+                                                <span className="text-right">
+                                                    {paymentMethod === "mpesa" ? "M-Pesa" :
+                                                     paymentMethod === "pesapal" ? "Visa/Mastercard" : "Unknown"}
+                                                </span>
                                             </div>
+                                            {paymentMethod === "mpesa" && deliveryInfo.country === "Kenya" && (
+                                                <div className="flex justify-between">
+                                                    <span className="font-bold">M-Pesa Contact:</span>
+                                                    <span className="text-right">{deliveryInfo.tillNumber ? `Till: ${deliveryInfo.tillNumber}` : `Phone: ${deliveryInfo.phone}`}</span>
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
                             )}
                         </CardContent>
                         <CardFooter className="pt-8 pb-8">
+                            {checkoutError && (
+                                <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 mb-4">
+                                    {checkoutError}
+                                </div>
+                            )}
                             <div className="flex items-center justify-between w-full">
                                 {currentStep > 0 ? (
                                     <Button variant="ghost" onClick={() => setCurrentStep(currentStep - 1)}>
@@ -277,7 +458,7 @@ export default function CheckoutPage() {
                                 {items.map((item) => (
                                     <div key={item.id} className="flex space-x-3">
                                         <div className="relative h-16 w-16 rounded overflow-hidden flex-shrink-0 bg-muted">
-                                            <Image src={item.image} alt={item.name} fill className="object-cover" />
+                                            <Image src={item.image} alt={item.name} fill sizes="64px" className="object-cover" />
                                         </div>
                                         <div className="flex-1">
                                             <h4 className="text-sm font-semibold line-clamp-1">{item.name}</h4>
@@ -293,7 +474,7 @@ export default function CheckoutPage() {
                             <div className="space-y-2">
                                 <div className="flex justify-between text-sm">
                                     <span>Subtotal</span>
-                                    <span className="font-medium">KES {totalPrice.toLocaleString()}</span>
+                                    <span className="font-medium">KES {visibleTotalPrice.toLocaleString()}</span>
                                 </div>
                                 <div className="flex justify-between text-sm">
                                     <span>Shipping Fee</span>
@@ -301,7 +482,7 @@ export default function CheckoutPage() {
                                 </div>
                                 <div className="flex justify-between text-lg font-bold pt-2 border-t">
                                     <span>Total</span>
-                                    <span className="text-accent">KES {(totalPrice + shippingFee).toLocaleString()}</span>
+                                    <span className="text-accent">KES {(visibleTotalPrice + shippingFee).toLocaleString()}</span>
                                 </div>
                             </div>
 
@@ -313,7 +494,7 @@ export default function CheckoutPage() {
                     </Card>
 
                     <div className="text-[11px] text-muted-foreground bg-muted/20 p-4 rounded-lg">
-                        <p className="text-center">By confirming, you agree to NairobiMart's <strong>Terms of Service</strong> and acknowledge the <strong>15-30 day shipping timeline</strong>.</p>
+                        <p className="text-center">By confirming, you agree to NairobiMart&apos;s <strong>Terms of Service</strong> and acknowledge the <strong>15-30 Business Day shipping timeline</strong>.</p>
                     </div>
                 </div>
             </div>

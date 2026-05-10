@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useCartStore } from "@/store/cartStore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,11 +10,10 @@ import {
     Search,
     ShoppingCart,
     Menu,
-    X,
     User as UserIcon,
     Heart,
-    ShoppingBag,
 } from "lucide-react";
+import BrandLogo from "@/components/store/BrandLogo";
 import {
     Sheet,
     SheetContent,
@@ -28,13 +28,39 @@ import {
     DropdownMenuLabel,
     DropdownMenuSeparator,
     DropdownMenuTrigger,
+    DropdownMenuGroup,
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 import CartDrawer from "@/components/store/CartDrawer";
+import { signOut } from "next-auth/react";
 
-const Navbar = () => {
+interface NavbarProps {
+    user?: {
+        name?: string | null;
+        email?: string | null;
+        image?: string | null;
+        role?: string;
+    };
+}
+
+const Navbar = ({ user }: NavbarProps) => {
     const [isSearchOpen, setIsSearchOpen] = useState(false);
+    const [searchQuery, setSearchQuery] = useState("");
+    const [isMounted, setIsMounted] = useState(false);
+    const router = useRouter();
     const cartItemsCount = useCartStore((state) => state.getTotalItems());
+
+    useEffect(() => {
+        setIsMounted(true);
+    }, []);
+
+    const handleSearch = (e?: React.FormEvent) => {
+        if (e) e.preventDefault();
+        if (searchQuery.trim()) {
+            router.push(`/products?search=${encodeURIComponent(searchQuery.trim())}`);
+            setIsSearchOpen(false);
+        }
+    };
 
     const navLinks = [
         { name: "Home", href: "/" },
@@ -60,7 +86,7 @@ const Navbar = () => {
                         <SheetContent side="left" className="w-[300px] sm:w-[400px]">
                             <SheetHeader>
                                 <SheetTitle className="text-left font-bold text-primary">
-                                    NairobiMart
+                                    <BrandLogo compact className="!justify-start" />
                                 </SheetTitle>
                             </SheetHeader>
                             <div className="flex flex-col gap-4 py-8">
@@ -77,18 +103,14 @@ const Navbar = () => {
                         </SheetContent>
                     </Sheet>
                     <Link href="/" className="flex items-center space-x-2">
-                        <ShoppingBag className="h-6 w-6 text-accent" />
-                        <span className="font-bold text-primary text-xl">NairobiMart</span>
+                        <BrandLogo compact />
                     </Link>
                 </div>
 
                 {/* Desktop Logo */}
                 <div className="hidden md:flex items-center space-x-2">
                     <Link href="/" className="flex items-center space-x-2">
-                        <ShoppingBag className="h-8 w-8 text-accent" />
-                        <span className="font-bold text-primary text-2xl tracking-tight">
-                            NairobiMart
-                        </span>
+                        <BrandLogo />
                     </Link>
                 </div>
 
@@ -107,61 +129,87 @@ const Navbar = () => {
 
                 {/* Actions */}
                 <div className="flex items-center space-x-2 md:space-x-4">
-                    <div className="hidden lg:flex relative w-64">
+                    <form onSubmit={handleSearch} className="hidden lg:flex relative w-64">
                         <Input
                             type="search"
                             placeholder="Search products..."
                             className="pl-8 h-9"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
                         />
-                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                    </div>
+                        <Search
+                            className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground cursor-pointer hover:text-accent"
+                            onClick={() => handleSearch()}
+                        />
+                    </form>
 
-                    <Button variant="ghost" size="icon" className="lg:hidden">
-                        <Search className="h-5 w-5" />
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="lg:hidden"
+                        onClick={() => setIsSearchOpen(!isSearchOpen)}
+                    >
+                        <Search className="h-6 w-6 transition-transform hover:scale-110" />
                     </Button>
 
                     <Link href="/account/wishlist">
-                        <Button variant="ghost" size="icon" className="relative">
-                            <Heart className="h-5 w-5" />
+                        <Button variant="ghost" size="icon" className="relative h-10 w-10">
+                            <Heart className="h-6 w-6 transition-transform hover:scale-110" />
                         </Button>
                     </Link>
 
                     <DropdownMenu>
-                        <DropdownMenuTrigger
-                            render={
-                                <Button variant="ghost" size="icon">
-                                    <UserIcon className="h-5 w-5" />
-                                </Button>
-                            }
-                        />
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-10 w-10">
+                                <UserIcon className="h-6 w-6 transition-transform hover:scale-110" />
+                            </Button>
+                        </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Account</DropdownMenuLabel>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                                render={<Link href="/login">Login</Link>}
-                            />
-                            <DropdownMenuItem
-                                render={<Link href="/register">Register</Link>}
-                            />
-                            <DropdownMenuItem
-                                render={<Link href="/account">My Profile</Link>}
-                            />
-                            <DropdownMenuItem
-                                render={<Link href="/account/orders">My Orders</Link>}
-                            />
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-destructive">
-                                Log out
-                            </DropdownMenuItem>
+                            <DropdownMenuGroup>
+                                <DropdownMenuLabel>Account</DropdownMenuLabel>
+                                <DropdownMenuSeparator />
+                                {!user ? (
+                                    <>
+                                        <DropdownMenuItem asChild>
+                                            <Link href="/login" className="cursor-pointer w-full">Login</Link>
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem asChild>
+                                            <Link href="/register" className="cursor-pointer w-full">Register</Link>
+                                        </DropdownMenuItem>
+                                    </>
+                                ) : (
+                                    <>
+                                        <DropdownMenuItem asChild>
+                                            <Link href="/account" className="cursor-pointer w-full">My Profile</Link>
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem asChild>
+                                            <Link href="/account/orders" className="cursor-pointer w-full">My Orders</Link>
+                                        </DropdownMenuItem>
+                                        {user.role === "admin" && (
+                                            <DropdownMenuItem asChild>
+                                                <Link href="/admin" className="cursor-pointer w-full">Admin Dashboard</Link>
+                                            </DropdownMenuItem>
+                                        )}
+                                    </>
+                                )}
+                            </DropdownMenuGroup>
+                            {user && (
+                                <>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem className="text-destructive cursor-pointer" onClick={() => signOut()}>
+                                        Log out
+                                    </DropdownMenuItem>
+                                </>
+                            )}
                         </DropdownMenuContent>
                     </DropdownMenu>
 
                     <CartDrawer>
-                        <Button variant="ghost" size="icon" className="relative">
-                            <ShoppingCart className="h-5 w-5" />
-                            {cartItemsCount > 0 && (
+                        <Button variant="ghost" size="icon" className="relative h-10 w-10">
+                            <ShoppingCart className="h-6 w-6 transition-transform hover:scale-110" />
+                            {isMounted && cartItemsCount > 0 && (
                                 <Badge
-                                    className="absolute -right-1 -top-1 px-1.5 py-0.5 text-[10px] bg-accent text-accent-foreground"
+                                    className="absolute -right-1.5 -top-1.5 px-1.5 py-0.5 text-[10px] bg-accent text-accent-foreground border-2 border-background"
                                 >
                                     {cartItemsCount}
                                 </Badge>

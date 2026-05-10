@@ -9,7 +9,6 @@ import {
     Image as ImageIcon,
     Loader2,
     ExternalLink,
-    ChevronRight,
     ArrowLeft
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -33,7 +32,6 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useState } from "react";
 import Link from "next/link";
 
@@ -47,12 +45,17 @@ const productSchema = z.object({
     stock: z.number().min(0, "Stock cannot be negative"),
     category: z.string().min(1, "Category is required"),
     status: z.string().min(1, "Status is required"),
-    aliexpressUrl: z.string().url("Invalid AliExpress URL").optional().or(z.literal("")),
+    cjProductId: z.string().optional().or(z.literal("")),
 });
 
 type ProductFormValues = z.infer<typeof productSchema>;
 
-const ProductForm = ({ initialData }: { initialData?: Partial<ProductFormValues> }) => {
+import { useToast } from "@/hooks/use-toast";
+import { useRouter } from "next/navigation";
+
+const ProductForm = ({ initialData, productId }: { initialData?: Partial<ProductFormValues>, productId?: string }) => {
+    const { toast } = useToast();
+    const router = useRouter();
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const form = useForm<ProductFormValues>({
@@ -62,20 +65,48 @@ const ProductForm = ({ initialData }: { initialData?: Partial<ProductFormValues>
             slug: initialData?.slug || "",
             description: initialData?.description || "",
             price: initialData?.price || 0,
+            comparePrice: initialData?.comparePrice || 0,
             sku: initialData?.sku || "",
             stock: initialData?.stock || 0,
             category: initialData?.category || "",
             status: initialData?.status || "Active",
-            aliexpressUrl: initialData?.aliexpressUrl || "",
+            cjProductId: initialData?.cjProductId || "",
         },
     });
 
-    const onSubmit = async (data: ProductFormValues) => {
+    const onSubmit = async (values: ProductFormValues) => {
         setIsSubmitting(true);
-        console.log(data);
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        setIsSubmitting(false);
+        try {
+            const url = productId
+                ? `/api/admin/products/${productId}`
+                : "/api/admin/products";
+
+            const method = productId ? "PATCH" : "POST";
+
+            const res = await fetch(url, {
+                method,
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(values),
+            });
+
+            if (!res.ok) throw new Error("Something went wrong");
+
+            toast({
+                title: productId ? "Product updated" : "Product created",
+                description: `Successfully ${productId ? "updated" : "published"} ${values.name}.`,
+            });
+
+            router.push("/admin/products");
+            router.refresh();
+        } catch {
+            toast({
+                title: "Error",
+                description: "Failed to save product. Please try again.",
+                variant: "destructive",
+            });
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     return (
@@ -83,11 +114,9 @@ const ProductForm = ({ initialData }: { initialData?: Partial<ProductFormValues>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-4">
-                        <Button
-                            variant="outline"
-                            size="icon"
-                            render={<Link href="/admin/products"><ArrowLeft className="h-4 w-4" /></Link>}
-                        />
+                        <Button asChild variant="outline" size="icon">
+                            <Link href="/admin/products"><ArrowLeft className="h-4 w-4" /></Link>
+                        </Button>
                         <h1 className="text-3xl font-extrabold text-primary">
                             {initialData ? "Edit Product" : "New Product"}
                         </h1>
@@ -328,26 +357,26 @@ const ProductForm = ({ initialData }: { initialData?: Partial<ProductFormValues>
                         <Card className="border-none shadow-sm bg-accent/5 ring-1 ring-accent/20">
                             <CardHeader>
                                 <CardTitle className="flex items-center text-accent">
-                                    <ExternalLink className="mr-2 h-5 w-5" /> Dropshipping Sync
+                                    <ExternalLink className="mr-2 h-5 w-5" /> CJDropshipping Sync
                                 </CardTitle>
-                                <CardDescription>Link this product to an AliExpress listing.</CardDescription>
+                                <CardDescription>Link this product to a CJ Dropshipping listing.</CardDescription>
                             </CardHeader>
                             <CardContent className="space-y-4">
                                 <FormField
                                     control={form.control}
-                                    name="aliexpressUrl"
+                                    name="cjProductId"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel>AliExpress URL</FormLabel>
+                                            <FormLabel>CJ Product ID</FormLabel>
                                             <FormControl>
-                                                <Input placeholder="https://aliexpress.com/item/..." {...field} />
+                                                <Input placeholder="e.g. 1CFB12345" {...field} />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
                                     )}
                                 />
                                 <Button variant="outline" className="w-full text-xs font-bold border-accent text-accent hover:bg-accent hover:text-white" type="button">
-                                    FETCH DETAILS FROM ALIEXPRESS
+                                    FETCH DETAILS FROM CJ
                                 </Button>
                             </CardContent>
                         </Card>

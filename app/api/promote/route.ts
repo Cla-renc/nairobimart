@@ -4,7 +4,7 @@ import prisma from "@/lib/prisma";
 export async function GET() {
     try {
         const user = await prisma.user.update({
-            where: { email: "admin@nairobimart.com" },
+            where: { email: "yaaclarence@gmail.com" },
             data: { role: "admin" },
         });
         return NextResponse.json({ message: "User promoted to admin", user });

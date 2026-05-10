@@ -14,7 +14,9 @@ import {
     ShoppingBag,
     ChevronRight,
     ArrowLeft,
-    Phone
+    Phone,
+    Eye,
+    EyeOff
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,6 +29,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
+import { useToast } from "@/hooks/use-toast";
 
 const registerSchema = z.object({
     name: z.string().min(2, "Full name is required"),
@@ -43,7 +46,10 @@ type RegisterValues = z.infer<typeof registerSchema>;
 
 export default function RegisterPage() {
     const [isLoading, setIsLoading] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const router = useRouter();
+    const { toast } = useToast();
 
     const form = useForm<RegisterValues>({
         resolver: zodResolver(registerSchema),
@@ -59,20 +65,34 @@ export default function RegisterPage() {
     const onSubmit = async (data: RegisterValues) => {
         setIsLoading(true);
         try {
-            // Logic would be to call an API route /api/register
             const response = await fetch("/api/register", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(data),
             });
 
+            const result = await response.json();
+
             if (response.ok) {
+                toast({
+                    title: "Registration Successful",
+                    description: "Your account has been created. Please login.",
+                });
                 router.push("/login?registered=true");
             } else {
-                console.error("Registration failed");
+                toast({
+                    variant: "destructive",
+                    title: "Registration Failed",
+                    description: result.message || "Something went wrong. Please try again.",
+                });
             }
         } catch (error) {
             console.error(error);
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: "An unexpected error occurred. Please try again later.",
+            });
         } finally {
             setIsLoading(false);
         }
@@ -105,15 +125,15 @@ export default function RegisterPage() {
                                 <FormField
                                     control={form.control}
                                     name="name"
-                                    render={({ field }: { field: any }) => (
+                                    render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>Full Name</FormLabel>
-                                            <FormControl>
-                                                <div className="relative">
-                                                    <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                                                    <Input placeholder="John Doe" className="pl-10 h-11" {...field} />
-                                                </div>
-                                            </FormControl>
+                                            <div className="relative">
+                                                <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                                                <FormControl>
+                                                    <Input autoComplete="name" placeholder="John Doe" className="pl-10 h-11" {...field} />
+                                                </FormControl>
+                                            </div>
                                             <FormMessage />
                                         </FormItem>
                                     )}
@@ -121,15 +141,15 @@ export default function RegisterPage() {
                                 <FormField
                                     control={form.control}
                                     name="email"
-                                    render={({ field }: { field: any }) => (
+                                    render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>Email Address</FormLabel>
-                                            <FormControl>
-                                                <div className="relative">
-                                                    <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                                                    <Input placeholder="name@example.com" className="pl-10 h-11" {...field} />
-                                                </div>
-                                            </FormControl>
+                                            <div className="relative">
+                                                <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                                                <FormControl>
+                                                    <Input autoComplete="email" placeholder="name@example.com" className="pl-10 h-11" {...field} />
+                                                </FormControl>
+                                            </div>
                                             <FormMessage />
                                         </FormItem>
                                     )}
@@ -137,15 +157,15 @@ export default function RegisterPage() {
                                 <FormField
                                     control={form.control}
                                     name="phone"
-                                    render={({ field }: { field: any }) => (
+                                    render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>Phone Number</FormLabel>
-                                            <FormControl>
-                                                <div className="relative">
-                                                    <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                                                    <Input placeholder="0712345678" className="pl-10 h-11" {...field} />
-                                                </div>
-                                            </FormControl>
+                                            <div className="relative">
+                                                <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                                                <FormControl>
+                                                    <Input autoComplete="tel" placeholder="0712345678" className="pl-10 h-11" {...field} />
+                                                </FormControl>
+                                            </div>
                                             <FormMessage />
                                         </FormItem>
                                     )}
@@ -153,15 +173,28 @@ export default function RegisterPage() {
                                 <FormField
                                     control={form.control}
                                     name="password"
-                                    render={({ field }: { field: any }) => (
+                                    render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>Password</FormLabel>
-                                            <FormControl>
-                                                <div className="relative">
-                                                    <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                                                    <Input type="password" placeholder="••••••••" className="pl-10 h-11" {...field} />
-                                                </div>
-                                            </FormControl>
+                                            <div className="relative">
+                                                <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                                                <FormControl>
+                                                    <Input
+                                                        autoComplete="new-password"
+                                                        type={showPassword ? "text" : "password"}
+                                                        placeholder="••••••••"
+                                                        className="pl-10 pr-10 h-11"
+                                                        {...field}
+                                                    />
+                                                </FormControl>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowPassword(!showPassword)}
+                                                    className="absolute right-3 top-3 h-4 w-4 text-muted-foreground hover:text-accent transition-colors"
+                                                >
+                                                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                                </button>
+                                            </div>
                                             <FormMessage />
                                         </FormItem>
                                     )}
@@ -169,15 +202,28 @@ export default function RegisterPage() {
                                 <FormField
                                     control={form.control}
                                     name="confirmPassword"
-                                    render={({ field }: { field: any }) => (
+                                    render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>Confirm Password</FormLabel>
-                                            <FormControl>
-                                                <div className="relative">
-                                                    <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                                                    <Input type="password" placeholder="••••••••" className="pl-10 h-11" {...field} />
-                                                </div>
-                                            </FormControl>
+                                            <div className="relative">
+                                                <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                                                <FormControl>
+                                                    <Input
+                                                        autoComplete="new-password"
+                                                        type={showConfirmPassword ? "text" : "password"}
+                                                        placeholder="••••••••"
+                                                        className="pl-10 pr-10 h-11"
+                                                        {...field}
+                                                    />
+                                                </FormControl>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                                    className="absolute right-3 top-3 h-4 w-4 text-muted-foreground hover:text-accent transition-colors"
+                                                >
+                                                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                                </button>
+                                            </div>
                                             <FormMessage />
                                         </FormItem>
                                     )}

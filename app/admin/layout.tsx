@@ -40,6 +40,8 @@ const adminNavItems = [
     { name: "Settings", href: "/admin/settings", icon: Settings },
 ];
 
+import { Toaster } from "@/components/ui/toaster";
+
 export default function AdminLayout({
     children,
 }: {
@@ -97,11 +99,11 @@ export default function AdminLayout({
                 <header className="h-16 border-b bg-white flex items-center justify-between px-4 lg:px-8">
                     <div className="flex items-center">
                         <Sheet>
-                            <SheetTrigger asChild>
+                            <SheetTrigger render={
                                 <Button variant="ghost" size="icon" className="lg:hidden mr-2">
                                     <Menu className="h-6 w-6" />
                                 </Button>
-                            </SheetTrigger>
+                            } />
                             <SheetContent side="left" className="p-0 w-64">
                                 <SidebarContent />
                             </SheetContent>
@@ -136,6 +138,7 @@ export default function AdminLayout({
                     {children}
                 </main>
             </div>
+            <Toaster />
         </div>
     );
 }

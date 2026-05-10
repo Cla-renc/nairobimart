@@ -6,7 +6,6 @@ import Link from "next/link";
 import {
     Star,
     ShoppingCart,
-    Heart,
     Truck,
     ShieldCheck,
     RefreshCcw,
@@ -21,74 +20,67 @@ import { useCartStore } from "@/store/cartStore";
 import ProductCard from "@/components/store/ProductCard";
 import { Separator } from "@/components/ui/separator";
 
-// Mock product
-const product = {
-    id: "1",
-    name: "Premium Wireless Noise Cancelling Earbuds",
-    slug: "wireless-earbuds-kenya",
-    price: 4500,
-    comparePrice: 6500,
-    images: ["/images/product-1.jpg", "/images/product-1b.jpg", "/images/product-1c.jpg"],
-    category: "Electronics",
-    rating: 4.8,
-    reviewsCount: 124,
-    stock: 15,
-    description: `
-    <p>Experience studio-quality sound with our latest noise-cancelling earbuds. Perfect for the Nairobi commute or focus sessions at work.</p>
-    <ul class="list-disc pl-5 mt-4 space-y-2">
-      <li>Active Noise Cancellation (ANC) up to 35dB</li>
-      <li>Bluetooth 5.3 for seamless connectivity</li>
-      <li>30-hour total battery life with charging case</li>
-      <li>IPX4 water and sweat resistance</li>
-      <li>In-ear detection and touch controls</li>
-    </ul>
-  `,
-    variants: [
-        { name: "Color", options: ["Midnight Black", "Arctic White", "Deep Navy"] },
-    ],
-};
+interface ProductImage {
+    url: string;
+}
 
-const relatedProducts = [
-    {
-        id: "4",
-        name: "Ultra-Fast Portable SSD 1TB USB 3.2",
-        slug: "portable-ssd-1tb",
-        price: 8500,
-        image: "/images/product-4.jpg",
-        category: "Electronics",
-        rating: 4.9,
-        isFeatured: true,
-    },
-    {
-        id: "8",
-        name: "Professional Dual Mic Wireless Lavalier",
-        slug: "wireless-lavalier-mic",
-        price: 3800,
-        image: "/images/product-8.jpg",
-        category: "Electronics",
-        rating: 4.8,
-    },
-];
+interface ProductVariant {
+    id: string;
+    value: string;
+}
 
-export default function ProductDetailClient({ slug }: { slug: string }) {
+interface ProductDetail {
+    id: string;
+    name: string;
+    price: number;
+    comparePrice?: number | null;
+    description?: string | null;
+    images: ProductImage[];
+    variants: ProductVariant[];
+    category?: { name: string } | null;
+    isFeatured?: boolean;
+}
+
+interface RelatedProduct {
+    id: string;
+    name: string;
+    slug: string;
+    price: number;
+    comparePrice?: number | null;
+    images: ProductImage[];
+    category?: { name: string } | null;
+}
+
+export default function ProductDetailClient({
+    product,
+    relatedProducts
+}: {
+    product: ProductDetail,
+    relatedProducts: RelatedProduct[]
+}) {
     const [selectedImage, setSelectedImage] = useState(0);
-    const [selectedVariant, setSelectedVariant] = useState(product.variants[0].options[0]);
+    const [selectedVariant, setSelectedVariant] = useState(product.variants?.[0]?.value || "");
     const [quantity, setQuantity] = useState(1);
     const addItem = useCartStore((state) => state.addItem);
 
+    const images = product.images?.length > 0
+        ? product.images.map((img) => img.url)
+        : ["/images/placeholder.jpg"];
+
     const handleAddToCart = () => {
         addItem({
-            id: Math.random().toString(36).substr(2, 9),
+            id: `${product.id}-${selectedVariant || 'default'}`,
             productId: product.id,
             variantId: selectedVariant,
             name: product.name,
             price: product.price,
-            image: product.images[0],
+            image: images[0],
             quantity: quantity,
         });
     };
 
     const savings = product.comparePrice ? Math.round(((product.comparePrice - product.price) / product.comparePrice) * 100) : 0;
+    const hasVariants = product.variants?.length > 0;
 
     return (
         <div className="container px-4 py-8">
@@ -106,22 +98,23 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
                 <div className="space-y-4">
                     <div className="relative aspect-square overflow-hidden rounded-2xl bg-muted border group">
                         <Image
-                            src={product.images[selectedImage]}
+                            src={images[selectedImage]}
                             alt={product.name}
                             fill
+                            sizes="(max-width: 768px) 100vw, 50vw"
                             className="object-cover group-hover:scale-105 transition-transform duration-500"
                             priority
                         />
                     </div>
                     <div className="grid grid-cols-3 gap-4">
-                        {product.images.map((img, idx) => (
+                        {images.map((img: string, idx: number) => (
                             <button
                                 key={idx}
                                 onClick={() => setSelectedImage(idx)}
                                 className={`relative aspect-square rounded-lg overflow-hidden border-2 transition-all ${selectedImage === idx ? "border-accent shadow-sm" : "border-transparent opacity-70 hover:opacity-100"
                                     }`}
                             >
-                                <Image src={img} alt={`${product.name} ${idx}`} fill className="object-cover" />
+                                <Image src={img} alt={`${product.name} ${idx}`} fill sizes="80px" className="object-cover" />
                             </button>
                         ))}
                     </div>
@@ -130,7 +123,7 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
                 {/* Info */}
                 <div className="space-y-6">
                     <div className="space-y-2">
-                        <Badge className="bg-primary/10 text-primary border-none">{product.category}</Badge>
+                        <Badge className="bg-primary/10 text-primary border-none">{product.category?.name || "Uncategorized"}</Badge>
                         <h1 className="text-3xl md:text-4xl font-extrabold text-primary tracking-tight">{product.name}</h1>
                         <div className="flex items-center space-x-2">
                             <div className="flex items-center">
@@ -138,7 +131,7 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
                                     <Star key={i} className={`h-4 w-4 ${i < 4 ? "fill-accent text-accent" : "fill-muted text-muted"}`} />
                                 ))}
                             </div>
-                            <span className="text-sm font-medium">({product.reviewsCount} reviews)</span>
+                            <span className="text-sm font-medium">(0 reviews)</span>
                         </div>
                     </div>
 
@@ -165,27 +158,29 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
                     <Separator />
 
                     {/* Variants */}
-                    <div className="space-y-4">
-                        <h4 className="font-bold text-primary flex items-center">
-                            Select {product.variants[0].name}
-                            <span className="ml-2 h-1 w-1 rounded-full bg-accent" />
-                        </h4>
-                        <div className="flex flex-wrap gap-2">
-                            {product.variants[0].options.map((opt) => (
-                                <button
-                                    key={opt}
-                                    onClick={() => setSelectedVariant(opt)}
-                                    className={`px-5 py-2.5 rounded-full border-2 text-sm font-bold transition-all ${selectedVariant === opt
+                    {hasVariants && (
+                        <div className="space-y-4">
+                            <h4 className="font-bold text-primary flex items-center">
+                                Select Variant
+                                <span className="ml-2 h-1 w-1 rounded-full bg-accent" />
+                            </h4>
+                            <div className="flex flex-wrap gap-2">
+                                {product.variants.map((variant) => (
+                                    <button
+                                        key={variant.id}
+                                        onClick={() => setSelectedVariant(variant.value)}
+                                        className={`px-5 py-2.5 rounded-full border-2 text-sm font-bold transition-all ${selectedVariant === variant.value
                                             ? "border-accent bg-accent/5 text-accent shadow-md"
                                             : "border-muted bg-white text-muted-foreground hover:border-accent/50"
-                                        }`}
-                                >
-                                    {selectedVariant === opt && <Check className="inline-block mr-2 h-4 w-4" />}
-                                    {opt}
-                                </button>
-                            ))}
+                                            }`}
+                                    >
+                                        {selectedVariant === variant.value && <Check className="inline-block mr-2 h-4 w-4" />}
+                                        {variant.value}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
-                    </div>
+                    )}
 
                     {/* Quantity & Add to Cart */}
                     <div className="flex flex-col sm:flex-row items-center gap-4 pt-4">
@@ -245,13 +240,13 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
                             value="reviews"
                             className="rounded-none border-b-4 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent px-0 pb-6 text-xl font-black uppercase tracking-tighter transition-all"
                         >
-                            Feedback ({product.reviewsCount})
+                            Feedback (0)
                         </TabsTrigger>
                     </TabsList>
                     <TabsContent value="description" className="py-12 prose prose-slate max-w-none">
                         <div
                             className="text-muted-foreground leading-relaxed text-lg"
-                            dangerouslySetInnerHTML={{ __html: product.description }}
+                            dangerouslySetInnerHTML={{ __html: product.description || "No description available." }}
                         />
                     </TabsContent>
                     <TabsContent value="reviews" className="py-12">
@@ -272,7 +267,7 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
                 <div className="flex items-end justify-between border-b-2 pb-6 border-primary/5">
                     <div>
                         <h2 className="text-4xl font-black text-primary tracking-tighter uppercase">You Might Like</h2>
-                        <p className="text-muted-foreground mt-2">Selected electronics for you</p>
+                        <p className="text-muted-foreground mt-2">Selected items for you</p>
                     </div>
                     <Link href="/products" className="text-accent font-black text-sm uppercase tracking-widest hover:underline flex items-center">
                         View All <Plus className="ml-2 h-4 w-4" />
@@ -280,7 +275,16 @@ export default function ProductDetailClient({ slug }: { slug: string }) {
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
                     {relatedProducts.map((p) => (
-                        <ProductCard key={p.id} product={p as any} />
+                        <ProductCard key={p.id} product={{
+                            id: p.id,
+                            name: p.name,
+                            slug: p.slug,
+                            price: p.price,
+                            comparePrice: p.comparePrice || undefined,
+                            image: p.images?.[0]?.url || "/images/placeholder.jpg",
+                            category: p.category?.name || "Uncategorized",
+                            rating: 4.5
+                        }} />
                     ))}
                 </div>
             </div>

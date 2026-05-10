@@ -1,17 +1,51 @@
 "use client";
 
 import Link from "next/link";
-import { CheckCircle2, ShoppingBag, ArrowRight, Truck, Mail } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { CheckCircle2, ArrowRight, Truck, Mail, CreditCard, Smartphone } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useSearchParams } from "next/navigation";
-import { useEffect, Suspense } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { useCartStore } from "@/store/cartStore";
 
 function SuccessContent() {
     const searchParams = useSearchParams();
-    const orderId = searchParams.get("id") || "ORD-7231";
+    const orderId = searchParams.get("id") || "";
+    const [paymentMethod, setPaymentMethod] = useState<string | null>(null);
+    const [loading, setLoading] = useState(true);
+    const { clearCart } = useCartStore();
+
+    // Fetch order data from database to get accurate payment method
+    useEffect(() => {
+        const fetchOrder = async () => {
+            if (!orderId) {
+                setLoading(false);
+                return;
+            }
+            try {
+                const response = await fetch(`/api/orders/${orderId}`);
+                if (response.ok) {
+                    const order = await response.json();
+                    setPaymentMethod(order.paymentMethod);
+                    clearCart();
+                } else {
+                    // Fallback to URL parameter if API fails
+                    const urlPayment = searchParams.get("payment");
+                    setPaymentMethod(urlPayment);
+                }
+            } catch (error) {
+                console.error("Failed to fetch order:", error);
+                // Fallback to URL parameter
+                const urlPayment = searchParams.get("payment");
+                setPaymentMethod(urlPayment);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchOrder();
+    }, [orderId, searchParams, clearCart]);
 
     return (
         <div className="min-h-[80vh] flex flex-col items-center justify-center p-4">
@@ -28,6 +62,15 @@ function SuccessContent() {
                         Thank you for shopping with <span className="text-accent font-bold">NairobiMart</span>.
                         Your order is being processed.
                     </p>
+                    {paymentMethod === "pesapal" ? (
+                        <Badge className="bg-blue-100 text-blue-700 border-none text-sm px-4 py-1 font-bold">
+                            <CreditCard className="h-4 w-4 mr-2" /> Paid via Card (Visa/Mastercard)
+                        </Badge>
+                    ) : paymentMethod === "mpesa" ? (
+                        <Badge className="bg-green-100 text-green-700 border-none text-sm px-4 py-1 font-bold">
+                            <Smartphone className="h-4 w-4 mr-2" /> Paid via M-Pesa
+                        </Badge>
+                    ) : null}
                 </div>
 
                 <Card className="border-none shadow-lg bg-white overflow-hidden">
@@ -36,10 +79,12 @@ function SuccessContent() {
                         <CardTitle className="text-lg">Order Information</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-6">
-                        <div className="flex justify-between items-center pb-4 border-b">
-                            <span className="text-muted-foreground">Order Number</span>
-                            <span className="font-bold text-primary">{orderId}</span>
-                        </div>
+                        {orderId && (
+                            <div className="flex justify-between items-center pb-4 border-b">
+                                <span className="text-muted-foreground">Order ID</span>
+                                <span className="font-bold text-primary font-mono text-sm">{orderId}</span>
+                            </div>
+                        )}
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
                             <div className="flex items-start space-x-3">
@@ -80,7 +125,7 @@ function SuccessContent() {
                 </div>
 
                 <p className="text-xs text-muted-foreground italic">
-                    Need help? Contact us at support@nairobimart.co.ke
+                    Need help? Contact us at support@nairobimart.co.ke or call 0759193674
                 </p>
             </div>
         </div>

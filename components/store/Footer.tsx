@@ -1,6 +1,5 @@
 import Link from "next/link";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import NewsletterForm from "./NewsletterForm";
 import {
     Facebook,
     Instagram,
@@ -22,20 +21,11 @@ const Footer = () => {
                     <div className="space-y-4">
                         <h2 className="text-2xl font-bold text-accent">NairobiMart</h2>
                         <p className="text-sm text-primary-foreground/80">
-                            "Shop Smart. Shop Kenya."
+                            &quot;Shop Smart. Shop Kenya.&quot;
                         </p>
                         <div className="pt-4">
                             <h3 className="text-sm font-semibold mb-2">Subscribe to our newsletter</h3>
-                            <div className="flex space-x-2">
-                                <Input
-                                    type="email"
-                                    placeholder="Enter your email"
-                                    className="bg-primary-foreground/10 border-primary-foreground/20 text-primary-foreground placeholder:text-primary-foreground/50 h-9"
-                                />
-                                <Button variant="accent" size="sm">
-                                    Join
-                                </Button>
-                            </div>
+                            <NewsletterForm />
                         </div>
                     </div>
 
@@ -108,7 +98,7 @@ const Footer = () => {
                             </li>
                             <li className="flex items-center space-x-2">
                                 <Phone className="h-4 w-4 text-accent" />
-                                <span>+254 700 000 000</span>
+                                <span>0759193674</span>
                             </li>
                             <li className="flex items-center space-x-2">
                                 <MapPin className="h-4 w-4 text-accent" />

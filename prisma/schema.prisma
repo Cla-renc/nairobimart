@@ -61,7 +61,7 @@ model Product {
   costPrice       Float
   stock           Int      @default(0)
   sku             String?  @unique
-  aliexpressId    String?
+  cjProductId     String?
   weight          Float?
   isActive        Boolean  @default(true)
   isFeatured      Boolean  @default(false)
@@ -97,7 +97,7 @@ model ProductVariant {
   value               String
   priceModifier      Float   @default(0)
   stock               Int     @default(0)
-  aliexpressVariantId String?
+  cjVariantId         String?
   product             Product @relation(fields: [productId], references: [id], onDelete: Cascade)
   productId           String  @db.ObjectId
 
@@ -130,16 +130,19 @@ model Order {
   shippingFee        Float
   discount           Float       @default(0)
   total              Float
-  paymentMethod      String      // 'mpesa', 'stripe', 'cod'
+  paymentMethod      String      // 'mpesa', 'pesapal', 'cod'
   paymentStatus      PaymentStatus @default(pending)
   mpesaTransactionId String?
+  pesapalTransactionId String?
   stripePaymentId    String?
   shippingName       String
   shippingPhone      String
   shippingAddress    String
   shippingCity       String
   shippingCounty     String
-  aliexpressOrderId  String?
+  shippingCountry    String      @default("Kenya")
+  mpesaTillNumber    String?
+  cjOrderId          String?
   trackingNumber     String?
   trackingUrl        String?
   notes              String?

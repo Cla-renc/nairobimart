@@ -16,38 +16,34 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import {
     Filter,
-    Search
+    Search,
+    Loader2
 } from "lucide-react";
 
-// Expanded Mock data with 20 products
-const allProducts = [
-    { id: "1", name: "Xiaomi Smart Band 8 - 1.62' AMOLED", slug: "xiaomi-smart-band-8", price: 4500, comparePrice: 6500, image: "https://ae01.alicdn.com/kf/Sa7da5355e8254132b4c5ea23102bde7fE.jpg", category: "Electronics", rating: 4.8, isFeatured: true, isSale: true },
-    { id: "2", name: "M10 Wireless Earbuds 9D Stereo", slug: "m10-wireless-earbuds", price: 1800, comparePrice: 2800, image: "https://ae01.alicdn.com/kf/S8b03da40eafd43558363e09ba880ae17k.jpg", category: "Electronics", rating: 4.7, isSale: true },
-    { id: "3", name: "Thinkplus GM2 Pro Gaming Earbuds", slug: "thinkplus-gm2-pro", price: 2200, image: "https://ae01.alicdn.com/kf/Sed533b46fce8427c9a26abdafbd018c0b.jpg", category: "Electronics", rating: 4.9, isFeatured: true },
-    { id: "4", name: "Y13 Pro Max Smart Watch Bluetooth", slug: "y13-smart-watch", price: 3500, comparePrice: 5500, image: "https://ae01.alicdn.com/kf/S2039805149754fd6b3e656820a341b04s.jpg", category: "Accessories", rating: 4.7, isSale: true },
-    { id: "5", name: "Portable Mini Air Cooler Humidifier", slug: "portable-air-cooler", price: 3800, image: "https://ae01.alicdn.com/kf/S32262ebc964d40c9bb7aff0c471f5366l.jpg", category: "Home", rating: 4.5 },
-    { id: "6", name: "3L Ultrasonic Cool Mist Humidifier", slug: "3l-mist-humidifier", price: 4200, image: "https://ae01.alicdn.com/kf/Sadda79af720147649cc636979b59e3d5Q.jpg", category: "Home", rating: 4.6 },
-    { id: "7", name: "SZUK Wireless Car Vacuum Cleaner", slug: "szuk-car-vacuum", price: 4800, comparePrice: 6800, image: "https://ae01.alicdn.com/kf/Sc3e2d243aeef4f2abc3fd4fe652efc26O.jpg", category: "Home", rating: 4.8, isSale: true },
-    { id: "8", name: "Digital Hanging Luggage Scale 50kg", slug: "digital-luggage-scale", price: 1200, image: "https://ae01.alicdn.com/kf/Sbaf40bce26e4400a979efb789229519fm.jpg", category: "Accessories", rating: 4.4 },
-    { id: "9", name: "Smart Sensor Automatic Trash Can", slug: "smart-trash-can", price: 5500, image: "https://ae01.alicdn.com/kf/Sbeba48733f6e48b59383b1db71919d13t.jpg", category: "Home", rating: 4.3 },
-    { id: "10", name: "Mini WiFi Desktop Weather Station", slug: "wifi-weather-station", price: 6500, image: "https://ae01.alicdn.com/kf/S000b201b656144f6bcf0f21b0d425e2f3.jpg", category: "Electronics", rating: 4.9, isFeatured: true },
-    { id: "11", name: "Flame Aroma Diffuser Night Light", slug: "flame-aroma-diffuser", price: 2800, image: "https://ae01.alicdn.com/kf/S23aeed22400b4639ac8bb31dc23664c9D.jpg", category: "Home", rating: 4.7 },
-    { id: "12", name: "Men's Graphic Casual Button-Up Shirt", slug: "mens-graphic-shirt", price: 2500, image: "https://ae01.alicdn.com/kf/Sa3e0eb0ae29c4f1dbdaa2a552df1f4bbJ.png", category: "Fashion", rating: 4.6 },
-    { id: "13", name: "Women's Stripe Evening Party Dress", slug: "women-stripe-dress", price: 3200, image: "https://ae01.alicdn.com/kf/HTB14WltacfrK1Rjy1Xd761emFXap.png", category: "Fashion", rating: 4.5 },
-    { id: "14", name: "M10 Bluetooth Earphones HiFi Stereo", slug: "m10-hifi-earphones", price: 1900, image: "https://ae01.alicdn.com/kf/Sc434ec628c3447029c070d07b280d1ccn.jpg", category: "Electronics", rating: 4.2 },
-    { id: "15", name: "TWS E6S Noise Cancelling Headset", slug: "tws-e6s-headset", price: 1500, image: "https://ae01.alicdn.com/kf/S8b692b154fff4602970c49b6697c6fb2e.png", category: "Electronics", rating: 4.3 },
-    { id: "16", name: "Lenovo LP75 Sports Wireless Gym", slug: "lenovo-lp75-sports", price: 2800, image: "https://ae01.alicdn.com/kf/Sb8cba2da53674ad8ba0fab308dfe7f03T.jpg", category: "Electronics", rating: 4.8 },
-    { id: "17", name: "Wireless PC Soundbar TV Speaker", slug: "wireless-pc-soundbar", price: 5800, comparePrice: 8500, image: "https://ae01.alicdn.com/kf/S967b8bdaa4e745a0bc08782f40f629776.jpg", category: "Electronics", rating: 4.6, isSale: true },
-    { id: "18", name: "Intelligent AI Dialogue Toy Clock", slug: "ai-dialogue-toy", price: 7500, image: "https://ae01.alicdn.com/kf/Ae2aa6d7e4398497c84fa0f73ea8933f08.jpg", category: "Gifts", rating: 4.9, isFeatured: true },
-    { id: "19", name: "T2 Transparent Wireless Headset", slug: "t2-transparent-headset", price: 3200, image: "https://ae01.alicdn.com/kf/Sfca6f88fa6dc461783577905b368b2fbW.jpg", category: "Electronics", rating: 4.7 },
-    { id: "20", name: "SanDisk Ultra 128GB MicroSD Card", slug: "sandisk-ultra-128gb", price: 1800, image: "https://ae01.alicdn.com/kf/H7429188d617c4611a51a8d003e659b09V.jpg", category: "Electronics", rating: 4.9, isFeatured: true }
-];
+// Categories will be fetched from database
+const fallbackCategories = ["Electronics", "Laptops", "Accessories", "Fashion", "Home", "Gifts", "Beauty"];
 
-const categories = ["Electronics", "Laptops", "Accessories", "Fashion", "Home", "Gifts", "Beauty"];
+interface Product {
+    id: string;
+    name: string;
+    slug: string;
+    price: number;
+    comparePrice?: number;
+    category: string;
+    image: string;
+    rating?: number;
+    isFeatured?: boolean;
+}
 
 function ProductsContent() {
     const searchParams = useSearchParams();
+    const searchParam = searchParams.get("search");
+    const filterParam = searchParams.get("filter");
     const initialCategory = searchParams.get("category");
+
+    const [allProducts, setAllProducts] = useState<Product[]>([]);
+    const [categories, setCategories] = useState<string[]>(fallbackCategories);
+    const [loading, setLoading] = useState(true);
 
     const [priceRange, setPriceRange] = useState<number[]>([0, 50000]);
     const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
@@ -55,18 +51,43 @@ function ProductsContent() {
     const [currentPage, setCurrentPage] = useState(1);
     const productsPerPage = 8;
 
+    // Fetch products and categories from API
+    useEffect(() => {
+        const loadData = async () => {
+            try {
+                setLoading(true);
+                // Fetch Products
+                const prodRes = await fetch('/api/products');
+                const prodData = await prodRes.json();
+                setAllProducts(Array.isArray(prodData) ? prodData : []);
+
+                // Fetch Categories names
+                const catRes = await fetch('/api/admin/categories');
+                const catData = await catRes.json();
+                if (Array.isArray(catData)) {
+                    setCategories(catData.map((c: { name: string }) => c.name));
+                }
+            } catch (err) {
+                console.error("Failed to load store data:", err);
+            } finally {
+                setLoading(false);
+            }
+        };
+        loadData();
+    }, []);
+
     // Handle initial category from URL
     useEffect(() => {
-        if (initialCategory) {
+        if (initialCategory && categories.length > 0) {
             const decodedCategory = decodeURIComponent(initialCategory);
             const foundCategory = categories.find(c => c.toLowerCase() === decodedCategory.toLowerCase());
             if (foundCategory) {
                 setSelectedCategories([foundCategory]);
             }
-        } else {
+        } else if (!initialCategory) {
             setSelectedCategories([]);
         }
-    }, [initialCategory]);
+    }, [initialCategory, categories]);
 
     const toggleCategory = (category: string) => {
         setSelectedCategories(prev =>
@@ -78,16 +99,31 @@ function ProductsContent() {
     };
 
     const filteredProducts = allProducts.filter(product => {
+        // Category Filter
         const matchesCategory = selectedCategories.length === 0 || selectedCategories.includes(product.category);
+
+        // Price Filter
         const matchesPrice = Number(product.price) >= priceRange[0] && Number(product.price) <= priceRange[1];
-        return matchesCategory && matchesPrice;
+
+        // Search Filter
+        const matchesSearch = !searchParam ||
+            product.name.toLowerCase().includes(searchParam.toLowerCase()) ||
+            product.category.toLowerCase().includes(searchParam.toLowerCase());
+
+        // Sale Filter
+        const matchesSale = filterParam !== "sale" || (product.comparePrice && product.comparePrice > product.price);
+
+        // Featured Filter
+        const matchesFeatured = filterParam !== "featured" || product.isFeatured;
+
+        return matchesCategory && matchesPrice && matchesSearch && matchesSale && matchesFeatured;
     });
 
     // Sorting logic
     const sortedProducts = [...filteredProducts].sort((a, b) => {
         if (sortBy === "price-low") return a.price - b.price;
         if (sortBy === "price-high") return b.price - a.price;
-        if (sortBy === "rating") return b.rating - a.rating;
+        if (sortBy === "rating") return (b.rating || 0) - (a.rating || 0);
         return 0; // default newest
     });
 
@@ -96,8 +132,31 @@ function ProductsContent() {
     const indexOfFirstProduct = indexOfLastProduct - productsPerPage;
     const currentProducts = sortedProducts.slice(indexOfFirstProduct, indexOfLastProduct);
 
+    // Helper to generate page numbers with ellipses
+    const getPageNumbers = () => {
+        const pages = [];
+
+        if (totalPages <= 7) {
+            for (let i = 1; i <= totalPages; i++) pages.push(i);
+        } else {
+            pages.push(1);
+            if (currentPage > 3) pages.push("...");
+
+            const start = Math.max(2, currentPage - 1);
+            const end = Math.min(totalPages - 1, currentPage + 1);
+
+            for (let i = start; i <= end; i++) {
+                if (!pages.includes(i)) pages.push(i);
+            }
+
+            if (currentPage < totalPages - 2) pages.push("...");
+            pages.push(totalPages);
+        }
+        return pages;
+    };
+
     return (
-        <div className="container px-4 py-8">
+        <div className="container mx-auto px-4 py-8">
             <div className="flex flex-col md:flex-row gap-8">
                 {/* Sidebar Filters */}
                 <aside className="w-full md:w-64 space-y-8">
@@ -175,7 +234,7 @@ function ProductsContent() {
                 </aside>
 
                 {/* Main Content */}
-                <main className="flex-1">
+                <main className="flex-1 min-w-0">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
                         <div>
                             <h1 className="text-3xl font-black text-primary tracking-tighter uppercase leading-none">
@@ -200,7 +259,12 @@ function ProductsContent() {
                         </div>
                     </div>
 
-                    {currentProducts.length > 0 ? (
+                    {loading ? (
+                        <div className="py-24 flex flex-col items-center justify-center space-y-4">
+                            <Loader2 className="h-12 w-12 animate-spin text-accent" />
+                            <p className="text-muted-foreground font-bold animate-pulse">Fetching global catalog...</p>
+                        </div>
+                    ) : currentProducts.length > 0 ? (
                         <ProductGrid products={currentProducts} />
                     ) : (
                         <div className="py-24 text-center space-y-4 bg-muted/20 rounded-[40px] border-4 border-dashed border-white flex flex-col items-center justify-center">
@@ -224,7 +288,7 @@ function ProductsContent() {
 
                     {/* Pagination */}
                     {totalPages > 1 && (
-                        <div className="mt-16 flex justify-center items-center space-x-4">
+                        <div className="mt-16 flex justify-center items-center space-x-2 md:space-x-4">
                             <Button
                                 variant="outline"
                                 disabled={currentPage === 1}
@@ -232,26 +296,30 @@ function ProductsContent() {
                                     setCurrentPage(prev => Math.max(1, prev - 1));
                                     window.scrollTo({ top: 0, behavior: 'smooth' });
                                 }}
-                                className="rounded-2xl px-8 border-2 font-bold shadow-sm"
+                                className="rounded-2xl px-4 md:px-8 border-2 font-bold shadow-sm"
                             >
                                 Previous
                             </Button>
-                            <div className="flex items-center space-x-2">
-                                {Array.from({ length: totalPages }).map((_, i) => (
-                                    <Button
-                                        key={i + 1}
-                                        variant={currentPage === i + 1 ? "default" : "outline"}
-                                        className={`h-12 w-12 p-0 rounded-2xl font-black text-sm shadow-sm transition-all duration-300 ${currentPage === i + 1
-                                            ? "bg-accent text-accent-foreground border-accent shadow-xl shadow-accent/20 scale-110"
-                                            : "hover:border-accent hover:text-accent border-2"
-                                            }`}
-                                        onClick={() => {
-                                            setCurrentPage(i + 1);
-                                            window.scrollTo({ top: 0, behavior: 'smooth' });
-                                        }}
-                                    >
-                                        {i + 1}
-                                    </Button>
+                            <div className="flex items-center space-x-1 md:space-x-2">
+                                {getPageNumbers().map((page, i) => (
+                                    page === "..." ? (
+                                        <span key={`ellipsis-${i}`} className="text-muted-foreground font-bold px-2">...</span>
+                                    ) : (
+                                        <Button
+                                            key={page}
+                                            variant={currentPage === page ? "default" : "outline"}
+                                            className={`h-10 w-10 md:h-12 md:w-12 p-0 rounded-2xl font-black text-sm shadow-sm transition-all duration-300 ${currentPage === page
+                                                ? "bg-accent text-accent-foreground border-accent shadow-xl shadow-accent/20 scale-110"
+                                                : "hover:border-accent hover:text-accent border-2"
+                                                }`}
+                                            onClick={() => {
+                                                setCurrentPage(page as number);
+                                                window.scrollTo({ top: 0, behavior: 'smooth' });
+                                            }}
+                                        >
+                                            {page}
+                                        </Button>
+                                    )
                                 ))}
                             </div>
                             <Button
@@ -261,7 +329,7 @@ function ProductsContent() {
                                     setCurrentPage(prev => Math.min(totalPages, prev + 1));
                                     window.scrollTo({ top: 0, behavior: 'smooth' });
                                 }}
-                                className="rounded-2xl px-8 border-2 font-bold shadow-sm"
+                                className="rounded-2xl px-4 md:px-8 border-2 font-bold shadow-sm"
                             >
                                 Next
                             </Button>

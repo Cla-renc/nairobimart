@@ -1,34 +1,29 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
-const bcrypt = require('bcryptjs');
 
-async function main() {
-    const users = await prisma.user.findMany();
-    console.log("Users in DB count:", users.length);
+async function checkUsers() {
+    try {
+        const userCount = await prisma.user.count();
+        console.log(`Total users in database: ${userCount}`);
 
-    const adminEmail = 'admin@nairobimart.com';
-    const existingAdmin = await prisma.user.findUnique({
-        where: { email: adminEmail }
-    });
-
-    if (!existingAdmin) {
-        const passwordHash = await bcrypt.hash('password', 10);
-        const admin = await prisma.user.create({
-            data: {
-                email: adminEmail,
-                name: 'Admin',
-                passwordHash: passwordHash,
-                role: 'admin'
+        const latestUsers = await prisma.user.findMany({
+            orderBy: { createdAt: 'desc' },
+            take: 5,
+            select: {
+                id: true,
+                email: true,
+                name: true,
+                createdAt: true
             }
         });
-        console.log("Created default admin:", admin.email);
-    } else {
-        console.log("Admin user already exists:", existingAdmin.email);
+
+        console.log('Latest 5 users:');
+        console.log(JSON.stringify(latestUsers, null, 2));
+    } catch (error) {
+        console.error('Error checking users:', error);
+    } finally {
+        await prisma.$disconnect();
     }
 }
 
-main()
-    .catch(e => console.error(e))
-    .finally(async () => {
-        await prisma.$disconnect();
-    });
+checkUsers();

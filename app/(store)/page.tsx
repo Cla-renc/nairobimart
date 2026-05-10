@@ -2,6 +2,7 @@ import HeroBanner from "@/components/store/HeroBanner";
 import ProductCard from "@/components/store/ProductCard";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import {
     Smartphone,
@@ -11,65 +12,90 @@ import {
     Home,
     Gift,
     ArrowRight,
-    ShoppingBag
+    ShoppingBag,
+    Package,
+    LucideIcon
 } from "lucide-react";
 
-const categories = [
-    { name: "Electronics", icon: Smartphone, href: "/products?category=electronics", color: "bg-blue-100 text-blue-600" },
-    { name: "Accessories", icon: Watch, href: "/products?category=accessories", color: "bg-purple-100 text-purple-600" },
-    { name: "Laptops", icon: Laptop, href: "/products?category=electronics", color: "bg-orange-100 text-orange-600" },
-    { name: "Fashion", icon: Shirt, href: "/products?category=fashion", color: "bg-pink-100 text-pink-600" },
-    { name: "Home", icon: Home, href: "/products?category=home", color: "bg-green-100 text-green-600" },
-    { name: "Gifts", icon: Gift, href: "/products?category=gifts", color: "bg-yellow-100 text-yellow-600" },
-];
+const ICON_MAP: Record<string, LucideIcon> = {
+    'Electronics': Smartphone,
+    'Accessories': Watch,
+    'Laptops': Laptop,
+    'Fashion': Shirt,
+    'Home': Home,
+    'Gifts': Gift,
+};
 
-const featuredProducts = [
-    {
-        id: "1",
-        name: "Xiaomi Smart Band 8 - 1.62' AMOLED Screen",
-        slug: "xiaomi-smart-band-8",
-        price: 4500,
-        comparePrice: 6500,
-        image: "https://ae01.alicdn.com/kf/Sa7da5355e8254132b4c5ea23102bde7fE.jpg",
-        category: "Electronics",
-        rating: 4.8,
-        isFeatured: true,
-        isSale: true,
-    },
-    {
-        id: "10",
-        name: "Mini WiFi Desktop Weather Station",
-        slug: "wifi-weather-station",
-        price: 6500,
-        image: "https://ae01.alicdn.com/kf/S000b201b656144f6bcf0f21b0d425e2f3.jpg",
-        category: "Electronics",
-        rating: 4.9,
-    },
-    {
-        id: "3",
-        name: "Thinkplus GM2 Pro Gaming Earbuds",
-        slug: "thinkplus-gm2-pro",
-        price: 2200,
-        image: "https://ae01.alicdn.com/kf/Sed533b46fce8427c9a26abdafbd018c0b.jpg",
-        category: "Electronics",
-        rating: 4.9,
-    },
-    {
-        id: "18",
-        name: "Intelligent AI Dialogue Toy Clock",
-        slug: "ai-dialogue-toy",
-        price: 7500,
-        image: "https://ae01.alicdn.com/kf/Ae2aa6d7e4398497c84fa0f73ea8933f08.jpg",
-        category: "Gifts",
-        rating: 4.9,
-        isFeatured: true,
+const COLOR_MAP: Record<string, string> = {
+    'Electronics': "bg-blue-100 text-blue-600",
+    'Accessories': "bg-purple-100 text-purple-600",
+    'Laptops': "bg-orange-100 text-orange-600",
+    'Fashion': "bg-pink-100 text-pink-600",
+    'Home': "bg-green-100 text-green-600",
+    'Gifts': "bg-yellow-100 text-yellow-600",
+};
+
+import prisma from "@/lib/prisma";
+
+export default async function HomePage() {
+    const banners = await prisma.banner.findMany({
+        where: { isActive: true },
+        orderBy: { position: 'asc' }
+    });
+
+    const categoriesDb = await prisma.category.findMany({
+        where: { isActive: true },
+        take: 6,
+        orderBy: { position: 'asc' }
+    });
+
+    const liveCategories = categoriesDb.map(cat => ({
+        name: cat.name,
+        href: `/products?category=${cat.slug}`,
+        icon: ICON_MAP[cat.name] || Package,
+        color: COLOR_MAP[cat.name] || "bg-gray-100 text-gray-600"
+    }));
+
+    // Fetch featured products first
+    let productsInDb = await prisma.product.findMany({
+        where: { isFeatured: true, isActive: true },
+        take: 4,
+        include: {
+            images: true,
+            category: true,
+        },
+        orderBy: { createdAt: 'desc' }
+    });
+
+    // Fallback to latest products if none are marked featured
+    if (productsInDb.length === 0) {
+        productsInDb = await prisma.product.findMany({
+            where: { isActive: true },
+            take: 4,
+            include: {
+                images: true,
+                category: true,
+            },
+            orderBy: { createdAt: 'desc' }
+        });
     }
-];
 
-export default function HomePage() {
+    const featuredProducts = productsInDb.map(p => ({
+        id: p.id,
+        name: p.name,
+        slug: p.slug,
+        price: p.price,
+        comparePrice: p.comparePrice ?? undefined,
+        image: p.images?.[0]?.url || "/images/placeholder.jpg",
+        category: p.category?.name || "Uncategorized",
+        rating: 4.5,
+        isFeatured: p.isFeatured,
+        isSale: !!p.comparePrice
+    }));
+
     return (
         <div className="flex flex-col min-h-screen">
-            <HeroBanner />
+            <HeroBanner banners={banners} />
 
             {/* Categories Section */}
             <section className="py-12 bg-muted/30">
@@ -81,7 +107,7 @@ export default function HomePage() {
                         </Link>
                     </div>
                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                        {categories.map((category) => (
+                        {liveCategories.map((category) => (
                             <Link
                                 key={category.name}
                                 href={category.href}
@@ -103,18 +129,28 @@ export default function HomePage() {
                     <div className="flex flex-col md:flex-row md:items-center justify-between mb-10">
                         <div className="space-y-1">
                             <h2 className="text-3xl font-extrabold text-primary">Featured Products</h2>
-                            <p className="text-muted-foreground">Handpicked for quality and value</p>
+                            <p className="text-muted-foreground">I started NairobiMart because Nairobi needed faster, clearer access to the products we actually want.</p>
                         </div>
                         <Link href="/products?filter=featured" className="mt-4 md:mt-0">
                             <Button variant="outline" className="border-accent text-accent hover:bg-accent hover:text-accent-foreground">
-                                Shop the Colection
+                                Shop the Collection
                             </Button>
                         </Link>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-                        {featuredProducts.map((product) => (
-                            <ProductCard key={product.id} product={product} />
-                        ))}
+                    <div className={featuredProducts.length > 0 ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8" : "flex flex-col items-center justify-center py-12 text-center"}>
+                        {featuredProducts.length > 0 ? (
+                            featuredProducts.map((product) => (
+                                <ProductCard key={product.id} product={product} />
+                            ))
+                        ) : (
+                            <div className="space-y-4">
+                                <ShoppingBag className="h-12 w-12 text-muted-foreground opacity-20 mx-auto" />
+                                <p className="text-muted-foreground font-medium">No featured products available at the moment.</p>
+                                <Button variant="outline" asChild className="border-accent text-accent mt-2">
+                                    <Link href="/products">Check All Products</Link>
+                                </Button>
+                            </div>
+                        )}
                     </div>
                 </div>
             </section>
@@ -127,25 +163,68 @@ export default function HomePage() {
                         <div className="relative z-10 px-8 py-16 md:px-16 flex flex-col md:flex-row items-center justify-between gap-8">
                             <div className="max-w-xl text-center md:text-left space-y-4">
                                 <Badge className="bg-accent text-accent-foreground font-bold mb-2">LIMITED TIME OFFER</Badge>
-                                <h2 className="text-4xl md:text-5xl font-bold text-white">Flash Sale is Live!</h2>
+                                <h2 className="text-4xl md:text-5xl font-bold text-white tracking-tight">Flash Sale is Live!</h2>
                                 <p className="text-white/80 text-lg">
-                                    Get incredible discounts up to 70% off on all imported gadgets. Ends in 24 hours.
+                                    Orders ship directly from trusted suppliers and arrive to Nairobi customers with clear delivery updates via WhatsApp and SMS.
                                 </p>
                                 <div className="pt-4 flex flex-wrap justify-center md:justify-start gap-4">
-                                    <Button size="lg" className="bg-accent text-accent-foreground hover:bg-accent/90">
-                                        Explore Sale
-                                    </Button>
-                                    <Button size="lg" variant="outline" className="text-white border-white hover:bg-white/10">
-                                        Learn More
-                                    </Button>
+                                    <Link href="/products?filter=sale">
+                                        <Button size="lg" className="bg-accent text-accent-foreground hover:bg-accent/90 font-bold px-8">
+                                            Explore Sale
+                                        </Button>
+                                    </Link>
+                                    <Link href="/about">
+                                        <Button size="lg" variant="outline" className="text-white border-white hover:bg-white/10 font-bold px-8">
+                                            Learn More
+                                        </Button>
+                                    </Link>
                                 </div>
                             </div>
-                            <div className="hidden lg:block relative w-80 h-80">
-                                {/* Promo Image Placeholder */}
-                                <div className="w-full h-full bg-accent/20 rounded-full flex items-center justify-center animate-pulse">
-                                    <ShoppingBag className="h-32 w-32 text-accent" />
-                                </div>
+                            <div className="hidden lg:block relative w-80 h-80 rounded-full overflow-hidden shadow-2xl">
+                                <Image
+                                    src="https://images.unsplash.com/photo-1512290923902-8a9f81dc236c?q=80&w=1200&auto=format&fit=crop"
+                                    alt="Flash sale on electronics"
+                                    fill
+                                    sizes="(max-width: 1024px) 50vw, 20vw"
+                                    className="object-cover"
+                                    priority
+                                />
                             </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* Customer Stories */}
+            <section className="py-16 bg-muted/5">
+                <div className="container px-4">
+                    <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-8 mb-10">
+                        <div className="max-w-2xl">
+                            <p className="text-sm uppercase tracking-[0.35em] text-accent font-bold">Customer Stories</p>
+                            <h2 className="text-3xl md:text-4xl font-extrabold text-primary">Real experiences from Nairobi shoppers.</h2>
+                        </div>
+                        <p className="max-w-xl text-muted-foreground">
+                            We built NairobiMart so customers in Nairobi could buy quality imports without the wait. Products ship directly from trusted suppliers, and we provide order updates until your package arrives.
+                        </p>
+                    </div>
+                    <div className="grid gap-6 md:grid-cols-3">
+                        <div className="rounded-3xl border border-primary/10 bg-white p-8 shadow-sm">
+                            <p className="text-lg text-primary font-semibold">
+                                “My headphones arrived in 3 days and the team kept me updated the whole way. NairobiMart made it simple.”
+                            </p>
+                            <p className="mt-6 text-sm text-muted-foreground">Wanjiku M., Westlands</p>
+                        </div>
+                        <div className="rounded-3xl border border-primary/10 bg-white p-8 shadow-sm">
+                            <p className="text-lg text-primary font-semibold">
+                                “Ordered Monday, delivered Thursday to Karen. The price was clear and there were no surprise customs charges.”
+                            </p>
+                            <p className="mt-6 text-sm text-muted-foreground">James K., Karen</p>
+                        </div>
+                        <div className="rounded-3xl border border-primary/10 bg-white p-8 shadow-sm">
+                            <p className="text-lg text-primary font-semibold">
+                                “I bought a kitchen gadget and it arrived faster than any other import shop. Support answered every question right away.”
+                            </p>
+                            <p className="mt-6 text-sm text-muted-foreground">Amina N., Kilimani</p>
                         </div>
                     </div>
                 </div>

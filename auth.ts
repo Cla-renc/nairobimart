@@ -44,16 +44,20 @@ export const {
                     name: user.name,
                     email: user.email,
                     role: user.role,
+                    phone: user.phone,
+                    createdAt: user.createdAt,
                 };
             },
         }),
     ],
     callbacks: {
         ...authConfig.callbacks,
-        async jwt({ token, user, trigger, session }) {
+        async jwt({ token, user }) {
             if (user) {
                 token.role = (user as any).role;
                 token.id = user.id;
+                token.phone = (user as any).phone;
+                token.createdAt = (user as any).createdAt;
             }
             return token;
         },
@@ -61,6 +65,8 @@ export const {
             if (token && session.user) {
                 session.user.id = token.id as string;
                 (session.user as any).role = token.role;
+                (session.user as any).phone = token.phone;
+                (session.user as any).createdAt = token.createdAt;
             }
             return session;
         },

@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -13,7 +13,9 @@ import {
     Lock,
     ShoppingBag,
     ChevronRight,
-    ArrowLeft
+    ArrowLeft,
+    Eye,
+    EyeOff
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,6 +29,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { useToast } from "@/hooks/use-toast";
 
 const loginSchema = z.object({
     email: z.string().email("Invalid email address"),
@@ -37,7 +40,19 @@ type LoginValues = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
     const [isLoading, setIsLoading] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const { toast } = useToast();
+
+    useEffect(() => {
+        if (searchParams.get("registered") === "true") {
+            toast({
+                title: "Registration Successful",
+                description: "You can now login with your new account.",
+            });
+        }
+    }, [searchParams, toast]);
 
     const form = useForm<LoginValues>({
         resolver: zodResolver(loginSchema),
@@ -57,13 +72,26 @@ export default function LoginPage() {
             });
 
             if (result?.error) {
-                console.error(result.error);
-                // Add toast notification here
+                toast({
+                    variant: "destructive",
+                    title: "Login Failed",
+                    description: "Invalid email or password. Please try again.",
+                });
             } else {
-                router.push("/");
+                toast({
+                    title: "Login Successful",
+                    description: "Welcome back to NairobiMart!",
+                });
+                await router.push("/");
+                router.refresh(); // Force server components (Navbar, Layout) to re-render with new session
             }
         } catch (error) {
             console.error(error);
+            toast({
+                variant: "destructive",
+                title: "Error",
+                description: "An unexpected error occurred. Please try again later.",
+            });
         } finally {
             setIsLoading(false);
         }
@@ -96,15 +124,15 @@ export default function LoginPage() {
                                 <FormField
                                     control={form.control}
                                     name="email"
-                                    render={({ field }: { field: any }) => (
+                                    render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>Email Address</FormLabel>
-                                            <FormControl>
-                                                <div className="relative">
-                                                    <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                                                    <Input placeholder="name@example.com" className="pl-10 h-11" {...field} />
-                                                </div>
-                                            </FormControl>
+                                            <div className="relative">
+                                                <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                                                <FormControl>
+                                                    <Input autoComplete="email" placeholder="name@example.com" className="pl-10 h-11" {...field} />
+                                                </FormControl>
+                                            </div>
                                             <FormMessage />
                                         </FormItem>
                                     )}
@@ -112,15 +140,28 @@ export default function LoginPage() {
                                 <FormField
                                     control={form.control}
                                     name="password"
-                                    render={({ field }: { field: any }) => (
+                                    render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>Password</FormLabel>
-                                            <FormControl>
-                                                <div className="relative">
-                                                    <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                                                    <Input type="password" placeholder="••••••••" className="pl-10 h-11" {...field} />
-                                                </div>
-                                            </FormControl>
+                                            <div className="relative">
+                                                <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                                                <FormControl>
+                                                    <Input
+                                                        autoComplete="current-password"
+                                                        type={showPassword ? "text" : "password"}
+                                                        placeholder="••••••••"
+                                                        className="pl-10 pr-10 h-11"
+                                                        {...field}
+                                                    />
+                                                </FormControl>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowPassword(!showPassword)}
+                                                    className="absolute right-3 top-3 h-4 w-4 text-muted-foreground hover:text-accent transition-colors"
+                                                >
+                                                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                                </button>
+                                            </div>
                                             <FormMessage />
                                         </FormItem>
                                     )}
@@ -174,7 +215,7 @@ export default function LoginPage() {
                         </Button>
                     </CardContent>
                     <CardFooter className="flex flex-wrap justify-center pb-6">
-                        <p className="text-sm text-muted-foreground mr-1">Don't have an account?</p>
+                        <p className="text-sm text-muted-foreground mr-1">Don&apos;t have an account?</p>
                         <Link href="/register" className="text-sm font-bold text-accent hover:underline flex items-center">
                             Create an Account <ChevronRight className="ml-1 h-3 w-3" />
                         </Link>
@@ -182,7 +223,7 @@ export default function LoginPage() {
                 </Card>
 
                 <p className="text-center text-xs text-muted-foreground px-8 leading-relaxed">
-                    By continuing, you agree to NairobiMart's
+                    By continuing, you agree to NairobiMart&apos;s
                     <Link href="/terms" className="hover:text-primary underline px-1">Terms of Service</Link>
                     and
                     <Link href="/privacy" className="hover:text-primary underline px-1">Privacy Policy</Link>.

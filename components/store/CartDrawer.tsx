@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Plus, Minus, Trash2, ShoppingBag, X } from "lucide-react";
+import { Plus, Minus, Trash2, ShoppingBag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
     Sheet,
@@ -13,12 +13,17 @@ import {
     SheetTrigger,
 } from "@/components/ui/sheet";
 import { useCartStore } from "@/store/cartStore";
-import { Separator } from "@/components/ui/separator";
+import { useState, useEffect } from "react";
 
 const CartDrawer = ({ children }: { children: React.ReactElement }) => {
+    const [isMounted, setIsMounted] = useState(false);
     const { items, updateQuantity, removeItem, getTotalPrice, getTotalItems } = useCartStore();
     const totalPrice = getTotalPrice();
     const totalItems = getTotalItems();
+
+    useEffect(() => {
+        setIsMounted(true);
+    }, []);
 
     return (
         <Sheet>
@@ -32,17 +37,20 @@ const CartDrawer = ({ children }: { children: React.ReactElement }) => {
                 </SheetHeader>
 
                 <div className="flex-1 overflow-y-auto p-6">
-                    {items.length === 0 ? (
+                    {!isMounted ? (
+                        <div className="flex flex-col items-center justify-center h-full space-y-4 text-center text-muted-foreground">
+                            Loading cart...
+                        </div>
+                    ) : items.length === 0 ? (
                         <div className="flex flex-col items-center justify-center h-full space-y-4 text-center">
                             <div className="bg-muted rounded-full p-8">
                                 <ShoppingBag className="h-12 w-12 text-muted-foreground" />
                             </div>
                             <h3 className="text-xl font-bold text-primary">Your cart is empty</h3>
-                            <p className="text-muted-foreground">Looks like you haven't added anything yet.</p>
-                            <Button
-                                render={<Link href="/products">Start Shopping</Link>}
-                                className="mt-4 bg-accent text-accent-foreground hover:bg-accent/90"
-                            />
+                            <p className="text-muted-foreground">Looks like you haven&apos;t added anything yet.</p>
+                            <Button asChild className="mt-4 bg-accent text-accent-foreground hover:bg-accent/90">
+                                <Link href="/products">Start Shopping</Link>
+                            </Button>
                         </div>
                     ) : (
                         <div className="space-y-6">
@@ -53,6 +61,7 @@ const CartDrawer = ({ children }: { children: React.ReactElement }) => {
                                             src={item.image}
                                             alt={item.name}
                                             fill
+                                            sizes="96px"
                                             className="object-cover"
                                         />
                                     </div>
@@ -94,7 +103,7 @@ const CartDrawer = ({ children }: { children: React.ReactElement }) => {
                     )}
                 </div>
 
-                {items.length > 0 && (
+                {isMounted && items.length > 0 && (
                     <SheetFooter className="p-6 border-t bg-muted/20 flex-col sm:flex-col space-y-4">
                         <div className="w-full space-y-2">
                             <div className="flex justify-between text-base">
@@ -109,17 +118,12 @@ const CartDrawer = ({ children }: { children: React.ReactElement }) => {
                                 Shipping and taxes calculated at checkout.
                             </p>
                         </div>
-                        <Button
-                            render={<Link href="/checkout">Proceed to Checkout</Link>}
-                            className="w-full bg-primary text-white h-12 text-lg hover:bg-primary/90"
-                            size="lg"
-                        />
-                        <Button
-                            render={<Link href="/cart">View Shopping Cart</Link>}
-                            variant="outline"
-                            className="w-full h-12"
-                            size="lg"
-                        />
+                        <Button asChild className="w-full bg-primary text-white h-12 text-lg hover:bg-primary/90" size="lg">
+                            <Link href="/checkout">Proceed to Checkout</Link>
+                        </Button>
+                        <Button asChild variant="outline" className="w-full h-12" size="lg">
+                            <Link href="/cart">View Shopping Cart</Link>
+                        </Button>
                     </SheetFooter>
                 )}
             </SheetContent>
