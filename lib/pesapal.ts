@@ -60,9 +60,11 @@ const getOrRegisterIPN = async (token: string, apiUrl: string, baseUrl: string) 
             // First clone the response since we might need to read it again in fallback
             const clonedListRes = listRes.clone();
             const listData = await clonedListRes.json();
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const ipnList = Array.isArray(listData) ? listData : (listData as any)?.ipn_list || [];
 
             // 1. Try exact match
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const existing = ipnList.find((ipn: any) => ipn.url === ipnUrl);
             if (existing) {
                 console.log("Found existing IPN:", existing.ipn_id);
@@ -98,6 +100,7 @@ const getOrRegisterIPN = async (token: string, apiUrl: string, baseUrl: string) 
             console.error("IPN Registration failed with status:", regRes.status);
             // Fallback to first available IPN from list if registration fails
             const listData = await listRes.json().catch(() => ([]));
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const ipnList = Array.isArray(listData) ? listData : (listData as any)?.ipn_list || [];
             if (ipnList.length > 0) return ipnList[0].ipn_id;
         }

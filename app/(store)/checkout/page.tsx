@@ -71,7 +71,6 @@ export default function CheckoutPage() {
     const shippingFee = 500; // Mock shipping fee
 
     const isMpesaAvailable = deliveryInfo.country === "Kenya" && siteSettings.mpesa_enabled === "true";
-    const isPesapalAvailable = siteSettings.pesapal_enabled === "true";
 
     useEffect(() => {
         // Only run this once to set defaults
@@ -83,7 +82,7 @@ export default function CheckoutPage() {
                 if (response.ok) {
                     const settings = await response.json();
                     setSiteSettings(settings);
-                    
+
                     // Only set default payment method if none is selected yet
                     if (!paymentMethod) {
                         const defaultMethod = settings.mpesa_enabled === "true"
@@ -102,7 +101,7 @@ export default function CheckoutPage() {
             }
         };
         fetchSettings();
-    }, []); // Empty dependency array - run only once on mount
+    }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     // Handle country changes
     useEffect(() => {
@@ -140,7 +139,7 @@ export default function CheckoutPage() {
         try {
             console.log("Submitting checkout with payment method:", paymentMethod);
             console.log("Items being sent:", items);
-            
+
             const response = await fetch("/api/checkout", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -154,7 +153,7 @@ export default function CheckoutPage() {
 
             const data = await response.json();
             console.log("Checkout response:", data);
-            
+
             if (data.success) {
                 if (data.type === "pesapal" && data.url) {
                     console.log("Redirecting to PesaPal URL:", data.url);
@@ -361,20 +360,20 @@ export default function CheckoutPage() {
                                             </div>
                                         )}
                                         {siteSettings.pesapal_enabled === "true" && (
-                                        <div className="flex items-center space-x-4 border rounded-xl p-4 bg-white hover:border-accent transition-colors">
-                                            <RadioGroupItem value="pesapal" id="pesapal" />
-                                            <Label htmlFor="pesapal" className="flex-1 cursor-pointer">
-                                                <div className="flex items-center space-x-3">
-                                                    <div className="bg-blue-100 p-2 rounded-lg">
-                                                        <CreditCard className="h-6 w-6 text-blue-600" />
+                                            <div className="flex items-center space-x-4 border rounded-xl p-4 bg-white hover:border-accent transition-colors">
+                                                <RadioGroupItem value="pesapal" id="pesapal" />
+                                                <Label htmlFor="pesapal" className="flex-1 cursor-pointer">
+                                                    <div className="flex items-center space-x-3">
+                                                        <div className="bg-blue-100 p-2 rounded-lg">
+                                                            <CreditCard className="h-6 w-6 text-blue-600" />
+                                                        </div>
+                                                        <div>
+                                                            <p className="font-bold">Visa/Mastercard</p>
+                                                            <p className="text-xs text-muted-foreground">Secure payments across East Africa</p>
+                                                        </div>
                                                     </div>
-                                                    <div>
-                                                        <p className="font-bold">Visa/Mastercard</p>
-                                                        <p className="text-xs text-muted-foreground">Secure payments across East Africa</p>
-                                                    </div>
-                                                </div>
-                                            </Label>
-                                        </div>
+                                                </Label>
+                                            </div>
                                         )}
                                     </RadioGroup>
                                 </div>
@@ -400,7 +399,7 @@ export default function CheckoutPage() {
                                                 <span className="font-bold">Payment Method:</span>
                                                 <span className="text-right">
                                                     {paymentMethod === "mpesa" ? "M-Pesa" :
-                                                     paymentMethod === "pesapal" ? "Visa/Mastercard" : "Unknown"}
+                                                        paymentMethod === "pesapal" ? "Visa/Mastercard" : "Unknown"}
                                                 </span>
                                             </div>
                                             {paymentMethod === "mpesa" && deliveryInfo.country === "Kenya" && (

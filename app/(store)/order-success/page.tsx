@@ -14,7 +14,7 @@ function SuccessContent() {
     const searchParams = useSearchParams();
     const orderId = searchParams.get("id") || "";
     const [paymentMethod, setPaymentMethod] = useState<string | null>(null);
-    const [loading, setLoading] = useState(true);
+    const [, setLoading] = useState(true);
     const { clearCart } = useCartStore();
 
     // Fetch order data from database to get accurate payment method
