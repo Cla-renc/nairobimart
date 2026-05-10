@@ -14,8 +14,17 @@ const getApiUrl = () => {
 
 export const getPesaPalToken = async () => {
     const apiUrl = getApiUrl();
+    const pesapalEnv = process.env.PESAPAL_ENV || "sandbox";
+
     try {
-        console.log("Getting PesaPal token from:", `${apiUrl}/api/Auth/RequestToken`);
+        console.log(`Getting PesaPal token from (${pesapalEnv}):`, `${apiUrl}/api/Auth/RequestToken`);
+
+        const consumerKey = process.env.PESAPAL_CONSUMER_KEY;
+        const consumerSecret = process.env.PESAPAL_CONSUMER_SECRET;
+
+        if (!consumerKey || !consumerSecret) {
+            throw new Error(`PesaPal credentials missing. Environment: ${pesapalEnv}. Please check PESAPAL_CONSUMER_KEY and PESAPAL_CONSUMER_SECRET in Vercel.`);
+        }
 
         const response = await fetch(`${apiUrl}/api/Auth/RequestToken`, {
             method: "POST",
@@ -24,8 +33,8 @@ export const getPesaPalToken = async () => {
                 Accept: "application/json",
             },
             body: JSON.stringify({
-                consumer_key: process.env.PESAPAL_CONSUMER_KEY,
-                consumer_secret: process.env.PESAPAL_CONSUMER_SECRET,
+                consumer_key: consumerKey,
+                consumer_secret: consumerSecret,
             }),
         });
 
