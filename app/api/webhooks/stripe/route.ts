@@ -2,29 +2,42 @@ import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import prisma from "@/lib/prisma";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-    apiVersion: "2026-02-25.clover",
-});
+// Initialize Stripe lazily to avoid errors during build
+let stripe: Stripe | null = null;
+
+function getStripe(): Stripe {
+    if (!stripe) {
+        if (!process.env.STRIPE_SECRET_KEY) {
+            throw new Error("STRIPE_SECRET_KEY is not configured");
+        }
+        stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+            apiVersion: "2026-02-25.clover",
+        });
+    }
+    return stripe;
+}
 
 export async function POST(request: NextRequest) {
-    const body = await request.text();
-    const signature = request.headers.get("stripe-signature");
-
-    if (!signature) {
-        return NextResponse.json({ error: "Missing signature" }, { status: 400 });
-    }
-
-    let event;
     try {
-        event = stripe.webhooks.constructEvent(
-            body,
-            signature,
-            process.env.STRIPE_WEBHOOK_SECRET!
-        );
-    } catch (err) {
-        console.error("Stripe webhook verification failed:", err);
-        return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
-    }
+        const stripeClient = getStripe();
+        const body = await request.text();
+        const signature = request.headers.get("stripe-signature");
+
+        if (!signature) {
+            return NextResponse.json({ error: "Missing signature" }, { status: 400 });
+        }
+
+        let event;
+        try {
+            event = stripeClient.webhooks.constructEvent(
+                body,
+                signature,
+                process.env.STRIPE_WEBHOOK_SECRET!
+            );
+        } catch (err) {
+            console.error("Stripe webhook verification failed:", err);
+            return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
+        }
 
     try {
         switch (event.type) {
