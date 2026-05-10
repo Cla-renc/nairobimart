@@ -25,8 +25,8 @@ export async function GET() {
 
         for (const category of categories) {
             const keyword = KEYWORDS[category.name] || category.name;
-            // Generate a random page anywhere between 1 and 500 to access the deepest parts of the catalog
-            const randomPage = Math.floor(Math.random() * 500) + 1;
+            // Generate a random page anywhere between 1 and 5 to ensure we hit results
+            const randomPage = Math.floor(Math.random() * 5) + 1;
             const cjResponse = await fetchCJProductList(keyword, undefined, randomPage);
 
             const content = cjResponse.data?.content;
