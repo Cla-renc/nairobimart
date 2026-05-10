@@ -29,6 +29,7 @@ import { cn } from "@/lib/utils";
 
 const adminNavItems = [
     { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
+    { name: "Storefront", href: "/", icon: ShoppingBag },
     { name: "Products", href: "/admin/products", icon: Package },
     { name: "Orders", href: "/admin/orders", icon: ShoppingBag },
     { name: "Customers", href: "/admin/customers", icon: Users },
