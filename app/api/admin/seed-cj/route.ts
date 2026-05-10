@@ -4,13 +4,13 @@ import { fetchCJProductList } from '@/lib/cjdropshipping';
 
 // Map our categories to typical CJ search keywords
 const KEYWORDS: Record<string, string> = {
-    'Electronics': 'electronics smart gadgets',
-    'Laptops': 'laptop computer Macbook gaming laptop',
-    'Accessories': 'watch jewelry accessories',
-    'Fashion': 'clothing fashion trend',
-    'Beauty': 'beauty health makeup',
-    'Gifts': 'gift toys novelty',
-    'Home': 'home decor kitchen',
+    'Electronics': 'electronics',
+    'Laptops': 'laptop',
+    'Accessories': 'watch',
+    'Fashion': 'clothing',
+    'Beauty': 'beauty',
+    'Gifts': 'toys',
+    'Home': 'decor',
 };
 
 export async function GET() {
