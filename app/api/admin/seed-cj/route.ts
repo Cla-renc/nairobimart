@@ -69,7 +69,18 @@ export async function GET() {
                 const topProducts = products.slice(0, 5); // Limit to 5 per category for Vercel Hobby plan timeout (10s)
 
                 // Process products in parallel within each category
-                await Promise.all(topProducts.map(async (pd: any) => {
+                interface CJProduct {
+                    id: string;
+                    nameEn?: string;
+                    sellPrice?: string;
+                    bigImage?: string;
+                    productImage?: string;
+                    sku?: string;
+                    description?: string;
+                    [key: string]: unknown;
+                }
+
+                await Promise.all(topProducts.map(async (pd: CJProduct) => {
                     try {
                         // Check if already exists by CJ ID
                         const exists = await prisma.product.findFirst({
@@ -96,7 +107,7 @@ export async function GET() {
                         const retailPriceKES = Math.round(basePrice * 1.5 * 130);
 
                         // Get all images from pool or fallbacks
-                        let imageUrls = [pd.bigImage || pd.productImage];
+                        let imageUrls = [pd.bigImage || pd.productImage || ""];
                         if (detail?.productImagePool) {
                             const pool = detail.productImagePool.split(',');
                             if (pool.length > 0) imageUrls = pool;
@@ -112,7 +123,7 @@ export async function GET() {
                                     images: {
                                         deleteMany: {}, // Fresh start for images to ensure order and quality
                                         create: imageUrls.map((url: string, index: number) => ({
-                                            url: url,
+                                            url: url || "",
                                             position: index
                                         }))
                                     }
@@ -136,7 +147,7 @@ export async function GET() {
                                     isActive: true,
                                     images: {
                                         create: imageUrls.map((url: string, index: number) => ({
-                                            url: url,
+                                            url: url || "",
                                             position: index
                                         }))
                                     }
