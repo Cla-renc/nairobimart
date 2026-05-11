@@ -70,8 +70,13 @@ export async function GET() {
 
                 for (const pd of topProducts) {
                     // Check if already exists by CJ ID
-                    const exists = await prisma.product.findFirst({ where: { cjProductId: pd.id } });
-                    if (exists) {
+                    const exists = await prisma.product.findFirst({
+                        where: { cjProductId: pd.id },
+                        include: { images: true }
+                    });
+
+                    // If exists and has rich description already, skip
+                    if (exists && exists.description && exists.description.length > 100) {
                         skippedCount++;
                         continue;
                     }
@@ -95,28 +100,48 @@ export async function GET() {
                         if (pool.length > 0) imageUrls = pool;
                     }
 
-                    await prisma.product.create({
-                        data: {
-                            name: detail?.productNameEn || pd.nameEn || "CJ Product",
-                            slug: `cj-${pd.id}-${Math.floor(Math.random() * 10000)}`,
-                            description: detail?.description || pd.description || "High quality dropshipping product.",
-                            price: retailPriceKES,
-                            costPrice: basePrice * 130, // save cost in KES
-                            comparePrice: Math.round(retailPriceKES * 1.3), // Suggested retail price
-                            stock: 100,
-                            sku: detail?.productSku || pd.sku || `CJ-SKU-${pd.id}`,
-                            cjProductId: pd.id,
-                            categoryId: category.id,
-                            isActive: true,
-                            images: {
-                                create: imageUrls.map((url: string, index: number) => ({
-                                    url: url,
-                                    position: index
-                                }))
+                    if (exists) {
+                        // Update existing product with missing details
+                        await prisma.product.update({
+                            where: { id: exists.id },
+                            data: {
+                                description: detail?.description || exists.description,
+                                comparePrice: exists.comparePrice || Math.round(retailPriceKES * 1.3),
+                                images: {
+                                    deleteMany: {}, // Fresh start for images to ensure order and quality
+                                    create: imageUrls.map((url: string, index: number) => ({
+                                        url: url,
+                                        position: index
+                                    }))
+                                }
                             }
-                        }
-                    });
-                    insertedCount++;
+                        });
+                        insertedCount++; // Count updates as "inserted" for the UI feedback
+                    } else {
+                        // Create new product
+                        await prisma.product.create({
+                            data: {
+                                name: detail?.productNameEn || pd.nameEn || "CJ Product",
+                                slug: `cj-${pd.id}-${Math.floor(Math.random() * 10000)}`,
+                                description: detail?.description || pd.description || "High quality dropshipping product.",
+                                price: retailPriceKES,
+                                costPrice: basePrice * 130, // save cost in KES
+                                comparePrice: Math.round(retailPriceKES * 1.3), // Suggested retail price
+                                stock: 100,
+                                sku: detail?.productSku || pd.sku || `CJ-SKU-${pd.id}`,
+                                cjProductId: pd.id,
+                                categoryId: category.id,
+                                isActive: true,
+                                images: {
+                                    create: imageUrls.map((url: string, index: number) => ({
+                                        url: url,
+                                        position: index
+                                    }))
+                                }
+                            }
+                        });
+                        insertedCount++;
+                    }
                 }
             }
         }
