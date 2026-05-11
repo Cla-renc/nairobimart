@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { fetchCJProductList } from '@/lib/cjdropshipping';
 
+export const dynamic = 'force-dynamic';
+
 // Map our categories to typical CJ search keywords
 const KEYWORDS: Record<string, string> = {
     'electronics': 'electronics',
@@ -48,14 +50,22 @@ export async function GET() {
 
         for (const category of categories) {
             const keyword = getSearchKeyword(category.name);
+            console.log(`Seeding category: ${category.name} with keyword: ${keyword}`);
+
             // Default to page 1 to ensure results are found.
             // Using random page > 1 often returns empty results for specific keywords.
             const cjResponse = await fetchCJProductList(keyword, undefined, 1);
 
+            if (!cjResponse.success) {
+                console.error(`CJ API Error for keyword ${keyword}:`, cjResponse.error);
+                continue;
+            }
+
             const content = cjResponse.data?.content;
             const products = content && content.length > 0 ? content[0].productList : null;
 
-            if (cjResponse.success && products) {
+            if (products && products.length > 0) {
+                console.log(`Found ${products.length} products for ${keyword}`);
                 const topProducts = products.slice(0, 50); // Take top 50
 
                 for (const pd of topProducts) {
