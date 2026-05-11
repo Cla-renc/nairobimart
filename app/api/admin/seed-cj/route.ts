@@ -66,83 +66,88 @@ export async function GET() {
 
             if (products && products.length > 0) {
                 console.log(`Found ${products.length} products for ${keyword}`);
-                const topProducts = products.slice(0, 10); // Take top 10 to be efficient
+                const topProducts = products.slice(0, 5); // Limit to 5 per category for Vercel Hobby plan timeout (10s)
 
-                for (const pd of topProducts) {
-                    // Check if already exists by CJ ID
-                    const exists = await prisma.product.findFirst({
-                        where: { cjProductId: pd.id },
-                        include: { images: true }
-                    });
-
-                    // If exists and has rich description already, skip
-                    if (exists && exists.description && exists.description.length > 100) {
-                        skippedCount++;
-                        continue;
-                    }
-
-                    // Fetch full product detail for rich description and all images
-                    const detailResponse = await fetchCJProductDetail(pd.id);
-                    const detail = detailResponse.success ? detailResponse.data : null;
-
-                    // Handle string prices like "8.79 -- 9.95" by taking the first number
-                    const priceString = detail?.sellPrice || pd.sellPrice || "10";
-                    const firstPrice = priceString.split(' ')[0];
-                    const basePrice = parseFloat(firstPrice) || 10;
-
-                    // Apply 50% markup and convert roughly to KES (1 USD = 130 KES)
-                    const retailPriceKES = Math.round(basePrice * 1.5 * 130);
-
-                    // Get all images from pool or fallbacks
-                    let imageUrls = [pd.bigImage || pd.productImage];
-                    if (detail?.productImagePool) {
-                        const pool = detail.productImagePool.split(',');
-                        if (pool.length > 0) imageUrls = pool;
-                    }
-
-                    if (exists) {
-                        // Update existing product with missing details
-                        await prisma.product.update({
-                            where: { id: exists.id },
-                            data: {
-                                description: detail?.description || exists.description,
-                                comparePrice: exists.comparePrice || Math.round(retailPriceKES * 1.3),
-                                images: {
-                                    deleteMany: {}, // Fresh start for images to ensure order and quality
-                                    create: imageUrls.map((url: string, index: number) => ({
-                                        url: url,
-                                        position: index
-                                    }))
-                                }
-                            }
+                // Process products in parallel within each category
+                await Promise.all(topProducts.map(async (pd: any) => {
+                    try {
+                        // Check if already exists by CJ ID
+                        const exists = await prisma.product.findFirst({
+                            where: { cjProductId: pd.id },
+                            include: { images: true }
                         });
-                        insertedCount++; // Count updates as "inserted" for the UI feedback
-                    } else {
-                        // Create new product
-                        await prisma.product.create({
-                            data: {
-                                name: detail?.productNameEn || pd.nameEn || "CJ Product",
-                                slug: `cj-${pd.id}-${Math.floor(Math.random() * 10000)}`,
-                                description: detail?.description || pd.description || "High quality dropshipping product.",
-                                price: retailPriceKES,
-                                costPrice: basePrice * 130, // save cost in KES
-                                comparePrice: Math.round(retailPriceKES * 1.3), // Suggested retail price
-                                stock: 100,
-                                sku: detail?.productSku || pd.sku || `CJ-SKU-${pd.id}`,
-                                cjProductId: pd.id,
-                                categoryId: category.id,
-                                isActive: true,
-                                images: {
-                                    create: imageUrls.map((url: string, index: number) => ({
-                                        url: url,
-                                        position: index
-                                    }))
+
+                        // If exists and has rich description already, skip
+                        if (exists && exists.description && exists.description.length > 100) {
+                            skippedCount++;
+                            return;
+                        }
+
+                        // Fetch full product detail for rich description and all images
+                        const detailResponse = await fetchCJProductDetail(pd.id);
+                        const detail = detailResponse.success ? detailResponse.data : null;
+
+                        // Handle string prices like "8.79 -- 9.95" by taking the first number
+                        const priceString = detail?.sellPrice || pd.sellPrice || "10";
+                        const firstPrice = priceString.split(' ')[0];
+                        const basePrice = parseFloat(firstPrice) || 10;
+
+                        // Apply 50% markup and convert roughly to KES (1 USD = 130 KES)
+                        const retailPriceKES = Math.round(basePrice * 1.5 * 130);
+
+                        // Get all images from pool or fallbacks
+                        let imageUrls = [pd.bigImage || pd.productImage];
+                        if (detail?.productImagePool) {
+                            const pool = detail.productImagePool.split(',');
+                            if (pool.length > 0) imageUrls = pool;
+                        }
+
+                        if (exists) {
+                            // Update existing product with missing details
+                            await prisma.product.update({
+                                where: { id: exists.id },
+                                data: {
+                                    description: detail?.description || exists.description,
+                                    comparePrice: exists.comparePrice || Math.round(retailPriceKES * 1.3),
+                                    images: {
+                                        deleteMany: {}, // Fresh start for images to ensure order and quality
+                                        create: imageUrls.map((url: string, index: number) => ({
+                                            url: url,
+                                            position: index
+                                        }))
+                                    }
                                 }
-                            }
-                        });
-                        insertedCount++;
+                            });
+                            insertedCount++;
+                        } else {
+                            // Create new product
+                            await prisma.product.create({
+                                data: {
+                                    name: detail?.productNameEn || pd.nameEn || "CJ Product",
+                                    slug: `cj-${pd.id}-${Math.floor(Math.random() * 10000)}`,
+                                    description: detail?.description || pd.description || "High quality dropshipping product.",
+                                    price: retailPriceKES,
+                                    costPrice: basePrice * 130, // save cost in KES
+                                    comparePrice: Math.round(retailPriceKES * 1.3), // Suggested retail price
+                                    stock: 100,
+                                    sku: detail?.productSku || pd.sku || `CJ-SKU-${pd.id}`,
+                                    cjProductId: pd.id,
+                                    categoryId: category.id,
+                                    isActive: true,
+                                    images: {
+                                        create: imageUrls.map((url: string, index: number) => ({
+                                            url: url,
+                                            position: index
+                                        }))
+                                    }
+                                }
+                            });
+                            insertedCount++;
+                        }
+                    } catch (err) {
+                        console.error(`Error processing product ${pd.id}:`, err);
                     }
-                }
+                }));
             }
         }
 
