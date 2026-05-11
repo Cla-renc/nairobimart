@@ -206,6 +206,14 @@ export default function ProductDetailClient({
                             <ShoppingCart className="mr-3 h-6 w-6" />
                             ADD TO BAG
                         </Button>
+                        <Link href="/cart" className="w-full sm:flex-1">
+                            <Button
+                                className="w-full bg-accent hover:bg-accent/90 text-white h-16 text-xl font-black rounded-full shadow-xl shadow-accent/20 transition-all hover:-translate-y-1 active:scale-95 px-8"
+                                onClick={handleAddToCart}
+                            >
+                                BUY NOW
+                            </Button>
+                        </Link>
                     </div>
 
                     {/* Perks */}
@@ -226,7 +234,7 @@ export default function ProductDetailClient({
                 </div>
             </div>
 
-            {/* Tabs */}
+            {/* Tabs & Full Description */}
             <div className="mt-20">
                 <Tabs defaultValue="description" className="w-full">
                     <TabsList className="w-full justify-start border-b-2 bg-transparent rounded-none h-auto p-0 space-x-12">
@@ -234,29 +242,77 @@ export default function ProductDetailClient({
                             value="description"
                             className="rounded-none border-b-4 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent px-0 pb-6 text-xl font-black uppercase tracking-tighter transition-all"
                         >
-                            Overview
+                            Description
+                        </TabsTrigger>
+                        <TabsTrigger
+                            value="specs"
+                            className="rounded-none border-b-4 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent px-0 pb-6 text-xl font-black uppercase tracking-tighter transition-all"
+                        >
+                            Specifications
                         </TabsTrigger>
                         <TabsTrigger
                             value="reviews"
                             className="rounded-none border-b-4 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent px-0 pb-6 text-xl font-black uppercase tracking-tighter transition-all"
                         >
-                            Feedback (0)
+                            Reviews (0)
                         </TabsTrigger>
                     </TabsList>
-                    <TabsContent value="description" className="py-12 prose prose-slate max-w-none">
-                        <div
-                            className="text-muted-foreground leading-relaxed text-lg"
-                            dangerouslySetInnerHTML={{ __html: product.description || "No description available." }}
-                        />
+
+                    <TabsContent value="description" className="py-12">
+                        <div className="bg-white rounded-3xl p-8 md:p-12 border shadow-sm">
+                            <h3 className="text-2xl font-black text-primary mb-8 uppercase tracking-tight flex items-center">
+                                Product Details
+                                <span className="ml-3 h-1.5 w-1.5 rounded-full bg-accent" />
+                            </h3>
+                            <div
+                                className="cj-description prose prose-lg prose-slate max-w-none text-primary/80 
+                                           prose-headings:text-primary prose-headings:font-black prose-headings:uppercase prose-headings:tracking-tight
+                                           prose-img:rounded-2xl prose-img:shadow-lg prose-img:border prose-img:my-10
+                                           prose-p:leading-relaxed prose-p:mb-6
+                                           prose-strong:text-primary prose-strong:font-bold"
+                                dangerouslySetInnerHTML={{ __html: product.description || "No detailed description available." }}
+                            />
+                        </div>
                     </TabsContent>
-                    <TabsContent value="reviews" className="py-12">
-                        <div className="bg-muted/20 rounded-3xl p-12 text-center space-y-4 border-2 border-dashed border-muted">
-                            <div className="flex justify-center">
-                                <Star className="h-12 w-12 text-muted fill-muted opacity-50" />
+
+                    <TabsContent value="specs" className="py-12">
+                        <div className="bg-white rounded-3xl p-8 md:p-12 border shadow-sm">
+                            <h3 className="text-2xl font-black text-primary mb-8 uppercase tracking-tight flex items-center">
+                                Technical Specifications
+                                <span className="ml-3 h-1.5 w-1.5 rounded-full bg-accent" />
+                            </h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-muted border rounded-2xl overflow-hidden">
+                                {[
+                                    { label: "Category", value: product.category?.name || "General" },
+                                    { label: "SKU", value: product.id.substring(0, 8).toUpperCase() },
+                                    { label: "Condition", value: "New" },
+                                    { label: "Shipping", value: "Global Express" },
+                                    { label: "Return Policy", value: "7 Days Hassle-Free" },
+                                    { label: "Authenticity", value: "100% Genuine" },
+                                    { label: "Availability", value: "In Stock" },
+                                    { label: "Weight", value: "Standard" }
+                                ].map((spec, i) => (
+                                    <div key={i} className="flex items-center justify-between p-6 bg-white">
+                                        <span className="text-sm font-bold uppercase tracking-widest text-muted-foreground">{spec.label}</span>
+                                        <span className="text-sm font-black text-primary">{spec.value}</span>
+                                    </div>
+                                ))}
                             </div>
-                            <h3 className="text-2xl font-bold text-primary">No feedback yet</h3>
-                            <p className="text-muted-foreground">Be the first to share your experience with this item.</p>
-                            <Button variant="outline" className="mt-4 border-accent text-accent font-bold">Write a Review</Button>
+                        </div>
+                    </TabsContent>
+
+                    <TabsContent value="reviews" className="py-12">
+                        <div className="bg-white rounded-3xl p-12 text-center space-y-6 border shadow-sm">
+                            <div className="flex justify-center">
+                                <div className="p-6 bg-accent/5 rounded-full">
+                                    <Star className="h-12 w-12 text-accent fill-accent" />
+                                </div>
+                            </div>
+                            <div className="max-w-md mx-auto space-y-2">
+                                <h3 className="text-2xl font-black text-primary uppercase tracking-tight">No feedback yet</h3>
+                                <p className="text-muted-foreground leading-relaxed">Be the first to share your experience with this item. Your feedback helps others shop smarter.</p>
+                            </div>
+                            <Button className="bg-primary hover:bg-primary/95 text-white font-bold px-8 h-12 rounded-full uppercase tracking-widest text-xs">Write a Review</Button>
                         </div>
                     </TabsContent>
                 </Tabs>

@@ -71,6 +71,45 @@ export const fetchCJProductList = async (keyword: string, categoryId?: string, p
     }
 };
 
+export const fetchCJProductDetail = async (productId: string) => {
+    try {
+        console.log(`Fetching CJ product detail... ID: ${productId}`);
+
+        const token = await getCJAccessToken();
+        if (!token) {
+            return { success: false, error: "API Token could not be generated." };
+        }
+
+        const options = {
+            method: 'GET',
+            headers: {
+                'CJ-Access-Token': token,
+                'Content-Type': 'application/json'
+            }
+        };
+
+        const response = await fetch(`https://developers.cjdropshipping.com/api2.0/v1/product/query?pid=${productId}`, options);
+        if (!response.ok) {
+            return { success: false, error: "Failed to fetch detail from CJ API" };
+        }
+
+        const result = await response.json();
+
+        if (result.code !== 200) {
+            console.error("CJ API Detail Error:", result.message);
+            return { success: false, error: result.message };
+        }
+
+        return {
+            success: true,
+            data: result.data || null
+        };
+    } catch (error) {
+        console.error("Error fetching CJ product detail:", error);
+        return { success: false, error: "Internal Server Error during detail fetch." };
+    }
+};
+
 export interface CJOrderData {
     orderNumber: string;
     shippingProvince?: string;
