@@ -4,14 +4,37 @@ import { fetchCJProductList } from '@/lib/cjdropshipping';
 
 // Map our categories to typical CJ search keywords
 const KEYWORDS: Record<string, string> = {
-    'Electronics': 'electronics',
-    'Laptops': 'laptop',
-    'Accessories': 'watch',
-    'Fashion': 'clothing',
-    'Beauty': 'beauty',
-    'Gifts': 'toys',
-    'Home': 'decor',
+    'electronics': 'electronics',
+    'laptop': 'laptop',
+    'watch': 'watch',
+    'fashion': 'clothing',
+    'beauty': 'beauty',
+    'toy': 'toys',
+    'home': 'decor',
+    'kitchen': 'kitchen',
+    'automotive': 'car accessories',
+    'office': 'office',
+    'security': 'security camera'
 };
+
+function getSearchKeyword(categoryName: string): string {
+    const lowerName = categoryName.toLowerCase();
+
+    // Check for predefined keywords as substrings
+    for (const [key, value] of Object.entries(KEYWORDS)) {
+        if (lowerName.includes(key)) {
+            return value;
+        }
+    }
+
+    // Default: Clean the name (remove common special chars and take first few words)
+    return categoryName
+        .replace(/[&/\\#,+()$~%.'":*?<>{}]/g, ' ')
+        .split(' ')
+        .filter(word => word.length > 2)
+        .slice(0, 2)
+        .join(' ') || categoryName;
+}
 
 export async function GET() {
     try {
@@ -24,10 +47,10 @@ export async function GET() {
         let skippedCount = 0;
 
         for (const category of categories) {
-            const keyword = KEYWORDS[category.name] || category.name;
-            // Generate a random page anywhere between 1 and 5 to ensure we hit results
-            const randomPage = Math.floor(Math.random() * 5) + 1;
-            const cjResponse = await fetchCJProductList(keyword, undefined, randomPage);
+            const keyword = getSearchKeyword(category.name);
+            // Default to page 1 to ensure results are found.
+            // Using random page > 1 often returns empty results for specific keywords.
+            const cjResponse = await fetchCJProductList(keyword, undefined, 1);
 
             const content = cjResponse.data?.content;
             const products = content && content.length > 0 ? content[0].productList : null;
