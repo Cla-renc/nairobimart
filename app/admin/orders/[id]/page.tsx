@@ -107,6 +107,7 @@ export default function OrderDetailPage() {
     const [order, setOrder] = useState<Order | null>(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [submittingToCj, setSubmittingToCj] = useState(false);
     const [trackingNumber, setTrackingNumber] = useState("");
     const [trackingUrl, setTrackingUrl] = useState("");
     const [adminNotes, setAdminNotes] = useState("");
@@ -184,6 +185,33 @@ export default function OrderDetailPage() {
             toast({ title: "Error", description: "Could not save tracking info.", variant: "destructive" });
         } finally {
             setSaving(false);
+        }
+    };
+
+    const submitToCj = async () => {
+        try {
+            setSubmittingToCj(true);
+            const res = await fetch(`/api/admin/orders/${orderId}/submit-cj`, {
+                method: "POST",
+            });
+            const data = await res.json();
+
+            if (!res.ok) throw new Error(data.error || "Failed");
+
+            toast({
+                title: "Submitted to CJ",
+                description: `Successfully created CJ Order: ${data.cjOrderNumber || data.cjOrderId}`
+            });
+            fetchOrder();
+        } catch (err: any) {
+            console.error(err);
+            toast({
+                title: "Submission Failed",
+                description: err.message || "Failed to submit order to CJ Dropshipping.",
+                variant: "destructive"
+            });
+        } finally {
+            setSubmittingToCj(false);
         }
     };
 
@@ -357,10 +385,24 @@ export default function OrderDetailPage() {
                                     onChange={(e) => setAdminNotes(e.target.value)}
                                 />
                             </div>
-                            <Button onClick={saveTracking} disabled={saving} className="bg-primary text-white hover:bg-primary/90">
-                                {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                                Save Changes
-                            </Button>
+
+                            <div className="flex flex-col sm:flex-row gap-3">
+                                <Button onClick={saveTracking} disabled={saving} className="bg-primary text-white hover:bg-primary/90 flex-1">
+                                    {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                                    Save Changes
+                                </Button>
+
+                                {!order.cjOrderId && order.paymentStatus === "paid" && (
+                                    <Button
+                                        onClick={submitToCj}
+                                        disabled={submittingToCj}
+                                        className="bg-accent text-white hover:bg-accent/90 flex-1 font-bold"
+                                    >
+                                        {submittingToCj ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Package className="h-4 w-4 mr-2" />}
+                                        Submit to CJ
+                                    </Button>
+                                )}
+                            </div>
                         </CardContent>
                     </Card>
                 </div>
