@@ -238,22 +238,22 @@ export default function ProductDetailClient({
             {/* Tabs & Full Description */}
             <div className="mt-20">
                 <Tabs defaultValue="description" className="w-full">
-                    <TabsList className="w-full justify-start border-b-2 bg-transparent rounded-none h-auto p-0 space-x-12">
+                    <TabsList className="w-full flex justify-start gap-8 border-b-2 bg-transparent rounded-none h-auto p-0 mb-8">
                         <TabsTrigger
                             value="description"
-                            className="rounded-none border-b-4 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent px-0 pb-6 text-xl font-black uppercase tracking-tighter transition-all"
+                            className="bg-transparent data-[state=active]:bg-transparent border-b-4 border-transparent data-[state=active]:border-accent px-2 pb-4 text-sm md:text-lg font-black uppercase tracking-tight transition-all rounded-none shadow-none text-primary/40 data-[state=active]:text-primary"
                         >
                             Description
                         </TabsTrigger>
                         <TabsTrigger
                             value="specs"
-                            className="rounded-none border-b-4 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent px-0 pb-6 text-xl font-black uppercase tracking-tighter transition-all"
+                            className="bg-transparent data-[state=active]:bg-transparent border-b-4 border-transparent data-[state=active]:border-accent px-2 pb-4 text-sm md:text-lg font-black uppercase tracking-tight transition-all rounded-none shadow-none text-primary/40 data-[state=active]:text-primary"
                         >
                             Specifications
                         </TabsTrigger>
                         <TabsTrigger
                             value="reviews"
-                            className="rounded-none border-b-4 border-transparent data-[state=active]:border-accent data-[state=active]:bg-transparent px-0 pb-6 text-xl font-black uppercase tracking-tighter transition-all"
+                            className="bg-transparent data-[state=active]:bg-transparent border-b-4 border-transparent data-[state=active]:border-accent px-2 pb-4 text-sm md:text-lg font-black uppercase tracking-tight transition-all rounded-none shadow-none text-primary/40 data-[state=active]:text-primary"
                         >
                             Reviews (0)
                         </TabsTrigger>
@@ -273,7 +273,18 @@ export default function ProductDetailClient({
                                                prose-p:leading-relaxed prose-p:mb-6
                                                prose-strong:text-primary prose-strong:font-bold
                                                prose-ul:list-disc prose-li:marker:text-accent"
-                                    dangerouslySetInnerHTML={{ __html: product.description || "No detailed description available." }}
+                                    dangerouslySetInnerHTML={{
+                                        __html: product.description || `
+                                            <div class="space-y-4">
+                                                <p>This premium quality item is sourced directly from our verified global suppliers to ensure you get the best value and performance.</p>
+                                                <ul>
+                                                    <li>Hand-selected for quality and durability</li>
+                                                    <li>Authentic design and craftsmanship</li>
+                                                    <li>Perfect for everyday use and professional results</li>
+                                                </ul>
+                                            </div>
+                                        `
+                                    }}
                                 />
                             </div>
 
@@ -329,14 +340,14 @@ export default function ProductDetailClient({
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-muted border rounded-2xl overflow-hidden">
                                 {(() => {
                                     const defaultSpecs = [
+                                        { label: "Material", value: "Premium Grade Material" },
                                         { label: "Category", value: product.category?.name || "General" },
-                                        { label: "SKU", value: product.id.substring(0, 8).toUpperCase() },
                                         { label: "Condition", value: "New" },
                                         { label: "Shipping", value: "Global Express" },
-                                        { label: "Return Policy", value: "7 Days Hassle-Free" },
+                                        { label: "Weight", value: "Standard Weight" },
                                         { label: "Authenticity", value: "100% Genuine" },
-                                        { label: "Availability", value: "In Stock" },
-                                        { label: "Weight", value: "Standard" }
+                                        { label: "Quality Check", value: "Verified by NairobiMart" },
+                                        { label: "Warranty", value: "Standard Warranty Applies" }
                                     ];
 
                                     let dynamicSpecs: { label: string, value: string }[] = [];
@@ -358,7 +369,7 @@ export default function ProductDetailClient({
 
                                     return allSpecs.map((spec, i) => (
                                         <div key={i} className="flex items-center justify-between p-6 bg-white hover:bg-muted/5 transition-colors group">
-                                            <span className="text-sm font-bold uppercase tracking-widest text-muted-foreground group-hover:text-primary transition-colors">{spec.label}</span>
+                                            <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground group-hover:text-primary transition-colors">{spec.label}</span>
                                             <span className="text-sm font-black text-primary">{spec.value}</span>
                                         </div>
                                     ));
@@ -368,17 +379,39 @@ export default function ProductDetailClient({
                     </TabsContent>
 
                     <TabsContent value="reviews" className="py-12">
-                        <div className="bg-white rounded-3xl p-12 text-center space-y-6 border shadow-sm">
-                            <div className="flex justify-center">
-                                <div className="p-6 bg-accent/5 rounded-full">
-                                    <Star className="h-12 w-12 text-accent fill-accent" />
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-12 items-center">
+                            <div className="space-y-4">
+                                <h4 className="text-xl font-black text-primary uppercase tracking-tight">Customer Reviews</h4>
+                                <div className="flex items-center space-x-4">
+                                    <div className="text-5xl font-black text-primary">0.0</div>
+                                    <div>
+                                        <div className="flex items-center">
+                                            {Array.from({ length: 5 }).map((_, i) => (
+                                                <Star key={i} className="h-4 w-4 fill-muted text-muted" />
+                                            ))}
+                                        </div>
+                                        <p className="text-xs text-muted-foreground font-bold uppercase mt-1">0 Verified reviews</p>
+                                    </div>
                                 </div>
                             </div>
-                            <div className="max-w-md mx-auto space-y-2">
-                                <h3 className="text-2xl font-black text-primary uppercase tracking-tight">No feedback yet</h3>
-                                <p className="text-muted-foreground leading-relaxed">Be the first to share your experience with this item. Your feedback helps others shop smarter.</p>
+
+                            <div className="space-y-2">
+                                {[5, 4, 3, 2, 1].map((star) => (
+                                    <div key={star} className="flex items-center space-x-3">
+                                        <span className="text-xs font-bold w-4">{star}</span>
+                                        <Star className="h-3 w-3 fill-muted text-muted" />
+                                        <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                                            <div className="h-full bg-accent w-0" />
+                                        </div>
+                                        <span className="text-xs text-muted-foreground w-4">0</span>
+                                    </div>
+                                ))}
                             </div>
-                            <Button className="bg-primary hover:bg-primary/95 text-white font-bold px-8 h-12 rounded-full uppercase tracking-widest text-xs">Write a Review</Button>
+
+                            <div className="text-center space-y-4">
+                                <p className="text-sm text-muted-foreground font-medium italic">Have you used this product?</p>
+                                <Button className="bg-primary hover:bg-primary/95 text-white font-black px-10 h-14 rounded-full uppercase tracking-widest text-xs shadow-lg shadow-primary/20">Write a Review</Button>
+                            </div>
                         </div>
                     </TabsContent>
                 </Tabs>
