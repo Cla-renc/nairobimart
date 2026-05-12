@@ -35,6 +35,7 @@ interface ProductDetail {
     price: number;
     comparePrice?: number | null;
     description?: string | null;
+    attributes?: any;
     images: ProductImage[];
     variants: ProductVariant[];
     category?: { name: string } | null;
@@ -259,19 +260,63 @@ export default function ProductDetailClient({
                     </TabsList>
 
                     <TabsContent value="description" className="py-12">
-                        <div className="bg-white rounded-3xl p-8 md:p-12 border shadow-sm">
-                            <h3 className="text-2xl font-black text-primary mb-8 uppercase tracking-tight flex items-center">
-                                Product Details
-                                <span className="ml-3 h-1.5 w-1.5 rounded-full bg-accent" />
-                            </h3>
-                            <div
-                                className="cj-description prose prose-lg prose-slate max-w-none text-primary/80 
-                                           prose-headings:text-primary prose-headings:font-black prose-headings:uppercase prose-headings:tracking-tight
-                                           prose-img:rounded-2xl prose-img:shadow-lg prose-img:border prose-img:my-10
-                                           prose-p:leading-relaxed prose-p:mb-6
-                                           prose-strong:text-primary prose-strong:font-bold"
-                                dangerouslySetInnerHTML={{ __html: product.description || "No detailed description available." }}
-                            />
+                        <div className="flex flex-col lg:flex-row gap-8">
+                            <div className="flex-1 bg-white rounded-3xl p-8 md:p-12 border shadow-sm">
+                                <h3 className="text-2xl font-black text-primary mb-8 uppercase tracking-tight flex items-center">
+                                    Product Detailed Description
+                                    <span className="ml-3 h-1.5 w-1.5 rounded-full bg-accent" />
+                                </h3>
+                                <div
+                                    className="cj-description prose prose-lg prose-slate max-w-none text-primary/80 
+                                               prose-headings:text-primary prose-headings:font-black prose-headings:uppercase prose-headings:tracking-tight
+                                               prose-img:rounded-2xl prose-img:shadow-lg prose-img:border prose-img:my-10
+                                               prose-p:leading-relaxed prose-p:mb-6
+                                               prose-strong:text-primary prose-strong:font-bold
+                                               prose-ul:list-disc prose-li:marker:text-accent"
+                                    dangerouslySetInnerHTML={{ __html: product.description || "No detailed description available." }}
+                                />
+                            </div>
+
+                            {/* Sidebar Quick Info */}
+                            <div className="lg:w-80 space-y-6">
+                                <div className="bg-primary text-white rounded-3xl p-6 shadow-xl space-y-4">
+                                    <div className="flex items-center space-x-3">
+                                        <ShieldCheck className="h-6 w-6 text-accent" />
+                                        <h4 className="font-black uppercase tracking-tight">Buyer Protection</h4>
+                                    </div>
+                                    <ul className="text-sm space-y-3 text-primary-foreground/90">
+                                        <li className="flex items-start space-x-2">
+                                            <Check className="h-4 w-4 mt-0.5 text-accent" />
+                                            <span><strong>Full Refund</strong> if you don't receive your order.</span>
+                                        </li>
+                                        <li className="flex items-start space-x-2">
+                                            <Check className="h-4 w-4 mt-0.5 text-accent" />
+                                            <span><strong>7-Day Returns</strong> if item is not as described.</span>
+                                        </li>
+                                    </ul>
+                                </div>
+
+                                <div className="bg-white border rounded-3xl p-6 shadow-sm space-y-4">
+                                    <h4 className="font-black uppercase tracking-tight text-primary">Why NairobiMart?</h4>
+                                    <div className="space-y-4">
+                                        {[
+                                            { icon: Truck, title: "Global Sourcing", desc: "Straight from factory" },
+                                            { icon: Star, title: "Quality Check", desc: "Verified suppliers only" },
+                                            { icon: RefreshCcw, title: "Easy Support", desc: "24/7 Local assistance" }
+                                        ].map((item, i) => (
+                                            <div key={i} className="flex items-center space-x-3">
+                                                <div className="p-2 bg-accent/5 rounded-lg">
+                                                    <item.icon className="h-5 w-5 text-accent" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs font-black text-primary uppercase">{item.title}</p>
+                                                    <p className="text-[10px] text-muted-foreground">{item.desc}</p>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </TabsContent>
 
@@ -282,21 +327,42 @@ export default function ProductDetailClient({
                                 <span className="ml-3 h-1.5 w-1.5 rounded-full bg-accent" />
                             </h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-muted border rounded-2xl overflow-hidden">
-                                {[
-                                    { label: "Category", value: product.category?.name || "General" },
-                                    { label: "SKU", value: product.id.substring(0, 8).toUpperCase() },
-                                    { label: "Condition", value: "New" },
-                                    { label: "Shipping", value: "Global Express" },
-                                    { label: "Return Policy", value: "7 Days Hassle-Free" },
-                                    { label: "Authenticity", value: "100% Genuine" },
-                                    { label: "Availability", value: "In Stock" },
-                                    { label: "Weight", value: "Standard" }
-                                ].map((spec, i) => (
-                                    <div key={i} className="flex items-center justify-between p-6 bg-white">
-                                        <span className="text-sm font-bold uppercase tracking-widest text-muted-foreground">{spec.label}</span>
-                                        <span className="text-sm font-black text-primary">{spec.value}</span>
-                                    </div>
-                                ))}
+                                {(() => {
+                                    const defaultSpecs = [
+                                        { label: "Category", value: product.category?.name || "General" },
+                                        { label: "SKU", value: product.id.substring(0, 8).toUpperCase() },
+                                        { label: "Condition", value: "New" },
+                                        { label: "Shipping", value: "Global Express" },
+                                        { label: "Return Policy", value: "7 Days Hassle-Free" },
+                                        { label: "Authenticity", value: "100% Genuine" },
+                                        { label: "Availability", value: "In Stock" },
+                                        { label: "Weight", value: "Standard" }
+                                    ];
+
+                                    let dynamicSpecs: { label: string, value: string }[] = [];
+                                    if (product.attributes) {
+                                        if (Array.isArray(product.attributes)) {
+                                            dynamicSpecs = product.attributes.map((attr: any) => ({
+                                                label: attr.name || attr.label || "Feature",
+                                                value: attr.value || attr.text || "Yes"
+                                            }));
+                                        } else if (typeof product.attributes === 'object') {
+                                            dynamicSpecs = Object.entries(product.attributes).map(([key, value]) => ({
+                                                label: key.replace(/([A-Z])/g, ' $1').trim(),
+                                                value: String(value)
+                                            }));
+                                        }
+                                    }
+
+                                    const allSpecs = dynamicSpecs.length > 0 ? dynamicSpecs : defaultSpecs;
+
+                                    return allSpecs.map((spec, i) => (
+                                        <div key={i} className="flex items-center justify-between p-6 bg-white hover:bg-muted/5 transition-colors group">
+                                            <span className="text-sm font-bold uppercase tracking-widest text-muted-foreground group-hover:text-primary transition-colors">{spec.label}</span>
+                                            <span className="text-sm font-black text-primary">{spec.value}</span>
+                                        </div>
+                                    ));
+                                })()}
                             </div>
                         </div>
                     </TabsContent>

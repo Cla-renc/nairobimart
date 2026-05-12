@@ -113,12 +113,27 @@ export async function GET() {
                             if (pool.length > 0) imageUrls = pool;
                         }
 
+                        // Extract technical attributes if available
+                        let attributes = null;
+                        if (detail?.productAttributes) {
+                            try {
+                                if (typeof detail.productAttributes === 'string') {
+                                    attributes = JSON.parse(detail.productAttributes);
+                                } else {
+                                    attributes = detail.productAttributes;
+                                }
+                            } catch (e) {
+                                console.error("Error parsing CJ attributes:", e);
+                            }
+                        }
+
                         if (exists) {
                             // Update existing product with missing details
                             await prisma.product.update({
                                 where: { id: exists.id },
                                 data: {
                                     description: detail?.description || exists.description,
+                                    attributes: attributes || exists.attributes,
                                     comparePrice: exists.comparePrice || Math.round(retailPriceKES * 1.3),
                                     images: {
                                         deleteMany: {}, // Fresh start for images to ensure order and quality
@@ -143,6 +158,7 @@ export async function GET() {
                                     stock: 100,
                                     sku: detail?.productSku || pd.sku || `CJ-SKU-${pd.id}`,
                                     cjProductId: pd.id,
+                                    attributes: attributes,
                                     categoryId: category.id,
                                     isActive: true,
                                     images: {

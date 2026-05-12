@@ -62,6 +62,8 @@ model Product {
   stock           Int      @default(0)
   sku             String?  @unique
   cjProductId     String?
+  attributes      Json?
+
   weight          Float?
   isActive        Boolean  @default(true)
   isFeatured      Boolean  @default(false)
