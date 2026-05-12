@@ -26,7 +26,6 @@ const steps = ["Delivery", "Payment", "Review"];
 export default function CheckoutPage() {
     const [currentStep, setCurrentStep] = useState(0);
     const [isProcessing, setIsProcessing] = useState(false);
-    const [siteSettings, setSiteSettings] = useState<Record<string, string>>({});
     const [deliveryInfo, setDeliveryInfo] = useState({
         firstName: "",
         lastName: "",
@@ -70,50 +69,19 @@ export default function CheckoutPage() {
     const visibleTotalPrice = isMounted ? totalPrice : 0;
     const shippingFee = 500; // Mock shipping fee
 
-    const isMpesaAvailable = deliveryInfo.country === "Kenya" && siteSettings.mpesa_enabled === "true";
+    const isMpesaAvailable = deliveryInfo.country === "Kenya";
 
     useEffect(() => {
-        // Only run this once to set defaults
         setIsMounted(true);
-
-        const fetchSettings = async () => {
-            try {
-                const response = await fetch("/api/site-settings");
-                if (response.ok) {
-                    const settings = await response.json();
-                    setSiteSettings(settings);
-
-                    // Only set default payment method if none is selected yet
-                    if (!paymentMethod) {
-                        const defaultMethod = settings.mpesa_enabled === "true"
-                            ? "mpesa"
-                            : settings.pesapal_enabled === "true"
-                                ? "pesapal"
-                                : "";
-                        if (defaultMethod) {
-                            console.log("Setting default payment method:", defaultMethod);
-                            setPaymentMethod(defaultMethod);
-                        }
-                    }
-                }
-            } catch (error) {
-                console.error("Failed to fetch site settings:", error);
-            }
-        };
-        fetchSettings();
+        // Default to pesapal (Visa) if no payment method has been chosen yet
+        setPaymentMethod((prev) => prev || "pesapal");
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-    // Handle country changes
     useEffect(() => {
         if (deliveryInfo.country !== "Kenya" && paymentMethod === "mpesa") {
-            console.log("Country changed away from Kenya, resetting from mpesa");
-            if (siteSettings.pesapal_enabled === "true") {
-                setPaymentMethod("pesapal");
-            } else {
-                setPaymentMethod("");
-            }
+            setPaymentMethod("pesapal");
         }
-    }, [deliveryInfo.country, paymentMethod, siteSettings.pesapal_enabled]);
+    }, [deliveryInfo.country, paymentMethod]);
 
     const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
@@ -258,30 +226,17 @@ export default function CheckoutPage() {
                                                 onChange={(e) => setDeliveryInfo({ ...deliveryInfo, email: e.target.value })}
                                             />
                                         </div>
-
-                                        {deliveryInfo.country === "Kenya" && siteSettings.mpesa_enabled === "true" && (
-                                            <>
-                                                <div className="space-y-2 md:col-span-2">
-                                                    <Label htmlFor="phone">Phone Number</Label>
-                                                    <Input
-                                                        id="phone"
-                                                        placeholder={getPhonePlaceholder()}
-                                                        value={deliveryInfo.phone}
-                                                        onChange={(e) => setDeliveryInfo({ ...deliveryInfo, phone: e.target.value })}
-                                                    />
-                                                    <p className="text-xs text-muted-foreground">For M-Pesa STK Push payments</p>
-                                                </div>
-                                                <div className="space-y-2 md:col-span-2">
-                                                    <Label htmlFor="tillNumber">M-Pesa Till Number (Optional)</Label>
-                                                    <Input
-                                                        id="tillNumber"
-                                                        placeholder="e.g., 123456"
-                                                        value={deliveryInfo.tillNumber}
-                                                        onChange={(e) => setDeliveryInfo({ ...deliveryInfo, tillNumber: e.target.value })}
-                                                    />
-                                                    <p className="text-xs text-muted-foreground">If you prefer to pay using Buy Goods Till Number instead of phone STK Push</p>
-                                                </div>
-                                            </>
+                                        {deliveryInfo.country === "Kenya" && (
+                                            <div className="space-y-2 md:col-span-2">
+                                                <Label htmlFor="phone">Phone Number (M-Pesa)</Label>
+                                                <Input
+                                                    id="phone"
+                                                    placeholder="+254 700 000 000"
+                                                    value={deliveryInfo.phone}
+                                                    onChange={(e) => setDeliveryInfo({ ...deliveryInfo, phone: e.target.value })}
+                                                />
+                                                <p className="text-xs text-muted-foreground">Required for M-Pesa STK Push payments</p>
+                                            </div>
                                         )}
 
                                         {deliveryInfo.country !== "Kenya" && (
@@ -293,7 +248,7 @@ export default function CheckoutPage() {
                                                     value={deliveryInfo.phone}
                                                     onChange={(e) => setDeliveryInfo({ ...deliveryInfo, phone: e.target.value })}
                                                 />
-                                                <p className="text-xs text-muted-foreground">For delivery and payment coordination</p>
+                                                <p className="text-xs text-muted-foreground">For delivery coordination</p>
                                             </div>
                                         )}
 
@@ -341,7 +296,7 @@ export default function CheckoutPage() {
                                         className="grid grid-cols-1 gap-4"
                                     >
                                         {isMpesaAvailable && (
-                                            <div className="flex items-center space-x-4 border rounded-xl p-4 bg-white hover:border-accent transition-colors">
+                                            <div className="flex items-center space-x-4 border rounded-xl p-4 bg-white hover:border-accent transition-colors cursor-pointer">
                                                 <RadioGroupItem value="mpesa" id="mpesa" />
                                                 <Label htmlFor="mpesa" className="flex-1 cursor-pointer">
                                                     <div className="flex items-center justify-between">
@@ -350,31 +305,29 @@ export default function CheckoutPage() {
                                                                 <Smartphone className="h-6 w-6 text-green-600" />
                                                             </div>
                                                             <div>
-                                                                <p className="font-bold">M-Pesa STK Push</p>
-                                                                <p className="text-xs text-muted-foreground">Pay securely via prompt on your phone</p>
+                                                                <p className="font-bold">M-Pesa</p>
+                                                                <p className="text-xs text-muted-foreground">Pay via STK Push prompt on your phone</p>
                                                             </div>
                                                         </div>
-                                                        <span className="text-xs uppercase font-bold text-accent">Preferred</span>
+                                                        <span className="text-xs uppercase font-bold text-green-600 bg-green-50 px-2 py-1 rounded-full">Preferred</span>
                                                     </div>
                                                 </Label>
                                             </div>
                                         )}
-                                        {siteSettings.pesapal_enabled === "true" && (
-                                            <div className="flex items-center space-x-4 border rounded-xl p-4 bg-white hover:border-accent transition-colors">
-                                                <RadioGroupItem value="pesapal" id="pesapal" />
-                                                <Label htmlFor="pesapal" className="flex-1 cursor-pointer">
-                                                    <div className="flex items-center space-x-3">
-                                                        <div className="bg-blue-100 p-2 rounded-lg">
-                                                            <CreditCard className="h-6 w-6 text-blue-600" />
-                                                        </div>
-                                                        <div>
-                                                            <p className="font-bold">Visa/Mastercard</p>
-                                                            <p className="text-xs text-muted-foreground">Secure payments across East Africa</p>
-                                                        </div>
+                                        <div className="flex items-center space-x-4 border rounded-xl p-4 bg-white hover:border-accent transition-colors cursor-pointer">
+                                            <RadioGroupItem value="pesapal" id="pesapal" />
+                                            <Label htmlFor="pesapal" className="flex-1 cursor-pointer">
+                                                <div className="flex items-center space-x-3">
+                                                    <div className="bg-blue-100 p-2 rounded-lg">
+                                                        <CreditCard className="h-6 w-6 text-blue-600" />
                                                     </div>
-                                                </Label>
-                                            </div>
-                                        )}
+                                                    <div>
+                                                        <p className="font-bold">Visa / Mastercard</p>
+                                                        <p className="text-xs text-muted-foreground">Secure card payments across East Africa</p>
+                                                    </div>
+                                                </div>
+                                            </Label>
+                                        </div>
                                     </RadioGroup>
                                 </div>
                             )}
