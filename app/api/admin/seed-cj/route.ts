@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { fetchCJProductList, fetchCJProductDetail } from '@/lib/cjdropshipping';
+import { Prisma } from '@prisma/client';
 
 export const dynamic = 'force-dynamic';
 
@@ -128,13 +129,15 @@ export async function GET() {
                         }
 
                         if (exists) {
+                            const existingProduct = exists as Record<string, unknown>;
                             // Update existing product with missing details
                             await prisma.product.update({
-                                where: { id: exists.id },
+                                where: { id: existingProduct.id as string },
                                 data: {
-                                    description: detail?.description || exists.description,
-                                    attributes: attributes || exists.attributes,
-                                    comparePrice: exists.comparePrice || Math.round(retailPriceKES * 1.3),
+                                    description: detail?.description || existingProduct.description as string,
+                                    attributes: attributes || existingProduct.attributes || null,
+                                    comparePrice: (existingProduct.comparePrice as number) || Math.round(retailPriceKES * 1.3),
+                                    category: { connect: { id: category.id } },
                                     images: {
                                         deleteMany: {}, // Fresh start for images to ensure order and quality
                                         create: imageUrls.map((url: string, index: number) => ({
@@ -142,7 +145,7 @@ export async function GET() {
                                             position: index
                                         }))
                                     }
-                                }
+                                } as unknown as Prisma.ProductUpdateInput
                             });
                             insertedCount++;
                         } else {
@@ -158,8 +161,8 @@ export async function GET() {
                                     stock: 100,
                                     sku: detail?.productSku || pd.sku || `CJ-SKU-${pd.id}`,
                                     cjProductId: pd.id,
-                                    attributes: attributes,
-                                    categoryId: category.id,
+                                    attributes: attributes || null,
+                                    category: { connect: { id: category.id } },
                                     isActive: true,
                                     images: {
                                         create: imageUrls.map((url: string, index: number) => ({
@@ -167,7 +170,7 @@ export async function GET() {
                                             position: index
                                         }))
                                     }
-                                }
+                                } as unknown as Prisma.ProductCreateInput
                             });
                             insertedCount++;
                         }

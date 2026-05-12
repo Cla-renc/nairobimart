@@ -35,7 +35,7 @@ interface ProductDetail {
     price: number;
     comparePrice?: number | null;
     description?: string | null;
-    attributes?: any;
+    attributes?: Record<string, unknown> | Record<string, unknown>[] | null;
     images: ProductImage[];
     variants: ProductVariant[];
     category?: { name: string } | null;
@@ -287,7 +287,7 @@ export default function ProductDetailClient({
                                     <ul className="text-sm space-y-3 text-primary-foreground/90">
                                         <li className="flex items-start space-x-2">
                                             <Check className="h-4 w-4 mt-0.5 text-accent" />
-                                            <span><strong>Full Refund</strong> if you don't receive your order.</span>
+                                            <span><strong>Full Refund</strong> if you don&apos;t receive your order.</span>
                                         </li>
                                         <li className="flex items-start space-x-2">
                                             <Check className="h-4 w-4 mt-0.5 text-accent" />
@@ -342,9 +342,9 @@ export default function ProductDetailClient({
                                     let dynamicSpecs: { label: string, value: string }[] = [];
                                     if (product.attributes) {
                                         if (Array.isArray(product.attributes)) {
-                                            dynamicSpecs = product.attributes.map((attr: any) => ({
-                                                label: attr.name || attr.label || "Feature",
-                                                value: attr.value || attr.text || "Yes"
+                                            dynamicSpecs = (product.attributes as Record<string, unknown>[]).map((attr) => ({
+                                                label: (attr.name || attr.label || "Feature") as string,
+                                                value: (attr.value || attr.text || "Yes") as string
                                             }));
                                         } else if (typeof product.attributes === 'object') {
                                             dynamicSpecs = Object.entries(product.attributes).map(([key, value]) => ({
