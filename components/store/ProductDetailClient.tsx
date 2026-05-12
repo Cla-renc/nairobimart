@@ -238,22 +238,28 @@ export default function ProductDetailClient({
             {/* Tabs & Full Description */}
             <div className="mt-20">
                 <Tabs defaultValue="description" className="w-full">
-                    <TabsList className="w-full flex justify-start gap-8 border-b-2 bg-transparent rounded-none h-auto p-0 mb-8">
+                    <TabsList className="w-full h-16 flex justify-start gap-4 bg-muted/40 p-2 rounded-2xl mb-8 border backdrop-blur-sm">
                         <TabsTrigger
                             value="description"
-                            className="bg-transparent data-[state=active]:bg-transparent border-b-4 border-transparent data-[state=active]:border-accent px-2 pb-4 text-sm md:text-lg font-black uppercase tracking-tight transition-all rounded-none shadow-none text-primary/40 data-[state=active]:text-primary"
+                            className="flex-1 max-w-[200px] h-full rounded-xl text-xs md:text-sm font-black uppercase tracking-widest transition-all
+                                       data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-md
+                                       text-muted-foreground hover:bg-white/50"
                         >
                             Description
                         </TabsTrigger>
                         <TabsTrigger
                             value="specs"
-                            className="bg-transparent data-[state=active]:bg-transparent border-b-4 border-transparent data-[state=active]:border-accent px-2 pb-4 text-sm md:text-lg font-black uppercase tracking-tight transition-all rounded-none shadow-none text-primary/40 data-[state=active]:text-primary"
+                            className="flex-1 max-w-[200px] h-full rounded-xl text-xs md:text-sm font-black uppercase tracking-widest transition-all
+                                       data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-md
+                                       text-muted-foreground hover:bg-white/50"
                         >
                             Specifications
                         </TabsTrigger>
                         <TabsTrigger
                             value="reviews"
-                            className="bg-transparent data-[state=active]:bg-transparent border-b-4 border-transparent data-[state=active]:border-accent px-2 pb-4 text-sm md:text-lg font-black uppercase tracking-tight transition-all rounded-none shadow-none text-primary/40 data-[state=active]:text-primary"
+                            className="flex-1 max-w-[200px] h-full rounded-xl text-xs md:text-sm font-black uppercase tracking-widest transition-all
+                                       data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-md
+                                       text-muted-foreground hover:bg-white/50"
                         >
                             Reviews (0)
                         </TabsTrigger>
@@ -274,14 +280,31 @@ export default function ProductDetailClient({
                                                prose-strong:text-primary prose-strong:font-bold
                                                prose-ul:list-disc prose-li:marker:text-accent"
                                     dangerouslySetInnerHTML={{
-                                        __html: product.description || `
-                                            <div class="space-y-4">
-                                                <p>This premium quality item is sourced directly from our verified global suppliers to ensure you get the best value and performance.</p>
-                                                <ul>
-                                                    <li>Hand-selected for quality and durability</li>
-                                                    <li>Authentic design and craftsmanship</li>
-                                                    <li>Perfect for everyday use and professional results</li>
-                                                </ul>
+                                        __html: (product.description && product.description.length > 50) ? product.description : `
+                                            <div class="space-y-6">
+                                                <div class="p-6 bg-accent/5 rounded-2xl border border-accent/10">
+                                                    <p class="font-bold text-accent uppercase tracking-widest text-xs mb-2">Premium Product Note</p>
+                                                    <p class="text-sm">This high-quality item is sourced directly from our verified global fulfillment centers to ensure you receive the best value and craftsmanship available on the market.</p>
+                                                </div>
+                                                <p>Experience superior performance and design with this carefully selected product. Whether you're looking for durability, style, or functionality, this item is engineered to exceed expectations.</p>
+                                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
+                                                    <div class="flex items-center space-x-3 p-4 bg-muted/20 rounded-xl">
+                                                        <div class="h-2 w-2 rounded-full bg-accent"></div>
+                                                        <span class="text-sm font-bold">Factory Direct Quality</span>
+                                                    </div>
+                                                    <div class="flex items-center space-x-3 p-4 bg-muted/20 rounded-xl">
+                                                        <div class="h-2 w-2 rounded-full bg-accent"></div>
+                                                        <span class="text-sm font-bold">Global Safety Standards</span>
+                                                    </div>
+                                                    <div class="flex items-center space-x-3 p-4 bg-muted/20 rounded-xl">
+                                                        <div class="h-2 w-2 rounded-full bg-accent"></div>
+                                                        <span class="text-sm font-bold">Eco-Friendly Materials</span>
+                                                    </div>
+                                                    <div class="flex items-center space-x-3 p-4 bg-muted/20 rounded-xl">
+                                                        <div class="h-2 w-2 rounded-full bg-accent"></div>
+                                                        <span class="text-sm font-bold">Precision Engineered</span>
+                                                    </div>
+                                                </div>
                                             </div>
                                         `
                                     }}
