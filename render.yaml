@@ -1,0 +1,85 @@
+# Render Blueprint Specification for NairobiMart Backend
+# Learn more at https://render.com/docs/blueprints
+
+services:
+  - type: web
+    name: nairobimart-backend
+    runtime: node
+    plan: free # Can be upgraded to 'starter' or higher in the Render dashboard if needed
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+
+      # ===== DATABASE =====
+      - key: DATABASE_URL
+        sync: false # User will provide their MongoDB Atlas URL
+
+      # ===== AUTHENTICATION =====
+      - key: AUTH_TRUST_HOST
+        value: "true"
+      - key: NEXTAUTH_URL
+        sync: false # Set to Vercel frontend URL (e.g. https://nairobimart.vercel.app)
+      - key: NEXTAUTH_SECRET
+        generateValue: true # Render will generate a secure random secret key automatically
+      - key: AUTH_SECRET
+        generateValue: true # Render will generate a secure random secret key automatically
+
+      # ===== THIRD PARTY AUTH (OPTIONAL) =====
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+
+      # ===== SUPABASE (OPTIONAL) =====
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+
+      # ===== PUBLIC URL =====
+      - key: NEXT_PUBLIC_URL
+        sync: false # Set to Vercel frontend URL or Render backend URL
+
+      # ===== MPESA PAYMENTS =====
+      - key: MPESA_CONSUMER_KEY
+        sync: false
+      - key: MPESA_CONSUMER_SECRET
+        sync: false
+      - key: MPESA_SHORTCODE
+        sync: false
+      - key: MPESA_PASSKEY
+        sync: false
+      - key: MPESA_CALLBACK_URL
+        sync: false # Set to https://<your-render-backend-url>/api/mpesa/callback
+      - key: MPESA_ENV
+        value: sandbox # Options: sandbox, production
+
+      # ===== PESAPAL PAYMENTS =====
+      - key: PESAPAL_CONSUMER_KEY
+        sync: false
+      - key: PESAPAL_CONSUMER_SECRET
+        sync: false
+      - key: PESAPAL_ENV
+        value: production # Options: sandbox, production
+      - key: PESAPAL_TEST_MODE
+        value: "false"
+
+      # ===== CLOUDINARY IMAGE STORAGE =====
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+
+      # ===== RESEND EMAIL SERVICE =====
+      - key: RESEND_API_KEY
+        sync: false
+
+      # ===== CJ DROPSHIPPING INTEGRATION =====
+      - key: CJ_API_KEY
+        sync: false
