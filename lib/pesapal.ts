@@ -128,7 +128,9 @@ export const createPesaPalCheckout = async (
     customerEmail: string,
     customerPhone: string,
     shippingFee: number = 500,
-    totalAmount: number
+    totalAmount: number,
+    customerFirstName: string = "Customer",
+    customerLastName: string = "Order"
 ) => {
     if (process.env.PESAPAL_TEST_MODE === "true") {
         console.log("⚠️  PESAPAL TEST MODE ENABLED - Not calling actual API");
@@ -162,9 +164,9 @@ export const createPesaPalCheckout = async (
                 email_address: customerEmail || "customer@nairobimart.com",
                 phone_number: customerPhone || "0000000000",
                 country_code: "KE",
-                first_name: "Customer",
+                first_name: customerFirstName,
                 middle_name: "",
-                last_name: "Order",
+                last_name: customerLastName,
                 line_1: "N/A",
                 line_2: "",
                 city: "Nairobi",

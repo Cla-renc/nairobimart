@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { initiateStkPush } from "@/lib/mpesa";
 import { createPesaPalCheckout } from "@/lib/pesapal";
 import prisma from "@/lib/prisma";
 
@@ -58,15 +57,12 @@ export async function POST(req: Request) {
             },
         });
 
-        // 3. Initiate Payment
-        console.log("Processing payment for method:", paymentMethod);
-        
-        if (paymentMethod === "mpesa") {
-            console.log("Initiating M-Pesa payment");
-            const result = await initiateStkPush(deliveryInfo.phone, totalPrice + shippingFee, order.id);
-            return NextResponse.json({ success: true, orderId: order.id, type: "mpesa", result });
-        } else if (paymentMethod === "pesapal") {
-            console.log("Initiating PesaPal checkout for items:", items);
+        // 3. Initiate Payment via Pesapal (handles both M-Pesa and Card)
+        console.log("Processing payment via Pesapal for method:", paymentMethod);
+
+        if (paymentMethod === "mpesa" || paymentMethod === "pesapal") {
+            console.log("Initiating Pesapal checkout — supports M-Pesa and Card");
+
             // Map cart items to PesaPalLineItem format
             const pesapalItems = (items as { name: string; image?: string; price: number; quantity: number }[]).map(
                 (item) => ({
@@ -76,24 +72,33 @@ export async function POST(req: Request) {
                     quantity: item.quantity,
                 })
             );
-            console.log("Mapped PesaPal items:", pesapalItems);
-            
+
             const result = await createPesaPalCheckout(
                 pesapalItems,
                 order.id,
                 deliveryInfo.email,
                 deliveryInfo.phone,
                 shippingFee,
-                totalPrice
+                totalPrice,
+                deliveryInfo.firstName,
+                deliveryInfo.lastName
             );
-            console.log("PesaPal result:", result);
-            
+
+            console.log("Pesapal result:", result);
+
             if (!result.checkoutUrl) {
-                console.log("ERROR: No checkout URL returned from PesaPal");
-                return NextResponse.json({ success: false, message: "Failed to create PesaPal session" }, { status: 500 });
+                console.log("ERROR: No checkout URL returned from Pesapal");
+                return NextResponse.json({ success: false, message: "Failed to create Pesapal payment session" }, { status: 500 });
             }
-            console.log("Returning PesaPal checkout URL:", result.checkoutUrl);
-            return NextResponse.json({ success: true, orderId: order.id, type: "pesapal", url: result.checkoutUrl, orderTrackingId: result.orderTrackingId });
+
+            console.log("Redirecting to Pesapal checkout URL:", result.checkoutUrl);
+            return NextResponse.json({
+                success: true,
+                orderId: order.id,
+                type: "pesapal",
+                url: result.checkoutUrl,
+                orderTrackingId: result.orderTrackingId
+            });
         }
 
         return NextResponse.json({ success: false, message: "Unsupported payment method" }, { status: 400 });

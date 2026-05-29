@@ -99,10 +99,6 @@ export default function CheckoutPage() {
             setCheckoutError("Please fill in all required delivery information.");
             return;
         }
-        if (paymentMethod === "mpesa" && deliveryInfo.country === "Kenya" && !deliveryInfo.phone && !deliveryInfo.tillNumber) {
-            setCheckoutError("For M-Pesa payments, please provide either a phone number or till number.");
-            return;
-        }
         setIsProcessing(true);
         try {
             console.log("Submitting checkout with payment method:", paymentMethod);
@@ -228,14 +224,14 @@ export default function CheckoutPage() {
                                         </div>
                                         {deliveryInfo.country === "Kenya" && (
                                             <div className="space-y-2 md:col-span-2">
-                                                <Label htmlFor="phone">Phone Number (M-Pesa)</Label>
+                                                <Label htmlFor="phone">Phone Number</Label>
                                                 <Input
                                                     id="phone"
                                                     placeholder="+254 700 000 000"
                                                     value={deliveryInfo.phone}
                                                     onChange={(e) => setDeliveryInfo({ ...deliveryInfo, phone: e.target.value })}
                                                 />
-                                                <p className="text-xs text-muted-foreground">Required for M-Pesa STK Push payments</p>
+                                                <p className="text-xs text-muted-foreground">Used for delivery coordination and M-Pesa payments on Pesapal</p>
                                             </div>
                                         )}
 
@@ -306,7 +302,7 @@ export default function CheckoutPage() {
                                                             </div>
                                                             <div>
                                                                 <p className="font-bold">M-Pesa</p>
-                                                                <p className="text-xs text-muted-foreground">Pay via STK Push prompt on your phone</p>
+                                                                <p className="text-xs text-muted-foreground">Pay with M-Pesa on Pesapal&apos;s secure checkout</p>
                                                             </div>
                                                         </div>
                                                         <span className="text-xs uppercase font-bold text-green-600 bg-green-50 px-2 py-1 rounded-full">Preferred</span>
@@ -317,14 +313,17 @@ export default function CheckoutPage() {
                                         <div className="flex items-center space-x-4 border rounded-xl p-4 bg-white hover:border-accent transition-colors cursor-pointer">
                                             <RadioGroupItem value="pesapal" id="pesapal" />
                                             <Label htmlFor="pesapal" className="flex-1 cursor-pointer">
-                                                <div className="flex items-center space-x-3">
-                                                    <div className="bg-blue-100 p-2 rounded-lg">
-                                                        <CreditCard className="h-6 w-6 text-blue-600" />
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center space-x-3">
+                                                        <div className="bg-blue-100 p-2 rounded-lg">
+                                                            <CreditCard className="h-6 w-6 text-blue-600" />
+                                                        </div>
+                                                        <div>
+                                                            <p className="font-bold">Visa / Mastercard</p>
+                                                            <p className="text-xs text-muted-foreground">Pay with card on Pesapal&apos;s secure checkout</p>
+                                                        </div>
                                                     </div>
-                                                    <div>
-                                                        <p className="font-bold">Visa / Mastercard</p>
-                                                        <p className="text-xs text-muted-foreground">Secure card payments across East Africa</p>
-                                                    </div>
+                                                    <span className="text-xs uppercase font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-full">Global</span>
                                                 </div>
                                             </Label>
                                         </div>
@@ -351,8 +350,8 @@ export default function CheckoutPage() {
                                             <div className="flex justify-between">
                                                 <span className="font-bold">Payment Method:</span>
                                                 <span className="text-right">
-                                                    {paymentMethod === "mpesa" ? "M-Pesa" :
-                                                        paymentMethod === "pesapal" ? "Visa/Mastercard" : "Unknown"}
+                                                    {paymentMethod === "mpesa" ? "M-Pesa via Pesapal" :
+                                                        paymentMethod === "pesapal" ? "Card (Visa/Mastercard) via Pesapal" : "Unknown"}
                                                 </span>
                                             </div>
                                             {paymentMethod === "mpesa" && deliveryInfo.country === "Kenya" && (
