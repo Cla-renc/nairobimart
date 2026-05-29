@@ -203,11 +203,12 @@ export default function OrderDetailPage() {
                 description: `Successfully created CJ Order: ${data.cjOrderNumber || data.cjOrderId}`
             });
             fetchOrder();
-        } catch (err: any) {
+        } catch (error) {
+            const err = error instanceof Error ? error : new Error("Failed to submit order to CJ Dropshipping.");
             console.error(err);
             toast({
                 title: "Submission Failed",
-                description: err.message || "Failed to submit order to CJ Dropshipping.",
+                description: err.message,
                 variant: "destructive"
             });
         } finally {

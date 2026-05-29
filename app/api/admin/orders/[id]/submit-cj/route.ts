@@ -74,8 +74,9 @@ export async function POST(
             order: updatedOrder
         });
 
-    } catch (error: any) {
-        console.error("Error submitting order to CJ:", error);
-        return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 });
+    } catch (error: unknown) {
+        const err = error instanceof Error ? error : new Error("Internal server error");
+        console.error("Error submitting order to CJ:", err);
+        return NextResponse.json({ error: err.message }, { status: 500 });
     }
 }
