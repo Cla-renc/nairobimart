@@ -1,13 +1,16 @@
 # Render Blueprint Specification for NairobiMart Backend
+# This deploys the backend API only (Vercel handles frontend)
 # Learn more at https://render.com/docs/blueprints
 
 services:
   - type: web
-    name: nairobimart-backend
+    name: nairobimart-api
     runtime: node
     plan: free # Can be upgraded to 'starter' or higher in the Render dashboard if needed
     buildCommand: npm install && npm run build
     startCommand: npm start
+    healthCheckPath: /api/health
+    maxShutdownDelay: 30
     envVars:
       - key: NODE_ENV
         value: production
