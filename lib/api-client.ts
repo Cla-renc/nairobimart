@@ -54,10 +54,10 @@ export const apiFetch = async (
  * const data = await apiCall('/products', 'GET');
  * const result = await apiCall('/checkout', 'POST', { items: [...] });
  */
-export const apiCall = async <T = any>(
+export const apiCall = async <T = unknown>(
   endpoint: string,
   method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' = 'GET',
-  body?: any
+  body?: unknown
 ): Promise<T> => {
   const response = await apiFetch(endpoint, {
     method,
@@ -65,9 +65,11 @@ export const apiCall = async <T = any>(
   });
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: response.statusText }));
+    const error = (await response.json().catch(() => ({ message: response.statusText }))) as {
+      message?: string;
+    };
     throw new Error(error.message || `API Error: ${response.status}`);
   }
 
-  return response.json();
+  return response.json() as Promise<T>;
 };
