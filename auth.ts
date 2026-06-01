@@ -4,6 +4,8 @@ import Credentials from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import prisma from "@/lib/prisma";
 import authConfig from "./auth.config";
+import type { JWT } from "next-auth/jwt";
+import type { Session, User } from "next-auth";
 
 export const {
     handlers: { GET, POST },
@@ -16,26 +18,29 @@ export const {
     secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET,
     session: { strategy: "jwt" },
     debug: true,
+    // Merge any providers defined in auth.config with the Credentials provider used by the app.
     providers: [
+        ...(authConfig.providers ?? []),
         Credentials({
             name: "Credentials",
             credentials: {
                 email: { label: "Email", type: "email" },
                 password: { label: "Password", type: "password" },
             },
-            async authorize(credentials) {
-                if (!credentials?.email || !credentials?.password) return null;
+            async authorize(
+                credentials: Partial<Record<"email" | "password", unknown>> | undefined
+            ) {
+                const email = typeof credentials?.email === "string" ? credentials.email : null;
+                const password = typeof credentials?.password === "string" ? credentials.password : null;
+                if (!email || !password) return null;
 
                 const user = await prisma.user.findUnique({
-                    where: { email: credentials.email as string },
+                    where: { email },
                 });
 
                 if (!user || !user.passwordHash) return null;
 
-                const isPasswordValid = await bcrypt.compare(
-                    credentials.password as string,
-                    user.passwordHash
-                );
+                const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
 
                 if (!isPasswordValid) return null;
 
@@ -45,28 +50,28 @@ export const {
                     email: user.email,
                     role: user.role,
                     phone: user.phone,
-                    createdAt: user.createdAt,
+                    createdAt: user.createdAt.toISOString(),
                 };
             },
         }),
     ],
     callbacks: {
         ...authConfig.callbacks,
-        async jwt({ token, user }) {
+        async jwt({ token, user }: { token: JWT; user?: User | undefined }) {
             if (user) {
-                token.role = (user as any).role;
+                token.role = user.role;
                 token.id = user.id;
-                token.phone = (user as any).phone;
-                token.createdAt = (user as any).createdAt;
+                token.phone = user.phone;
+                token.createdAt = user.createdAt;
             }
             return token;
         },
-        async session({ session, token }) {
+        async session({ session, token }: { session: Session; token: JWT }) {
             if (token && session.user) {
-                session.user.id = token.id as string;
-                (session.user as any).role = token.role;
-                (session.user as any).phone = token.phone;
-                (session.user as any).createdAt = token.createdAt;
+                session.user.id = (token.id as string) ?? session.user.id;
+                session.user.role = token.role ?? session.user.role;
+                session.user.phone = token.phone ?? session.user.phone;
+                session.user.createdAt = token.createdAt ?? session.user.createdAt;
             }
             return session;
         },

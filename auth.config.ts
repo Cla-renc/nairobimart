@@ -1,12 +1,18 @@
 import type { NextAuthConfig } from "next-auth";
-import Credentials from "next-auth/providers/credentials";
+import GoogleProvider from "next-auth/providers/google";
+
+const providers = [];
+if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+    providers.push(
+        GoogleProvider({
+            clientId: process.env.GOOGLE_CLIENT_ID,
+            clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+        })
+    );
+}
 
 export default {
-    providers: [
-        Credentials({
-            authorize: async () => null
-        })
-    ],
+    providers,
     pages: {
         signIn: "/login",
     },
