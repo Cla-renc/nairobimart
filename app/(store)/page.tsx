@@ -1,5 +1,7 @@
 import HeroBanner from "@/components/store/HeroBanner";
 import ProductCard from "@/components/store/ProductCard";
+
+export const dynamic = "force-dynamic";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import Image from "next/image";

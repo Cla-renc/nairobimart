@@ -1,5 +1,7 @@
 import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
+
+export const dynamic = "force-dynamic";
 import Link from "next/link";
 import { ArrowLeft, Heart } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
