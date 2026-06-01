@@ -1,0 +1,73 @@
+﻿  Γû▓ Next.js 14.2.35
+  - Environments: .env.local, .env
+
+   Creating an optimized production build ...
+ Γ£ô Compiled successfully
+   Linting and checking validity of types ...
+node.exe : Failed to 
+compile.
+At line:1 char:1
++ & "C:\xampp\htdocs\FOOTBA
+LL_HUB_PRO/node.exe" 
+"C:\xampp\htdocs\FOOTBA ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~
+    + CategoryInfo         
+     : NotSpecified: (Fai  
+  led to compile.:String   
+ ) [], RemoteException
+    + FullyQualifiedErrorI 
+   d : NativeCommandError
+ 
+
+.next/types/app/api/admin/c
+ategories/[id]/route.ts:228
+:7
+Type error: Type '{ 
+__tag__: "DELETE"; 
+__param_position__: 
+"first"; __param_type__: { 
+params: { id: string; }; 
+}; }' does not satisfy the 
+constraint 
+'ParamCheck<Request | 
+NextRequest>'.
+  Types of property 
+'__param_type__' are 
+incompatible.
+    Type '{ params: { id: 
+string; }; }' is not 
+assignable to type 
+'Request | NextRequest'.
+
+[0m [90m 226 |[39m     
+[33mDiff[39m[33m<[39m[0
+m
+[0m [90m 227 |[39m      
+ [33mParamCheck[39m[33m<
+[39m[33mRequest[39m 
+[33m|[39m [33mNextReques
+t[39m[33m>[39m[33m,[39
+m[0m
+[0m[31m[1m>[22m[39m[9
+0m 228 |[39m       {[0m
+[0m [90m     |[39m      
+ [31m[1m^[22m[39m[0m
+[0m [90m 229 |[39m      
+   __tag__[33m:[39m 
+[32m'DELETE'[39m[0m
+[0m [90m 230 |[39m      
+   __param_position__[33m:
+[39m [32m'first'[39m[0m
+[0m [90m 231 |[39m      
+   
+__param_type__[33m:[39m 
+[33mFirstArg[39m[33m<[39
+m[33mMaybeField[39m[33m<
+[39m[33mTEntry[39m[33m,
+[39m [32m'DELETE'[39m[3
+3m>>[39m[0m
+Next.js build worker 
+exited with code: 1 and 
+signal: null
