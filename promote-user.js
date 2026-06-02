@@ -11,7 +11,7 @@ async function main() {
     console.log("Using DATABASE_URL:", process.env.DATABASE_URL);
     try {
         const user = await prisma.user.update({
-            where: { email: "admin@nairobimart.com" },
+            where: { email: "yaaclarence@gmail.com" },
             data: { role: "admin" },
         });
         console.log("Successfully promoted user:", user.email, "New role:", user.role);
