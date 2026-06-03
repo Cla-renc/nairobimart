@@ -38,6 +38,7 @@ export default function CheckoutPage() {
         county: "Nairobi",
     });
     const [paymentMethod, setPaymentMethod] = useState("");
+    const [paymentType, setPaymentType] = useState<"FULL" | "LAYBY">("FULL");
 
     const [deliveryMethod, setDeliveryMethod] = useState<"door" | "pickup">("door");
     const [deliveryOptions, setDeliveryOptions] = useState<{ zones: any[], stations: any[] }>({ zones: [], stations: [] });
@@ -87,6 +88,10 @@ export default function CheckoutPage() {
     })();
 
     const isMpesaAvailable = deliveryInfo.country === "Kenya";
+
+    const finalTotal = visibleTotalPrice + shippingFee;
+    const laybyDeposit = Math.round(finalTotal * 0.3);
+    const laybyBalance = finalTotal - laybyDeposit;
 
     useEffect(() => {
         setIsMounted(true);
@@ -140,6 +145,7 @@ export default function CheckoutPage() {
                     totalPrice,
                     deliveryInfo,
                     paymentMethod,
+                    paymentType,
                     deliveryMethod,
                     deliveryZoneId: deliveryMethod === "door" ? selectedZoneId : null,
                     pickupStationId: deliveryMethod === "pickup" ? selectedStationId : null,
@@ -374,6 +380,29 @@ export default function CheckoutPage() {
                                     <h2 className="text-2xl font-bold text-primary flex items-center">
                                         <CreditCard className="mr-2 h-6 w-6 text-accent" /> Payment Method
                                     </h2>
+
+                                    <div className="bg-white p-4 rounded-xl border border-input mb-6">
+                                        <Label className="text-base font-bold mb-3 block">Payment Plan</Label>
+                                        <RadioGroup
+                                            value={paymentType}
+                                            onValueChange={(val: "FULL" | "LAYBY") => setPaymentType(val)}
+                                            className="grid grid-cols-1 md:grid-cols-2 gap-4"
+                                        >
+                                            <div className={`flex items-center space-x-3 border rounded-lg p-3 cursor-pointer transition-colors ${paymentType === "FULL" ? "border-primary bg-primary/5" : "hover:border-accent"}`}>
+                                                <RadioGroupItem value="FULL" id="FULL" />
+                                                <Label htmlFor="FULL" className="cursor-pointer font-bold flex-1">Pay in Full</Label>
+                                            </div>
+                                            <div className={`flex flex-col border rounded-lg p-3 cursor-pointer transition-colors ${paymentType === "LAYBY" ? "border-primary bg-primary/5" : "hover:border-accent"}`}>
+                                                <div className="flex items-center space-x-3">
+                                                    <RadioGroupItem value="LAYBY" id="LAYBY" />
+                                                    <Label htmlFor="LAYBY" className="cursor-pointer font-bold flex-1">Lipa Mdogo Mdogo</Label>
+                                                </div>
+                                                <p className="text-xs text-muted-foreground mt-2 ml-7">Lock your order with a 30% deposit today.</p>
+                                            </div>
+                                        </RadioGroup>
+                                    </div>
+
+                                    <Label className="text-base font-bold mb-3 block mt-6">Select Payment Channel</Label>
                                     <RadioGroup
                                         value={paymentMethod}
                                         onValueChange={(val) => setPaymentMethod(val)}
@@ -443,6 +472,12 @@ export default function CheckoutPage() {
                                                             ? `Pick-up Station (${deliveryOptions.stations.find(s => s.id === selectedStationId)?.name})` 
                                                             : `Door Delivery (${deliveryOptions.zones.find(z => z.id === selectedZoneId)?.name})`)
                                                         : "International Shipping"}
+                                                </span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="font-bold">Payment Plan:</span>
+                                                <span className="text-right">
+                                                    {paymentType === "FULL" ? "Pay in Full" : "Lipa Mdogo Mdogo (30% Deposit)"}
                                                 </span>
                                             </div>
                                             <div className="flex justify-between">
@@ -531,8 +566,20 @@ export default function CheckoutPage() {
                                 </div>
                                 <div className="flex justify-between text-lg font-bold pt-2 border-t">
                                     <span>Total</span>
-                                    <span className="text-accent">KES {(visibleTotalPrice + shippingFee).toLocaleString()}</span>
+                                    <span className="text-accent">KES {finalTotal.toLocaleString()}</span>
                                 </div>
+                                {paymentType === "LAYBY" && (
+                                    <>
+                                        <div className="flex justify-between text-sm pt-2">
+                                            <span>Required Deposit (30%)</span>
+                                            <span className="font-bold text-orange-600">KES {laybyDeposit.toLocaleString()}</span>
+                                        </div>
+                                        <div className="flex justify-between text-sm">
+                                            <span>Balance Due</span>
+                                            <span className="font-medium">KES {laybyBalance.toLocaleString()}</span>
+                                        </div>
+                                    </>
+                                )}
                             </div>
 
                             <div className="pt-4">

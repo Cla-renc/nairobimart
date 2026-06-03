@@ -159,10 +159,27 @@ model Order {
   createdAt          DateTime    @default(now())
   updatedAt          DateTime    @updatedAt
 
+  paymentType        String      @default("FULL") // "FULL" or "LAYBY"
+  depositAmount      Float?      
+  balanceRemaining   Float?      
+
   userId             String?     @db.ObjectId
   user               User?       @relation(fields: [userId], references: [id])
   items              OrderItem[]
   reviews            Review[]
+  installments       PaymentInstallment[]
+}
+
+model PaymentInstallment {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  orderId       String   @db.ObjectId
+  order         Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  amount        Float
+  paymentMethod String
+  paymentStatus String   // "pending", "completed", "failed"
+  transactionId String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
 
 model DeliveryZone {

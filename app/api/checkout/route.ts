@@ -4,7 +4,7 @@ import prisma from "@/lib/prisma";
 
 export async function POST(req: Request) {
     try {
-        const { items, totalPrice, deliveryInfo, paymentMethod, deliveryMethod, deliveryZoneId, pickupStationId, shippingFee: frontendShippingFee } = await req.json();
+        const { items, totalPrice, deliveryInfo, paymentMethod, paymentType, deliveryMethod, deliveryZoneId, pickupStationId, shippingFee: frontendShippingFee } = await req.json();
 
         console.log("=== CHECKOUT REQUEST ===");
         console.log("Payment Method:", paymentMethod);
@@ -47,6 +47,17 @@ export async function POST(req: Request) {
             )
         );
 
+        const orderTotal = totalPrice + shippingFee;
+        let depositAmount = null;
+        let balanceRemaining = null;
+        let amountToCharge = orderTotal;
+
+        if (paymentType === "LAYBY") {
+            depositAmount = Math.round(orderTotal * 0.3);
+            balanceRemaining = orderTotal - depositAmount;
+            amountToCharge = depositAmount;
+        }
+
         // 2. Create Order with its Items in one transaction
         const orderNumber = `ORD-${Math.floor(Math.random() * 100000).toString()}`;
         const order = await prisma.order.create({
@@ -54,8 +65,11 @@ export async function POST(req: Request) {
                 orderNumber,
                 subtotal: totalPrice,
                 shippingFee,
-                total: totalPrice + shippingFee,
+                total: orderTotal,
                 paymentMethod,
+                paymentType: paymentType || "FULL",
+                depositAmount,
+                balanceRemaining,
                 shippingName: `${deliveryInfo.firstName} ${deliveryInfo.lastName}`,
                 shippingPhone: deliveryInfo.phone,
                 shippingAddress: deliveryInfo.address,
@@ -70,6 +84,13 @@ export async function POST(req: Request) {
                 items: {
                     create: resolvedItems.filter((i) => i.productId), // skip any bad refs
                 },
+                installments: {
+                    create: [{
+                        amount: amountToCharge,
+                        paymentMethod,
+                        paymentStatus: "pending"
+                    }]
+                }
             },
         });
 
@@ -94,8 +115,7 @@ export async function POST(req: Request) {
                 order.id,
                 deliveryInfo.email,
                 deliveryInfo.phone,
-                shippingFee,
-                totalPrice,
+                amountToCharge,
                 deliveryInfo.firstName,
                 deliveryInfo.lastName
             );

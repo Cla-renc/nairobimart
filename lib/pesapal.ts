@@ -127,8 +127,7 @@ export const createPesaPalCheckout = async (
     orderId: string,
     customerEmail: string,
     customerPhone: string,
-    shippingFee: number = 500,
-    totalAmount: number,
+    amountToCharge: number,
     customerFirstName: string = "Customer",
     customerLastName: string = "Order"
 ) => {
@@ -156,7 +155,7 @@ export const createPesaPalCheckout = async (
         const requestBody = {
             id: orderId,
             currency: "KES",
-            amount: totalAmount + shippingFee,
+            amount: amountToCharge,
             description: `NairobiMart Order #${orderId}`,
             callback_url: `${baseUrl}/order-success?id=${orderId}&payment=pesapal`,
             notification_id: notification_id,
