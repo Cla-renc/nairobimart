@@ -39,6 +39,11 @@ export default function CheckoutPage() {
     });
     const [paymentMethod, setPaymentMethod] = useState("");
 
+    const [deliveryMethod, setDeliveryMethod] = useState<"door" | "pickup">("door");
+    const [deliveryOptions, setDeliveryOptions] = useState<{ zones: any[], stations: any[] }>({ zones: [], stations: [] });
+    const [selectedZoneId, setSelectedZoneId] = useState<string>("");
+    const [selectedStationId, setSelectedStationId] = useState<string>("");
+
     const countryPlaceholders: Record<string, { phone: string; city: string; address: string; county?: string }> = {
         Kenya: {
             phone: "+254 700 000 000",
@@ -67,7 +72,19 @@ export default function CheckoutPage() {
     const router = useRouter();
     const totalPrice = getTotalPrice();
     const visibleTotalPrice = isMounted ? totalPrice : 0;
-    const shippingFee = 500; // Mock shipping fee
+    
+    const shippingFee = (() => {
+        if (deliveryInfo.country !== "Kenya") return 1500; // Flat international fee
+        if (deliveryMethod === "door" && selectedZoneId) {
+            const zone = deliveryOptions.zones.find(z => z.id === selectedZoneId);
+            return zone ? zone.fee : 500;
+        }
+        if (deliveryMethod === "pickup" && selectedStationId) {
+            const station = deliveryOptions.stations.find(s => s.id === selectedStationId);
+            return station ? station.fee : 50;
+        }
+        return 500;
+    })();
 
     const isMpesaAvailable = deliveryInfo.country === "Kenya";
 
@@ -75,6 +92,17 @@ export default function CheckoutPage() {
         setIsMounted(true);
         // Default to pesapal (Visa) if no payment method has been chosen yet
         setPaymentMethod((prev) => prev || "pesapal");
+
+        fetch("/api/delivery-options")
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    setDeliveryOptions({ zones: data.zones, stations: data.stations });
+                    if (data.zones.length > 0) setSelectedZoneId(data.zones[0].id);
+                    if (data.stations.length > 0) setSelectedStationId(data.stations[0].id);
+                }
+            })
+            .catch(err => console.error("Failed to load delivery options", err));
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => {
@@ -112,6 +140,10 @@ export default function CheckoutPage() {
                     totalPrice,
                     deliveryInfo,
                     paymentMethod,
+                    deliveryMethod,
+                    deliveryZoneId: deliveryMethod === "door" ? selectedZoneId : null,
+                    pickupStationId: deliveryMethod === "pickup" ? selectedStationId : null,
+                    shippingFee, // send calculated fee to verify
                 }),
             });
 
@@ -174,6 +206,62 @@ export default function CheckoutPage() {
                                     <h2 className="text-2xl font-bold text-primary flex items-center">
                                         <MapPin className="mr-2 h-6 w-6 text-accent" /> Delivery Information
                                     </h2>
+
+                                    {deliveryInfo.country === "Kenya" && (
+                                        <div className="bg-white p-4 rounded-xl border border-input mb-6">
+                                            <Label className="text-base font-bold mb-3 block">Choose Delivery Method</Label>
+                                            <RadioGroup
+                                                value={deliveryMethod}
+                                                onValueChange={(val: "door" | "pickup") => setDeliveryMethod(val)}
+                                                className="grid grid-cols-1 md:grid-cols-2 gap-4"
+                                            >
+                                                <div className={`flex items-center space-x-3 border rounded-lg p-3 cursor-pointer transition-colors ${deliveryMethod === "door" ? "border-primary bg-primary/5" : "hover:border-accent"}`}>
+                                                    <RadioGroupItem value="door" id="door" />
+                                                    <Label htmlFor="door" className="cursor-pointer font-bold flex-1">Door Delivery</Label>
+                                                </div>
+                                                <div className={`flex items-center space-x-3 border rounded-lg p-3 cursor-pointer transition-colors ${deliveryMethod === "pickup" ? "border-primary bg-primary/5" : "hover:border-accent"}`}>
+                                                    <RadioGroupItem value="pickup" id="pickup" />
+                                                    <Label htmlFor="pickup" className="cursor-pointer font-bold flex-1">Pick-up Station</Label>
+                                                </div>
+                                            </RadioGroup>
+
+                                            {deliveryMethod === "door" && deliveryOptions.zones.length > 0 && (
+                                                <div className="mt-4 pt-4 border-t space-y-2">
+                                                    <Label htmlFor="zone">Select your Delivery Zone</Label>
+                                                    <select
+                                                        id="zone"
+                                                        value={selectedZoneId}
+                                                        onChange={(e) => setSelectedZoneId(e.target.value)}
+                                                        className="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground"
+                                                    >
+                                                        {deliveryOptions.zones.map(zone => (
+                                                            <option key={zone.id} value={zone.id}>
+                                                                {zone.name} (KES {zone.fee})
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                            )}
+
+                                            {deliveryMethod === "pickup" && deliveryOptions.stations.length > 0 && (
+                                                <div className="mt-4 pt-4 border-t space-y-2">
+                                                    <Label htmlFor="station">Select a Pick-up Station</Label>
+                                                    <select
+                                                        id="station"
+                                                        value={selectedStationId}
+                                                        onChange={(e) => setSelectedStationId(e.target.value)}
+                                                        className="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground"
+                                                    >
+                                                        {deliveryOptions.stations.map(station => (
+                                                            <option key={station.id} value={station.id}>
+                                                                {station.name} - {station.city} (KES {station.fee})
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div className="space-y-2 md:col-span-2">
                                             <Label htmlFor="country">Country</Label>
@@ -346,6 +434,16 @@ export default function CheckoutPage() {
                                             <div className="flex justify-between">
                                                 <span className="font-bold">Delivery to:</span>
                                                 <span className="text-right">{deliveryInfo.firstName} {deliveryInfo.lastName}, {deliveryInfo.city}...</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="font-bold">Method:</span>
+                                                <span className="text-right">
+                                                    {deliveryInfo.country === "Kenya" 
+                                                        ? (deliveryMethod === "pickup" 
+                                                            ? `Pick-up Station (${deliveryOptions.stations.find(s => s.id === selectedStationId)?.name})` 
+                                                            : `Door Delivery (${deliveryOptions.zones.find(z => z.id === selectedZoneId)?.name})`)
+                                                        : "International Shipping"}
+                                                </span>
                                             </div>
                                             <div className="flex justify-between">
                                                 <span className="font-bold">Payment Method:</span>

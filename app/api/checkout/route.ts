@@ -4,13 +4,28 @@ import prisma from "@/lib/prisma";
 
 export async function POST(req: Request) {
     try {
-        const { items, totalPrice, deliveryInfo, paymentMethod } = await req.json();
+        const { items, totalPrice, deliveryInfo, paymentMethod, deliveryMethod, deliveryZoneId, pickupStationId, shippingFee: frontendShippingFee } = await req.json();
 
         console.log("=== CHECKOUT REQUEST ===");
         console.log("Payment Method:", paymentMethod);
+        console.log("Delivery Method:", deliveryMethod);
         console.log("Items Count:", items.length);
         console.log("Total Price:", totalPrice);
         console.log("=== END REQUEST ===");
+
+        // Verify shipping fee from database to prevent tampering
+        let shippingFee = 500;
+        if (deliveryInfo.country === "Kenya") {
+            if (deliveryMethod === "door" && deliveryZoneId) {
+                const zone = await prisma.deliveryZone.findUnique({ where: { id: deliveryZoneId } });
+                shippingFee = zone ? zone.fee : 500;
+            } else if (deliveryMethod === "pickup" && pickupStationId) {
+                const station = await prisma.pickupStation.findUnique({ where: { id: pickupStationId } });
+                shippingFee = station ? station.fee : 50;
+            }
+        } else {
+            shippingFee = 1500;
+        }
 
         // 1. Resolve product IDs from slugs (cart stores productId which is the DB id)
         const resolvedItems = await Promise.all(
@@ -34,7 +49,6 @@ export async function POST(req: Request) {
 
         // 2. Create Order with its Items in one transaction
         const orderNumber = `ORD-${Math.floor(Math.random() * 100000).toString()}`;
-        const shippingFee = 500;
         const order = await prisma.order.create({
             data: {
                 orderNumber,
@@ -48,6 +62,8 @@ export async function POST(req: Request) {
                 shippingCity: deliveryInfo.city,
                 shippingCounty: deliveryInfo.county,
                 shippingCountry: deliveryInfo.country,
+                deliveryZoneId: deliveryZoneId || null,
+                pickupStationId: pickupStationId || null,
                 mpesaTillNumber: deliveryInfo.tillNumber || null,
                 paymentStatus: "pending",
                 status: "pending",
