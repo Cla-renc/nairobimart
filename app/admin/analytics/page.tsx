@@ -15,6 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { startOfMonth, endOfMonth, subMonths } from "date-fns";
 import { cn } from "@/lib/utils";
+import AnalyticsCharts from "./AnalyticsCharts";
 
 export default async function AnalyticsPage() {
     // Current month sales
@@ -144,48 +145,7 @@ export default async function AnalyticsPage() {
                 </Card>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <Card className="border-none shadow-sm min-h-[400px]">
-                    <CardHeader>
-                        <CardTitle>Revenue Forecast</CardTitle>
-                        <CardDescription>Estimated revenue for the next 7 days based on current trends.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="flex items-center justify-center p-8">
-                        {/* Placeholder for actual chart */}
-                        <div className="text-center">
-                            <TrendingUp className="h-16 w-16 text-primary/20 mx-auto mb-4" />
-                            <p className="text-sm text-muted-foreground">Chart visual will appear here as more data is collected.</p>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                <Card className="border-none shadow-sm min-h-[400px]">
-                    <CardHeader>
-                        <CardTitle>Top Categories</CardTitle>
-                        <CardDescription>Best performing product categories by sales volume.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="space-y-6 mt-4">
-                            {[
-                                { name: "Electronics", val: 45, color: "bg-blue-500" },
-                                { name: "Accessories", val: 32, color: "bg-purple-500" },
-                                { name: "Fashion", val: 28, color: "bg-accent" },
-                                { name: "Home & Garden", val: 15, color: "bg-orange-500" },
-                            ].map((cat) => (
-                                <div key={cat.name} className="space-y-2">
-                                    <div className="flex justify-between text-sm">
-                                        <span className="font-bold">{cat.name}</span>
-                                        <span className="text-muted-foreground">{cat.val}%</span>
-                                    </div>
-                                    <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
-                                        <div className={cn("h-full", cat.color)} style={{ width: `${cat.val}%` }} />
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </CardContent>
-                </Card>
-            </div>
+            <AnalyticsCharts />
         </div>
     );
 }

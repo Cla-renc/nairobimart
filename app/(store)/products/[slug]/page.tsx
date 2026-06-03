@@ -40,6 +40,12 @@ export default async function ProductDetailPage({ params }: { params: { slug: st
         notFound();
     }
 
+    const reviews = await prisma.review.findMany({
+        where: { productId: product.id, isApproved: true },
+        include: { user: { select: { name: true, image: true } } },
+        orderBy: { createdAt: 'desc' }
+    });
+
     // Related products (same category, excluding current)
     const relatedProductsDb = await prisma.product.findMany({
         where: {
@@ -55,6 +61,7 @@ export default async function ProductDetailPage({ params }: { params: { slug: st
         <ProductDetailClient
             product={JSON.parse(JSON.stringify(product))}
             relatedProducts={JSON.parse(JSON.stringify(relatedProductsDb))}
+            reviews={JSON.parse(JSON.stringify(reviews))}
         />
     );
 }

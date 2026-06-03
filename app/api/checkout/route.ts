@@ -58,6 +58,15 @@ export async function POST(req: Request) {
             amountToCharge = depositAmount;
         }
 
+        // Add userId if user is logged in (needed for wallet)
+        const { auth } = await import("@/auth");
+        const session = await auth();
+        let userId = null;
+        if (session?.user?.email) {
+            const user = await prisma.user.findUnique({ where: { email: session.user.email } });
+            if (user) userId = user.id;
+        }
+
         // 2. Create Order with its Items in one transaction
         const orderNumber = `ORD-${Math.floor(Math.random() * 100000).toString()}`;
         const order = await prisma.order.create({
@@ -79,6 +88,7 @@ export async function POST(req: Request) {
                 deliveryZoneId: deliveryZoneId || null,
                 pickupStationId: pickupStationId || null,
                 mpesaTillNumber: deliveryInfo.tillNumber || null,
+                userId,
                 paymentStatus: "pending",
                 status: "pending",
                 items: {
@@ -94,8 +104,53 @@ export async function POST(req: Request) {
             },
         });
 
-        // 3. Initiate Payment via Pesapal (handles both M-Pesa and Card)
-        console.log("Processing payment via Pesapal for method:", paymentMethod);
+        // 3. Initiate Payment
+        console.log("Processing payment for method:", paymentMethod);
+
+        if (paymentMethod === "wallet") {
+            if (!userId) {
+                return NextResponse.json({ success: false, message: "Must be logged in to use wallet" }, { status: 401 });
+            }
+
+            const user = await prisma.user.findUnique({ where: { id: userId } });
+            if (!user || user.walletBalance < amountToCharge) {
+                return NextResponse.json({ success: false, message: "Insufficient wallet balance" }, { status: 400 });
+            }
+
+            // Deduct balance and create transaction
+            await prisma.user.update({
+                where: { id: userId },
+                data: {
+                    walletBalance: { decrement: amountToCharge },
+                    walletTransactions: {
+                        create: {
+                            amount: amountToCharge,
+                            type: "PAYMENT",
+                            status: "COMPLETED",
+                            reference: `PAY-${orderNumber}`
+                        }
+                    }
+                }
+            });
+
+            // Update order and installment status
+            await prisma.order.update({
+                where: { id: order.id },
+                data: { paymentStatus: "paid" }
+            });
+
+            await prisma.paymentInstallment.updateMany({
+                where: { orderId: order.id },
+                data: { paymentStatus: "completed" }
+            });
+
+            return NextResponse.json({
+                success: true,
+                orderId: order.id,
+                type: "wallet",
+                url: `/success?order_id=${order.id}`
+            });
+        }
 
         if (paymentMethod === "mpesa" || paymentMethod === "pesapal") {
             console.log("Initiating Pesapal checkout — supports M-Pesa and Card");

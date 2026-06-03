@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -42,6 +42,19 @@ interface ProductDetail {
     isFeatured?: boolean;
 }
 
+interface Review {
+    id: string;
+    rating: number;
+    title: string | null;
+    body: string;
+    videoUrl: string | null;
+    createdAt: string;
+    user: {
+        name: string | null;
+        image: string | null;
+    };
+}
+
 interface RelatedProduct {
     id: string;
     name: string;
@@ -54,15 +67,27 @@ interface RelatedProduct {
 
 export default function ProductDetailClient({
     product,
-    relatedProducts
+    relatedProducts,
+    reviews = []
 }: {
     product: ProductDetail,
-    relatedProducts: RelatedProduct[]
+    relatedProducts: RelatedProduct[],
+    reviews?: Review[]
 }) {
     const [selectedImage, setSelectedImage] = useState(0);
     const [selectedVariant, setSelectedVariant] = useState(product.variants?.[0]?.value || "");
     const [quantity, setQuantity] = useState(1);
     const addItem = useCartStore((state) => state.addItem);
+
+    useEffect(() => {
+        if (!product?.id) return;
+        // Fire and forget
+        fetch('/api/user/recently-viewed', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ productId: product.id })
+        }).catch(err => console.error("Failed to log product view", err));
+    }, [product?.id]);
 
     const images = product.images?.length > 0
         ? product.images.map((img) => img.url)
@@ -402,38 +427,104 @@ export default function ProductDetailClient({
                     </TabsContent>
 
                     <TabsContent value="reviews" className="py-12">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-12 items-center">
-                            <div className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-12 items-start">
+                            <div className="space-y-4 sticky top-24">
                                 <h4 className="text-xl font-black text-primary uppercase tracking-tight">Customer Reviews</h4>
                                 <div className="flex items-center space-x-4">
-                                    <div className="text-5xl font-black text-primary">0.0</div>
+                                    <div className="text-5xl font-black text-primary">
+                                        {reviews.length > 0 ? (reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length).toFixed(1) : "0.0"}
+                                    </div>
                                     <div>
                                         <div className="flex items-center">
                                             {Array.from({ length: 5 }).map((_, i) => (
-                                                <Star key={i} className="h-4 w-4 fill-muted text-muted" />
+                                                <Star key={i} className={`h-4 w-4 ${i < (reviews.length > 0 ? Math.round(reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length) : 0) ? "fill-accent text-accent" : "fill-muted text-muted"}`} />
                                             ))}
                                         </div>
-                                        <p className="text-xs text-muted-foreground font-bold uppercase mt-1">0 Verified reviews</p>
+                                        <p className="text-xs text-muted-foreground font-bold uppercase mt-1">{reviews.length} Verified reviews</p>
                                     </div>
                                 </div>
-                            </div>
+                                
+                                <div className="space-y-2 pt-4">
+                                    {[5, 4, 3, 2, 1].map((star) => {
+                                        const count = reviews.filter(r => r.rating === star).length;
+                                        const percentage = reviews.length > 0 ? (count / reviews.length) * 100 : 0;
+                                        return (
+                                            <div key={star} className="flex items-center space-x-3">
+                                                <span className="text-xs font-bold w-4">{star}</span>
+                                                <Star className="h-3 w-3 fill-accent text-accent" />
+                                                <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                                                    <div className={`h-full bg-accent`} style={{ width: `${percentage}%` }} />
+                                                </div>
+                                                <span className="text-xs text-muted-foreground w-4">{count}</span>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
 
-                            <div className="space-y-2">
-                                {[5, 4, 3, 2, 1].map((star) => (
-                                    <div key={star} className="flex items-center space-x-3">
-                                        <span className="text-xs font-bold w-4">{star}</span>
-                                        <Star className="h-3 w-3 fill-muted text-muted" />
-                                        <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
-                                            <div className="h-full bg-accent w-0" />
-                                        </div>
-                                        <span className="text-xs text-muted-foreground w-4">0</span>
+                                <div className="pt-6 space-y-4">
+                                    <p className="text-sm text-muted-foreground font-medium italic">Have you used this product?</p>
+                                    <Button className="bg-primary hover:bg-primary/95 text-white font-black px-10 h-14 w-full rounded-full uppercase tracking-widest text-xs shadow-lg shadow-primary/20">Write a Review</Button>
+                                </div>
+                            </div>
+                            
+                            <div className="md:col-span-2 space-y-8">
+                                {reviews.length === 0 ? (
+                                    <div className="text-center py-12 bg-muted/20 rounded-2xl border-2 border-dashed">
+                                        <p className="text-muted-foreground font-medium">No reviews yet. Be the first to share your experience!</p>
                                     </div>
-                                ))}
-                            </div>
-
-                            <div className="text-center space-y-4">
-                                <p className="text-sm text-muted-foreground font-medium italic">Have you used this product?</p>
-                                <Button className="bg-primary hover:bg-primary/95 text-white font-black px-10 h-14 rounded-full uppercase tracking-widest text-xs shadow-lg shadow-primary/20">Write a Review</Button>
+                                ) : (
+                                    <div className="space-y-6">
+                                        {/* Video Reviews Feed */}
+                                        {reviews.some(r => r.videoUrl) && (
+                                            <div className="mb-8">
+                                                <h5 className="font-bold text-primary mb-4 flex items-center">
+                                                    <span className="h-2 w-2 rounded-full bg-red-500 mr-2 animate-pulse" />
+                                                    Video Reviews
+                                                </h5>
+                                                <div className="flex overflow-x-auto gap-4 pb-4 snap-x">
+                                                    {reviews.filter(r => r.videoUrl).map((review) => (
+                                                        <div key={`video-${review.id}`} className="min-w-[200px] w-[200px] aspect-[9/16] bg-black rounded-xl overflow-hidden relative snap-center shadow-md">
+                                                            <video 
+                                                                src={review.videoUrl!} 
+                                                                className="w-full h-full object-cover opacity-80 hover:opacity-100 transition-opacity cursor-pointer"
+                                                                controls
+                                                            />
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                        
+                                        {/* Text Reviews */}
+                                        {reviews.map((review) => (
+                                            <div key={review.id} className="bg-white p-6 rounded-2xl border shadow-sm">
+                                                <div className="flex justify-between items-start mb-4">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
+                                                            {review.user?.name?.charAt(0) || "U"}
+                                                        </div>
+                                                        <div>
+                                                            <p className="font-bold text-sm">{review.user?.name || "Verified Customer"}</p>
+                                                            <div className="flex items-center mt-1">
+                                                                {Array.from({ length: 5 }).map((_, i) => (
+                                                                    <Star key={i} className={`h-3 w-3 ${i < review.rating ? "fill-accent text-accent" : "fill-muted text-muted"}`} />
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <span className="text-xs text-muted-foreground">{new Date(review.createdAt).toLocaleDateString()}</span>
+                                                </div>
+                                                {review.title && <h5 className="font-bold text-primary mb-2">{review.title}</h5>}
+                                                <p className="text-sm text-muted-foreground leading-relaxed">{review.body}</p>
+                                                {review.videoUrl && (
+                                                    <div className="mt-4">
+                                                        <Badge variant="outline" className="bg-red-50 text-red-600 border-red-200">Includes Video</Badge>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </TabsContent>

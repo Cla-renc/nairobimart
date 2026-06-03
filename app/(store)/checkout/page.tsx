@@ -8,7 +8,8 @@ import {
     CheckCircle2,
     ChevronRight,
     ArrowLeft,
-    Smartphone
+    Smartphone,
+    Wallet
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -428,6 +429,23 @@ export default function CheckoutPage() {
                                             </div>
                                         )}
                                         <div className="flex items-center space-x-4 border rounded-xl p-4 bg-white hover:border-accent transition-colors cursor-pointer">
+                                            <RadioGroupItem value="wallet" id="wallet" />
+                                            <Label htmlFor="wallet" className="flex-1 cursor-pointer">
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center space-x-3">
+                                                        <div className="bg-purple-100 p-2 rounded-lg">
+                                                            <Wallet className="h-6 w-6 text-purple-600" />
+                                                        </div>
+                                                        <div>
+                                                            <p className="font-bold">NairobiMart Wallet</p>
+                                                            <p className="text-xs text-muted-foreground">Instant zero-fee checkout using your wallet balance</p>
+                                                        </div>
+                                                    </div>
+                                                    <span className="text-xs uppercase font-bold text-purple-600 bg-purple-50 px-2 py-1 rounded-full">Instant</span>
+                                                </div>
+                                            </Label>
+                                        </div>
+                                        <div className="flex items-center space-x-4 border rounded-xl p-4 bg-white hover:border-accent transition-colors cursor-pointer">
                                             <RadioGroupItem value="pesapal" id="pesapal" />
                                             <Label htmlFor="pesapal" className="flex-1 cursor-pointer">
                                                 <div className="flex items-center justify-between">
@@ -484,6 +502,7 @@ export default function CheckoutPage() {
                                                 <span className="font-bold">Payment Method:</span>
                                                 <span className="text-right">
                                                     {paymentMethod === "mpesa" ? "M-Pesa via Pesapal" :
+                                                        paymentMethod === "wallet" ? "NairobiMart Wallet" :
                                                         paymentMethod === "pesapal" ? "Card (Visa/Mastercard) via Pesapal" : "Unknown"}
                                                 </span>
                                             </div>

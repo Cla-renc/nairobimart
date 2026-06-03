@@ -1,6 +1,7 @@
 import HeroBanner from "@/components/store/HeroBanner";
 import ProductCard from "@/components/store/ProductCard";
 import FlashSaleCountdown from "@/components/store/FlashSaleCountdown";
+import RecommendedProducts from "@/components/store/RecommendedProducts";
 
 export const dynamic = "force-dynamic";
 import { Button } from "@/components/ui/button";
@@ -211,6 +212,9 @@ export default async function HomePage() {
                     </div>
                 </div>
             </section>
+
+            {/* AI Recommendations */}
+            <RecommendedProducts />
 
             {/* Promotional Section */}
             <section className="py-12">

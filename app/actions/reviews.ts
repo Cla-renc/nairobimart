@@ -9,6 +9,7 @@ export async function submitReview(data: {
     rating: number;
     title?: string;
     body: string;
+    videoUrl?: string;
 }) {
     const session = await auth();
 
@@ -55,6 +56,7 @@ export async function submitReview(data: {
                 rating: data.rating,
                 title: data.title,
                 body: data.body,
+                videoUrl: data.videoUrl,
                 productId: data.productId,
                 userId: session.user.id,
                 orderId: completedOrder.id,

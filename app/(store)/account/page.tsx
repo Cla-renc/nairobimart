@@ -12,7 +12,8 @@ import {
     ChevronRight,
     MapPin,
     CreditCard,
-    ShoppingBag
+    ShoppingBag,
+    Wallet
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,6 +21,7 @@ import { buttonVariants } from "@/lib/button-variants";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import DailyCheckInButton from "./DailyCheckInButton";
 
 interface ExtendedUser {
     id: string;
@@ -45,11 +47,19 @@ export default async function AccountPage() {
     }
 
     // Fetch real orders from database
+    const dbUser = await prisma.user.findUnique({
+        where: { email: user.email! }
+    });
+
     const orders = await prisma.order.findMany({
         where: { userId: user.id },
         orderBy: { createdAt: 'desc' },
         take: 5
     });
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const hasCheckedIn = dbUser?.lastCheckInDate ? dbUser.lastCheckInDate >= today : false;
 
     const pendingOrdersCount = orders.filter(o => o.status === 'pending' || o.status === 'processing').length;
 
@@ -127,10 +137,18 @@ export default async function AccountPage() {
                                             </p>
                                         </div>
                                     </div>
+                                    <div className="flex justify-between items-center bg-primary/5 p-3 rounded-xl mt-6 border border-primary/10">
+                                        <div>
+                                            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Loyalty Points</p>
+                                            <p className="text-2xl font-extrabold text-accent">{dbUser?.loyaltyPoints || 0}</p>
+                                        </div>
+                                        <div>
+                                            <DailyCheckInButton hasCheckedIn={hasCheckedIn} />
+                                        </div>
+                                    </div>
                                 </div>
                             </CardContent>
                         </Card>
-                        {/* Shortcurts Section remains same but I'll skip re-typing it if possible */}
                         <Card className="border-none shadow-sm pb-2">
                             <CardHeader className="pb-2">
                                 <CardTitle className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Shortcuts</CardTitle>
@@ -145,21 +163,21 @@ export default async function AccountPage() {
                                     </div>
                                     <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:translate-x-1 transition-transform" />
                                 </Link>
-                                <Link href="#" className="flex items-center justify-between p-3 rounded-xl hover:bg-primary/5 group transition-colors">
+                                <Link href="/account/wallet" className="flex items-center justify-between p-3 rounded-xl hover:bg-primary/5 group transition-colors">
                                     <div className="flex items-center gap-3">
-                                        <div className="p-2 rounded-lg bg-accent/10 text-accent">
-                                            <MapPin className="h-4 w-4" />
+                                        <div className="p-2 rounded-lg bg-purple-100 text-purple-600">
+                                            <Wallet className="h-4 w-4" />
                                         </div>
-                                        <span className="font-semibold text-sm">Shipping Addresses</span>
+                                        <span className="font-semibold text-sm">NairobiMart Wallet</span>
                                     </div>
                                     <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:translate-x-1 transition-transform" />
                                 </Link>
                                 <Link href="#" className="flex items-center justify-between p-3 rounded-xl hover:bg-primary/5 group transition-colors">
                                     <div className="flex items-center gap-3">
                                         <div className="p-2 rounded-lg bg-accent/10 text-accent">
-                                            <CreditCard className="h-4 w-4" />
+                                            <MapPin className="h-4 w-4" />
                                         </div>
-                                        <span className="font-semibold text-sm">Payment Methods</span>
+                                        <span className="font-semibold text-sm">Shipping Addresses</span>
                                     </div>
                                     <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:translate-x-1 transition-transform" />
                                 </Link>
