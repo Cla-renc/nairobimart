@@ -56,11 +56,11 @@ export async function GET(req: Request) {
                 price: item.product.price,
             });
             return acc;
-        }, {} as Record<string, { user: any; items: any[] }>);
+        }, {} as Record<string, { user: { id: string; name: string | null; email: string | null; phone: string | null }; items: { productName: string; quantity: number; price: number }[] }>);
 
         // Process each abandoned cart
         const results = [];
-        for (const [userId, data] of Object.entries(cartsByUser)) {
+        for (const [_userId, data] of Object.entries(cartsByUser)) {
             const message = `Hey ${data.user.name || 'there'}, you left ${data.items.length} item(s) in your cart! Complete your purchase at NairobiMart and get 5% off with code CART5.`;
             
             if (data.user.phone) {

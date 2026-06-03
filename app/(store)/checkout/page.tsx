@@ -42,6 +42,7 @@ export default function CheckoutPage() {
     const [paymentType, setPaymentType] = useState<"FULL" | "LAYBY">("FULL");
 
     const [deliveryMethod, setDeliveryMethod] = useState<"door" | "pickup">("door");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [deliveryOptions, setDeliveryOptions] = useState<{ zones: any[], stations: any[] }>({ zones: [], stations: [] });
     const [selectedZoneId, setSelectedZoneId] = useState<string>("");
     const [selectedStationId, setSelectedStationId] = useState<string>("");

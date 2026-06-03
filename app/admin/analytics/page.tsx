@@ -11,10 +11,9 @@ import {
     Calendar,
     Filter
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { startOfMonth, endOfMonth, subMonths } from "date-fns";
-import { cn } from "@/lib/utils";
 import AnalyticsCharts from "./AnalyticsCharts";
 
 export default async function AnalyticsPage() {

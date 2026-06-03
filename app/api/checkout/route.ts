@@ -4,7 +4,7 @@ import prisma from "@/lib/prisma";
 
 export async function POST(req: Request) {
     try {
-        const { items, totalPrice, deliveryInfo, paymentMethod, paymentType, deliveryMethod, deliveryZoneId, pickupStationId, shippingFee: frontendShippingFee } = await req.json();
+        const { items, totalPrice, deliveryInfo, paymentMethod, paymentType, deliveryMethod, deliveryZoneId, pickupStationId } = await req.json();
 
         console.log("=== CHECKOUT REQUEST ===");
         console.log("Payment Method:", paymentMethod);

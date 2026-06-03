@@ -45,10 +45,11 @@ export default function DepositForm() {
 
             setAmount("");
             router.refresh();
-        } catch (error: any) {
+        } catch (error) {
+            const err = error as Error;
             toast({
                 title: "Deposit Failed",
-                description: error.message,
+                description: err.message,
                 variant: "destructive",
             });
         } finally {

@@ -16,8 +16,8 @@ import { Loader2 } from "lucide-react";
 
 export default function AnalyticsCharts() {
     const [data, setData] = useState<{
-        revenueData: any[];
-        topProducts: any[];
+        revenueData: { date: string; revenue: number }[];
+        topProducts: { name: string; sales: number }[];
         abandonmentRate: number;
     } | null>(null);
 

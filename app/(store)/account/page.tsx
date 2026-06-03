@@ -11,7 +11,6 @@ import {
     Package,
     ChevronRight,
     MapPin,
-    CreditCard,
     ShoppingBag,
     Wallet
 } from "lucide-react";

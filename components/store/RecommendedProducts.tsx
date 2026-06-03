@@ -3,10 +3,9 @@
 import { useEffect, useState } from "react";
 import ProductCard from "@/components/store/ProductCard";
 import { Sparkles, Loader2 } from "lucide-react";
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
 
 export default function RecommendedProducts() {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [products, setProducts] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
@@ -15,6 +14,7 @@ export default function RecommendedProducts() {
             .then(res => res.json())
             .then(data => {
                 if (data.success && data.products) {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     setProducts(data.products.map((p: any) => ({
                         id: p.id,
                         name: p.name,

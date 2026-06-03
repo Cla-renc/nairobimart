@@ -28,10 +28,11 @@ export default function DailyCheckInButton({ hasCheckedIn }: { hasCheckedIn: boo
             });
 
             router.refresh();
-        } catch (error: any) {
+        } catch (error) {
+            const err = error as Error;
             toast({
                 title: "Check-in failed",
-                description: error.message,
+                description: err.message,
                 variant: "destructive"
             });
         } finally {
