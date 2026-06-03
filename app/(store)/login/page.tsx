@@ -190,7 +190,7 @@ export default function LoginPage() {
                         <Button
                             variant="outline"
                             className="w-full h-11 border-muted hover:bg-muted/50 font-semibold"
-                            onClick={() => signIn("google")}
+                            onClick={() => signIn("google", { callbackUrl: "/" })}
                             disabled={isLoading}
                         >
                             <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
