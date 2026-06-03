@@ -185,6 +185,9 @@ const Navbar = ({ user }: NavbarProps) => {
                                         <DropdownMenuItem asChild>
                                             <Link href="/account/orders" className="cursor-pointer w-full">My Orders</Link>
                                         </DropdownMenuItem>
+                                        <DropdownMenuItem asChild>
+                                            <Link href="/account/wallet" className="cursor-pointer w-full font-bold text-accent">Wallet Dashboard</Link>
+                                        </DropdownMenuItem>
                                         {user.role === "admin" && (
                                             <DropdownMenuItem asChild>
                                                 <Link href="/admin" className="cursor-pointer w-full">Admin Dashboard</Link>

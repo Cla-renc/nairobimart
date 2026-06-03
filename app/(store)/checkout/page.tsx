@@ -21,6 +21,7 @@ import { useCartStore } from "@/store/cartStore";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 
 const steps = ["Delivery", "Payment", "Review"];
 
@@ -439,7 +440,10 @@ export default function CheckoutPage() {
                                                         </div>
                                                         <div>
                                                             <p className="font-bold">NairobiMart Wallet</p>
-                                                            <p className="text-xs text-muted-foreground">Instant zero-fee checkout using your wallet balance</p>
+                                                            <p className="text-xs text-muted-foreground">Instant zero-fee checkout using your wallet balance.</p>
+                                                            <Link href="/account/wallet" className="text-xs text-accent font-bold mt-1 inline-block hover:underline">
+                                                                Go to Wallet Dashboard
+                                                            </Link>
                                                         </div>
                                                     </div>
                                                     <span className="text-xs uppercase font-bold text-purple-600 bg-purple-50 px-2 py-1 rounded-full">Instant</span>

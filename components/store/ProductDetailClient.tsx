@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ChevronDown } from "lucide-react";
 import { useCartStore } from "@/store/cartStore";
 import ProductCard from "@/components/store/ProductCard";
 import { Separator } from "@/components/ui/separator";
@@ -161,7 +161,7 @@ export default function ProductDetailClient({
                         </div>
                     </div>
 
-                    <div className="flex items-baseline space-x-3">
+                    <div className="flex items-baseline space-x-3 flex-wrap gap-y-2">
                         <span className="text-4xl font-bold text-primary">KES {product.price.toLocaleString()}</span>
                         {product.comparePrice && (
                             <>
@@ -169,6 +169,9 @@ export default function ProductDetailClient({
                                 <Badge className="bg-red-500 text-white border-none font-bold italic">SAVE {savings}%</Badge>
                             </>
                         )}
+                        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 ml-auto">
+                            Lipa Mdogo Mdogo Available
+                        </Badge>
                     </div>
 
                     <div className="p-5 rounded-2xl bg-orange-50 border border-orange-100 text-orange-900 shadow-sm">
@@ -260,37 +263,14 @@ export default function ProductDetailClient({
                 </div>
             </div>
 
-            {/* Tabs & Full Description */}
-            <div className="mt-20">
-                <Tabs defaultValue="description" className="w-full">
-                    <TabsList className="w-full h-16 flex justify-start gap-4 bg-muted/40 p-2 rounded-2xl mb-8 border backdrop-blur-sm">
-                        <TabsTrigger
-                            value="description"
-                            className="flex-1 max-w-[200px] h-full rounded-xl text-xs md:text-sm font-black uppercase tracking-widest transition-all
-                                       data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-md
-                                       text-muted-foreground hover:bg-white/50"
-                        >
-                            Description
-                        </TabsTrigger>
-                        <TabsTrigger
-                            value="specs"
-                            className="flex-1 max-w-[200px] h-full rounded-xl text-xs md:text-sm font-black uppercase tracking-widest transition-all
-                                       data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-md
-                                       text-muted-foreground hover:bg-white/50"
-                        >
-                            Specifications
-                        </TabsTrigger>
-                        <TabsTrigger
-                            value="reviews"
-                            className="flex-1 max-w-[200px] h-full rounded-xl text-xs md:text-sm font-black uppercase tracking-widest transition-all
-                                       data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-md
-                                       text-muted-foreground hover:bg-white/50"
-                        >
-                            Reviews (0)
-                        </TabsTrigger>
-                    </TabsList>
-
-                    <TabsContent value="description" className="py-12">
+            {/* Accordion Style Details */}
+            <div className="mt-20 space-y-4">
+                <details className="group border rounded-2xl bg-white shadow-sm overflow-hidden" open>
+                    <summary className="flex cursor-pointer items-center justify-between p-6 bg-muted/40 font-black uppercase tracking-widest text-primary hover:bg-muted/60 transition-colors list-none [&::-webkit-details-marker]:hidden">
+                        Description
+                        <ChevronDown className="h-5 w-5 transition-transform group-open:rotate-180" />
+                    </summary>
+                    <div className="p-8 md:p-12 border-t">
                         <div className="flex flex-col lg:flex-row gap-8">
                             <div className="flex-1 bg-white rounded-3xl p-8 md:p-12 border shadow-sm">
                                 <h3 className="text-2xl font-black text-primary mb-8 uppercase tracking-tight flex items-center">
@@ -377,9 +357,15 @@ export default function ProductDetailClient({
                                 </div>
                             </div>
                         </div>
-                    </TabsContent>
+                    </div>
+                </details>
 
-                    <TabsContent value="specs" className="py-12">
+                <details className="group border rounded-2xl bg-white shadow-sm overflow-hidden">
+                    <summary className="flex cursor-pointer items-center justify-between p-6 bg-muted/40 font-black uppercase tracking-widest text-primary hover:bg-muted/60 transition-colors list-none [&::-webkit-details-marker]:hidden">
+                        Specifications
+                        <ChevronDown className="h-5 w-5 transition-transform group-open:rotate-180" />
+                    </summary>
+                    <div className="p-8 md:p-12 border-t">
                         <div className="bg-white rounded-3xl p-8 md:p-12 border shadow-sm">
                             <h3 className="text-2xl font-black text-primary mb-8 uppercase tracking-tight flex items-center">
                                 Technical Specifications
@@ -424,9 +410,15 @@ export default function ProductDetailClient({
                                 })()}
                             </div>
                         </div>
-                    </TabsContent>
+                    </div>
+                </details>
 
-                    <TabsContent value="reviews" className="py-12">
+                <details className="group border rounded-2xl bg-white shadow-sm overflow-hidden">
+                    <summary className="flex cursor-pointer items-center justify-between p-6 bg-muted/40 font-black uppercase tracking-widest text-primary hover:bg-muted/60 transition-colors list-none [&::-webkit-details-marker]:hidden">
+                        Reviews ({reviews.length})
+                        <ChevronDown className="h-5 w-5 transition-transform group-open:rotate-180" />
+                    </summary>
+                    <div className="p-8 md:p-12 border-t">
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-12 items-start">
                             <div className="space-y-4 sticky top-24">
                                 <h4 className="text-xl font-black text-primary uppercase tracking-tight">Customer Reviews</h4>
@@ -527,8 +519,8 @@ export default function ProductDetailClient({
                                 )}
                             </div>
                         </div>
-                    </TabsContent>
-                </Tabs>
+                    </div>
+                </details>
             </div>
 
             {/* Related Products */}
