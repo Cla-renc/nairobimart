@@ -10,7 +10,7 @@ export async function POST(req: Request) {
         }
 
         const body = await req.json();
-        const { amount, phone: _phone } = body;
+        const { amount } = body;
 
         if (!amount || amount <= 0) {
             return NextResponse.json({ success: false, message: "Invalid amount" }, { status: 400 });

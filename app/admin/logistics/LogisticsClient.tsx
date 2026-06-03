@@ -89,7 +89,7 @@ export default function LogisticsClient({ initialZones, initialStations }: { ini
                 toast({ title: "Zone created successfully" });
             }
             setIsZoneModalOpen(false);
-        } catch (_error) {
+        } catch {
             toast({ title: "Error saving zone", variant: "destructive" });
         } finally {
             setIsLoading(false);
@@ -103,7 +103,7 @@ export default function LogisticsClient({ initialZones, initialStations }: { ini
             if (!res.ok) throw new Error("Failed to delete");
             setZones(zones.filter((z) => z.id !== id));
             toast({ title: "Zone deleted successfully" });
-        } catch (_error) {
+        } catch {
             toast({ title: "Error deleting zone", variant: "destructive" });
         }
     };
@@ -131,7 +131,7 @@ export default function LogisticsClient({ initialZones, initialStations }: { ini
                 toast({ title: "Station created successfully" });
             }
             setIsStationModalOpen(false);
-        } catch (_error) {
+        } catch {
             toast({ title: "Error saving station", variant: "destructive" });
         } finally {
             setIsLoading(false);
@@ -145,7 +145,7 @@ export default function LogisticsClient({ initialZones, initialStations }: { ini
             if (!res.ok) throw new Error("Failed to delete");
             setStations(stations.filter((s) => s.id !== id));
             toast({ title: "Station deleted successfully" });
-        } catch (_error) {
+        } catch {
             toast({ title: "Error deleting station", variant: "destructive" });
         }
     };

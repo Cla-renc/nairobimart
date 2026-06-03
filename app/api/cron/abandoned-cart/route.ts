@@ -60,7 +60,7 @@ export async function GET(req: Request) {
 
         // Process each abandoned cart
         const results = [];
-        for (const [_userId, data] of Object.entries(cartsByUser)) {
+        for (const data of Object.values(cartsByUser)) {
             const message = `Hey ${data.user.name || 'there'}, you left ${data.items.length} item(s) in your cart! Complete your purchase at NairobiMart and get 5% off with code CART5.`;
             
             if (data.user.phone) {
