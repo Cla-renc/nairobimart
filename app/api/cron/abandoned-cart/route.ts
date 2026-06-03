@@ -59,7 +59,7 @@ export async function GET(req: Request) {
         }, {} as Record<string, { user: { id: string; name: string | null; email: string | null; phone: string | null }; items: { productName: string; quantity: number; price: number }[] }>);
 
         // Process each abandoned cart
-        const results = [];
+        const results: { email: string | null; phone: string | null; sent: boolean; itemsCount: number }[] = [];
         for (const data of Object.values(cartsByUser)) {
             const message = `Hey ${data.user.name || 'there'}, you left ${data.items.length} item(s) in your cart! Complete your purchase at NairobiMart and get 5% off with code CART5.`;
             

@@ -63,7 +63,7 @@ export default function AnalyticsCharts() {
                             <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#888' }} tickFormatter={(val) => `KES ${val}`} dx={-10} />
                             <Tooltip 
                                 contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
-                                formatter={(value: number) => [`KES ${value.toLocaleString()}`, 'Revenue']}
+                                formatter={(value) => [`KES ${Number(value).toLocaleString()}`, 'Revenue']}
                             />
                             <Line type="monotone" dataKey="revenue" stroke="#f97316" strokeWidth={3} dot={{ r: 4, fill: '#f97316', strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 6 }} />
                         </LineChart>

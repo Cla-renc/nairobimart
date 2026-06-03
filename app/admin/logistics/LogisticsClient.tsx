@@ -23,8 +23,23 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export default function LogisticsClient({ initialZones, initialStations }: { initialZones: any[], initialStations: any[] }) {
+interface Zone {
+    id: string;
+    name: string;
+    fee: number | string;
+    isActive: boolean;
+}
+
+interface Station {
+    id: string;
+    name: string;
+    address: string;
+    city: string;
+    fee: number | string;
+    isActive: boolean;
+}
+
+export default function LogisticsClient({ initialZones, initialStations }: { initialZones: Zone[], initialStations: Station[] }) {
     const [zones, setZones] = useState(initialZones);
     const [stations, setStations] = useState(initialStations);
     const [isLoading, setIsLoading] = useState(false);
@@ -32,18 +47,15 @@ export default function LogisticsClient({ initialZones, initialStations }: { ini
 
     // Zone Modal State
     const [isZoneModalOpen, setIsZoneModalOpen] = useState(false);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const [editingZone, setEditingZone] = useState<any>(null);
+    const [editingZone, setEditingZone] = useState<Zone | null>(null);
     const [zoneFormData, setZoneFormData] = useState({ name: "", fee: "", isActive: true });
 
     // Station Modal State
     const [isStationModalOpen, setIsStationModalOpen] = useState(false);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const [editingStation, setEditingStation] = useState<any>(null);
+    const [editingStation, setEditingStation] = useState<Station | null>(null);
     const [stationFormData, setStationFormData] = useState({ name: "", address: "", city: "Nairobi", fee: "", isActive: true });
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const openZoneModal = (zone: any = null) => {
+    const openZoneModal = (zone: Zone | null = null) => {
         if (zone) {
             setEditingZone(zone);
             setZoneFormData({ name: zone.name, fee: zone.fee.toString(), isActive: zone.isActive });
@@ -54,8 +66,7 @@ export default function LogisticsClient({ initialZones, initialStations }: { ini
         setIsZoneModalOpen(true);
     };
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const openStationModal = (station: any = null) => {
+    const openStationModal = (station: Station | null = null) => {
         if (station) {
             setEditingStation(station);
             setStationFormData({ name: station.name, address: station.address, city: station.city, fee: station.fee.toString(), isActive: station.isActive });
@@ -82,7 +93,7 @@ export default function LogisticsClient({ initialZones, initialStations }: { ini
 
             const { zone } = await res.json();
             if (editingZone) {
-                setZones(zones.map((z) => z.id === zone.id ? zone : z));
+                setZones(zones.map((z: Zone) => z.id === zone.id ? zone : z));
                 toast({ title: "Zone updated successfully" });
             } else {
                 setZones([...zones, zone]);
@@ -101,7 +112,7 @@ export default function LogisticsClient({ initialZones, initialStations }: { ini
         try {
             const res = await fetch(`/api/admin/delivery-zones/${id}`, { method: "DELETE" });
             if (!res.ok) throw new Error("Failed to delete");
-            setZones(zones.filter((z) => z.id !== id));
+            setZones(zones.filter((z: Zone) => z.id !== id));
             toast({ title: "Zone deleted successfully" });
         } catch {
             toast({ title: "Error deleting zone", variant: "destructive" });
@@ -124,7 +135,7 @@ export default function LogisticsClient({ initialZones, initialStations }: { ini
 
             const { station } = await res.json();
             if (editingStation) {
-                setStations(stations.map((s) => s.id === station.id ? station : s));
+                setStations(stations.map((s: Station) => s.id === station.id ? station : s));
                 toast({ title: "Station updated successfully" });
             } else {
                 setStations([...stations, station]);
@@ -143,7 +154,7 @@ export default function LogisticsClient({ initialZones, initialStations }: { ini
         try {
             const res = await fetch(`/api/admin/pickup-stations/${id}`, { method: "DELETE" });
             if (!res.ok) throw new Error("Failed to delete");
-            setStations(stations.filter((s) => s.id !== id));
+            setStations(stations.filter((s: Station) => s.id !== id));
             toast({ title: "Station deleted successfully" });
         } catch {
             toast({ title: "Error deleting station", variant: "destructive" });
