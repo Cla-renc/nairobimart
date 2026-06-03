@@ -26,12 +26,16 @@ import {
 } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import {
+    Truck
+} from "lucide-react";
 
 const adminNavItems = [
     { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
     { name: "Storefront", href: "/", icon: ShoppingBag },
     { name: "Products", href: "/admin/products", icon: Package },
     { name: "Orders", href: "/admin/orders", icon: ShoppingBag },
+    { name: "Logistics", href: "/admin/logistics", icon: Truck },
     { name: "Customers", href: "/admin/customers", icon: Users },
     { name: "Categories", href: "/admin/categories", icon: Grid },
     { name: "Coupons", href: "/admin/coupons", icon: Tag },

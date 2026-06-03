@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { sendSMS } from "@/lib/sms";
 
 export async function GET(
     _request: NextRequest,
@@ -42,6 +43,9 @@ export async function PATCH(
         const body = await request.json();
         const { status, paymentStatus, trackingNumber, trackingUrl, notes } = body;
 
+        const currentOrder = await prisma.order.findUnique({ where: { id: params.id } });
+        if (!currentOrder) return NextResponse.json({ error: "Order not found" }, { status: 404 });
+
         const updateData: Record<string, string> = {};
         if (status) updateData.status = status;
         if (paymentStatus) updateData.paymentStatus = paymentStatus;
@@ -53,6 +57,21 @@ export async function PATCH(
             where: { id: params.id },
             data: updateData,
         });
+
+        // Send SMS if status changed
+        if (status && status !== currentOrder.status) {
+            let message = "";
+            if (status === "shipped") {
+                message = `Hi ${order.shippingName}, your NairobiMart order ${order.orderNumber} has been shipped!`;
+                if (trackingUrl) message += ` Track it here: ${trackingUrl}`;
+            } else if (status === "delivered") {
+                message = `Hi ${order.shippingName}, your NairobiMart order ${order.orderNumber} has been delivered. Thank you for shopping with us!`;
+            }
+
+            if (message && order.shippingPhone) {
+                await sendSMS(order.shippingPhone, message);
+            }
+        }
 
         return NextResponse.json(order);
     } catch (error) {

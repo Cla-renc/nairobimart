@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { sendSMS } from '@/lib/sms';
 
 // This is to secure the cron route from public access.
 // Vercel will send a CRON_SECRET header if configured.
@@ -60,14 +61,17 @@ export async function GET(req: Request) {
         // Process each abandoned cart
         const results = [];
         for (const [userId, data] of Object.entries(cartsByUser)) {
-            // Mock email/WhatsApp sending
-            const message = `Hey ${data.user.name || 'there'}, you left ${data.items.length} item(s) in your cart! Complete your purchase now and get 5% off with code CART5.`;
+            const message = `Hey ${data.user.name || 'there'}, you left ${data.items.length} item(s) in your cart! Complete your purchase at NairobiMart and get 5% off with code CART5.`;
             
-            console.log(`[CRON - Abandoned Cart] Sending reminder to ${data.user.email}: ${message}`);
+            if (data.user.phone) {
+                await sendSMS(data.user.phone, message);
+            } else {
+                console.log(`[MOCK EMAIL to ${data.user.email}]: ${message}`);
+            }
             
-            // Here you would integrate Resend (Email) or Africa's Talking / Twilio (SMS/WhatsApp)
             results.push({
                 email: data.user.email,
+                phone: data.user.phone,
                 sent: true,
                 itemsCount: data.items.length
             });

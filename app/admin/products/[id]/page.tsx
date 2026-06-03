@@ -33,6 +33,9 @@ export default async function EditProductPage({
         category: product.category?.name || "",
         status: product.isActive ? "Active" : "Draft",
         cjProductId: product.cjProductId || "",
+        isFlashSale: product.isFlashSale,
+        flashSalePrice: product.flashSalePrice || 0,
+        flashSaleEndsAt: product.flashSaleEndsAt ? new Date(product.flashSaleEndsAt).toISOString().slice(0, 16) : "",
     };
 
     return (

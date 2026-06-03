@@ -41,7 +41,10 @@ export async function PATCH(
             stock,
             category,
             status,
-            cjProductId
+            cjProductId,
+            isFlashSale,
+            flashSalePrice,
+            flashSaleEndsAt
         } = body;
 
         // Find or create category
@@ -68,6 +71,9 @@ export async function PATCH(
                 categoryId: dbCategory.id,
                 isActive: status === "Active",
                 cjProductId: cjProductId || null,
+                isFlashSale: isFlashSale ?? false,
+                flashSalePrice: flashSalePrice ? parseFloat(flashSalePrice) : null,
+                flashSaleEndsAt: flashSaleEndsAt ? new Date(flashSaleEndsAt) : null,
             },
         });
 

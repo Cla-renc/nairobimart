@@ -33,6 +33,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useState } from "react";
+import { Switch } from "@/components/ui/switch";
 import Link from "next/link";
 
 const productSchema = z.object({
@@ -46,6 +47,9 @@ const productSchema = z.object({
     category: z.string().min(1, "Category is required"),
     status: z.string().min(1, "Status is required"),
     cjProductId: z.string().optional().or(z.literal("")),
+    isFlashSale: z.boolean().optional(),
+    flashSalePrice: z.number().optional(),
+    flashSaleEndsAt: z.string().optional().or(z.literal("")),
 });
 
 type ProductFormValues = z.infer<typeof productSchema>;
@@ -71,6 +75,9 @@ const ProductForm = ({ initialData, productId }: { initialData?: Partial<Product
             category: initialData?.category || "",
             status: initialData?.status || "Active",
             cjProductId: initialData?.cjProductId || "",
+            isFlashSale: initialData?.isFlashSale || false,
+            flashSalePrice: initialData?.flashSalePrice || 0,
+            flashSaleEndsAt: initialData?.flashSaleEndsAt || "",
         },
     });
 
@@ -272,6 +279,67 @@ const ProductForm = ({ initialData, productId }: { initialData?: Partial<Product
                                         </FormItem>
                                     )}
                                 />
+                            </CardContent>
+                        </Card>
+
+                        {/* Flash Sale Configuration */}
+                        <Card className="border-none shadow-sm bg-red-50/50 ring-1 ring-red-100">
+                            <CardHeader>
+                                <CardTitle className="text-red-600">Flash Sale Configuration</CardTitle>
+                                <CardDescription>Set up a limited-time offer for this product.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-6">
+                                <FormField
+                                    control={form.control}
+                                    name="isFlashSale"
+                                    render={({ field }) => (
+                                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 bg-white">
+                                            <div className="space-y-0.5">
+                                                <FormLabel className="text-base font-bold">Enable Flash Sale</FormLabel>
+                                                <FormDescription>
+                                                    Show this product in the homepage flash sales section.
+                                                </FormDescription>
+                                            </div>
+                                            <FormControl>
+                                                <Switch
+                                                    checked={field.value}
+                                                    onCheckedChange={field.onChange}
+                                                />
+                                            </FormControl>
+                                        </FormItem>
+                                    )}
+                                />
+
+                                {form.watch("isFlashSale") && (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 border rounded-lg bg-white mt-4">
+                                        <FormField
+                                            control={form.control}
+                                            name="flashSalePrice"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Flash Sale Price (KES)</FormLabel>
+                                                    <FormControl>
+                                                        <Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value))} />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                        <FormField
+                                            control={form.control}
+                                            name="flashSaleEndsAt"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Ends At (Date & Time)</FormLabel>
+                                                    <FormControl>
+                                                        <Input type="datetime-local" {...field} />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </div>
+                                )}
                             </CardContent>
                         </Card>
                     </div>
