@@ -1,5 +1,6 @@
 import HeroBanner from "@/components/store/HeroBanner";
 import ProductCard from "@/components/store/ProductCard";
+import FlashSaleCountdown from "@/components/store/FlashSaleCountdown";
 
 export const dynamic = "force-dynamic";
 import { Button } from "@/components/ui/button";
@@ -16,7 +17,8 @@ import {
     ArrowRight,
     ShoppingBag,
     Package,
-    LucideIcon
+    LucideIcon,
+    Clock
 } from "lucide-react";
 
 const ICON_MAP: Record<string, LucideIcon> = {
@@ -95,6 +97,31 @@ export default async function HomePage() {
         isSale: !!p.comparePrice
     }));
 
+    // Fetch flash sale products
+    const flashSaleProductsDb = await prisma.product.findMany({
+        where: { isFlashSale: true, isActive: true },
+        take: 4,
+        include: {
+            images: true,
+            category: true,
+        },
+        orderBy: { flashSaleEndsAt: 'asc' }
+    });
+
+    const flashSaleProducts = flashSaleProductsDb.map(p => ({
+        id: p.id,
+        name: p.name,
+        slug: p.slug,
+        price: p.flashSalePrice ?? p.price,
+        comparePrice: p.price,
+        image: p.images?.[0]?.url || "/images/placeholder.jpg",
+        category: p.category?.name || "Uncategorized",
+        rating: 4.5,
+        isFeatured: p.isFeatured,
+        isSale: true,
+        flashSaleEndsAt: p.flashSaleEndsAt?.toISOString()
+    }));
+
     return (
         <div className="flex flex-col min-h-screen">
             <HeroBanner banners={banners} />
@@ -124,6 +151,34 @@ export default async function HomePage() {
                     </div>
                 </div>
             </section>
+
+            {/* Flash Sales Section */}
+            {flashSaleProducts.length > 0 && (
+                <section className="py-12 bg-red-50/50">
+                    <div className="container px-4">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
+                            <div className="flex items-center gap-4">
+                                <h2 className="text-3xl font-extrabold text-red-600 flex items-center">
+                                    <Clock className="mr-2 h-8 w-8" /> Flash Sales
+                                </h2>
+                                {flashSaleProducts[0].flashSaleEndsAt && (
+                                    <FlashSaleCountdown endsAt={flashSaleProducts[0].flashSaleEndsAt} />
+                                )}
+                            </div>
+                            <Link href="/products?filter=flash_sale">
+                                <Button variant="outline" className="border-red-600 text-red-600 hover:bg-red-600 hover:text-white">
+                                    View All Deals
+                                </Button>
+                            </Link>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+                            {flashSaleProducts.map((product) => (
+                                <ProductCard key={product.id} product={product} />
+                            ))}
+                        </div>
+                    </div>
+                </section>
+            )}
 
             {/* Featured Products Section */}
             <section className="py-16">

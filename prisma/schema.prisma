@@ -42,6 +42,7 @@ model User {
   defaultAddress String?
   defaultCity    String?
   defaultCounty  String?
+  loyaltyPoints  Int       @default(0)
   role          UserRole  @default(customer)
   emailVerified DateTime?
   image         String?
@@ -71,6 +72,9 @@ model Product {
   weight          Float?
   isActive        Boolean  @default(true)
   isFeatured      Boolean  @default(false)
+  isFlashSale     Boolean  @default(false)
+  flashSalePrice  Float?
+  flashSaleEndsAt DateTime?
   tags            String[]
   metaTitle       String?
   metaDescription String?
