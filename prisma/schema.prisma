@@ -39,6 +39,9 @@ model User {
   email         String    @unique
   passwordHash  String?
   phone         String?
+  defaultAddress String?
+  defaultCity    String?
+  defaultCounty  String?
   role          UserRole  @default(customer)
   emailVerified DateTime?
   image         String?
