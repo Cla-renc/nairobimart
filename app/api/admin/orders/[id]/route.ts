@@ -62,10 +62,14 @@ export async function PATCH(
         if (status && status !== currentOrder.status) {
             let message = "";
             if (status === "shipped") {
-                message = `Hi ${order.shippingName}, your NairobiMart order ${order.orderNumber} has been shipped!`;
-                if (trackingUrl) message += ` Track it here: ${trackingUrl}`;
+                const waybill = trackingNumber || currentOrder.trackingNumber || "N/A";
+                const url = trackingUrl || currentOrder.trackingUrl;
+                
+                message = `Hi ${order.shippingName}, your NairobiMart order ${order.orderNumber} has been dispatched. Waybill/Tracking Number: ${waybill}.`;
+                if (url) message += ` Track your package here: ${url}`;
+                else message += ` Expected arrival: 1-3 days.`;
             } else if (status === "delivered") {
-                message = `Hi ${order.shippingName}, your NairobiMart order ${order.orderNumber} has been delivered. Thank you for shopping with us!`;
+                message = `Hi ${order.shippingName}, your NairobiMart order ${order.orderNumber} has been successfully delivered. Thank you for shopping with us!`;
             }
 
             if (message && order.shippingPhone) {

@@ -40,7 +40,7 @@ export default function CheckoutPage() {
         county: "Nairobi",
     });
     const [paymentMethod, setPaymentMethod] = useState("");
-    const [paymentType, setPaymentType] = useState<"FULL" | "LAYBY">("FULL");
+    const [paymentType, setPaymentType] = useState<"FULL" | "LAYBY" | "COMMITMENT">("FULL");
 
     const [deliveryMethod, setDeliveryMethod] = useState<"door" | "pickup">("door");
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -95,6 +95,8 @@ export default function CheckoutPage() {
     const finalTotal = visibleTotalPrice + shippingFee;
     const laybyDeposit = Math.round(finalTotal * 0.3);
     const laybyBalance = finalTotal - laybyDeposit;
+    const commitmentDeposit = shippingFee > 0 ? shippingFee : 500;
+    const commitmentBalance = finalTotal - commitmentDeposit;
 
     useEffect(() => {
         setIsMounted(true);
@@ -411,8 +413,8 @@ export default function CheckoutPage() {
                                         <Label className="text-base font-bold mb-3 block">Payment Plan</Label>
                                         <RadioGroup
                                             value={paymentType}
-                                            onValueChange={(val: "FULL" | "LAYBY") => setPaymentType(val)}
-                                            className="grid grid-cols-1 md:grid-cols-2 gap-4"
+                                            onValueChange={(val: "FULL" | "LAYBY" | "COMMITMENT") => setPaymentType(val)}
+                                            className="grid grid-cols-1 md:grid-cols-3 gap-4"
                                         >
                                             <div className={`flex items-center space-x-3 border rounded-lg p-3 cursor-pointer transition-colors ${paymentType === "FULL" ? "border-primary bg-primary/5" : "hover:border-accent"}`}>
                                                 <RadioGroupItem value="FULL" id="FULL" />
@@ -423,7 +425,14 @@ export default function CheckoutPage() {
                                                     <RadioGroupItem value="LAYBY" id="LAYBY" />
                                                     <Label htmlFor="LAYBY" className="cursor-pointer font-bold flex-1">Lipa Mdogo Mdogo</Label>
                                                 </div>
-                                                <p className="text-xs text-muted-foreground mt-2 ml-7">Lock your order with a 30% deposit today.</p>
+                                                <p className="text-xs text-muted-foreground mt-2 ml-7">Lock your order with a 30% deposit.</p>
+                                            </div>
+                                            <div className={`flex flex-col border rounded-lg p-3 cursor-pointer transition-colors ${paymentType === "COMMITMENT" ? "border-primary bg-primary/5" : "hover:border-accent"}`}>
+                                                <div className="flex items-center space-x-3">
+                                                    <RadioGroupItem value="COMMITMENT" id="COMMITMENT" />
+                                                    <Label htmlFor="COMMITMENT" className="cursor-pointer font-bold flex-1">Pay on Delivery</Label>
+                                                </div>
+                                                <p className="text-xs text-muted-foreground mt-2 ml-7">Pay shipping now, item cost on delivery.</p>
                                             </div>
                                         </RadioGroup>
                                     </div>
@@ -521,7 +530,9 @@ export default function CheckoutPage() {
                                             <div className="flex justify-between">
                                                 <span className="font-bold">Payment Plan:</span>
                                                 <span className="text-right">
-                                                    {paymentType === "FULL" ? "Pay in Full" : "Lipa Mdogo Mdogo (30% Deposit)"}
+                                                    {paymentType === "FULL" ? "Pay in Full" : 
+                                                     paymentType === "LAYBY" ? "Lipa Mdogo Mdogo (30% Deposit)" : 
+                                                     "Pay on Delivery (Shipping Commitment)"}
                                                 </span>
                                             </div>
                                             <div className="flex justify-between">
@@ -622,6 +633,18 @@ export default function CheckoutPage() {
                                         <div className="flex justify-between text-sm">
                                             <span>Balance Due</span>
                                             <span className="font-medium">KES {laybyBalance.toLocaleString()}</span>
+                                        </div>
+                                    </>
+                                )}
+                                {paymentType === "COMMITMENT" && (
+                                    <>
+                                        <div className="flex justify-between text-sm pt-2">
+                                            <span>Commitment Fee (Due Now)</span>
+                                            <span className="font-bold text-orange-600">KES {commitmentDeposit.toLocaleString()}</span>
+                                        </div>
+                                        <div className="flex justify-between text-sm">
+                                            <span>Balance Due on Delivery</span>
+                                            <span className="font-medium">KES {commitmentBalance.toLocaleString()}</span>
                                         </div>
                                     </>
                                 )}

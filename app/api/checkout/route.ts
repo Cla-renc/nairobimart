@@ -58,6 +58,11 @@ export async function POST(req: Request) {
             depositAmount = Math.round(orderTotal * 0.3);
             balanceRemaining = orderTotal - depositAmount;
             amountToCharge = depositAmount;
+        } else if (paymentType === "COMMITMENT") {
+            // Commitment fee is exactly the shipping fee to cover courier risk
+            depositAmount = shippingFee > 0 ? shippingFee : 500;
+            balanceRemaining = orderTotal - depositAmount;
+            amountToCharge = depositAmount;
         }
 
         // Add userId if user is logged in (needed for wallet)
