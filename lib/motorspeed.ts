@@ -56,6 +56,7 @@ export async function getMotorspeedQuote(request: ShippingQuoteRequest): Promise
             fee: data.shipping_fee,
             estimatedDays: data.estimated_delivery_time || "2-4 days"
         };
+    } catch (error) {
         console.error("Failed to fetch Motorspeed quote:", error);
         return {
             success: false,
