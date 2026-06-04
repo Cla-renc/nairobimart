@@ -45,7 +45,6 @@ export default function CheckoutPage() {
     const [deliveryMethod, setDeliveryMethod] = useState<"door" | "pickup">("door");
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [deliveryOptions, setDeliveryOptions] = useState<{ zones: any[], stations: any[] }>({ zones: [], stations: [] });
-    const [selectedZoneId, setSelectedZoneId] = useState<string>("");
     const [selectedStationId, setSelectedStationId] = useState<string>("");
     const [courierFee, setCourierFee] = useState<number | null>(null);
     const [isCalculatingCourier, setIsCalculatingCourier] = useState(false);
@@ -107,7 +106,6 @@ export default function CheckoutPage() {
             .then(data => {
                 if (data.success) {
                     setDeliveryOptions({ zones: data.zones, stations: data.stations });
-                    if (data.zones.length > 0) setSelectedZoneId(data.zones[0].id);
                     if (data.stations.length > 0) setSelectedStationId(data.stations[0].id);
                 }
             })
