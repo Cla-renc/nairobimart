@@ -47,6 +47,9 @@ export default function CheckoutPage() {
     const [deliveryOptions, setDeliveryOptions] = useState<{ zones: any[], stations: any[] }>({ zones: [], stations: [] });
     const [selectedZoneId, setSelectedZoneId] = useState<string>("");
     const [selectedStationId, setSelectedStationId] = useState<string>("");
+    const [courierFee, setCourierFee] = useState<number | null>(null);
+    const [isCalculatingCourier, setIsCalculatingCourier] = useState(false);
+    const [estimatedDays, setEstimatedDays] = useState<string | null>(null);
 
     const countryPlaceholders: Record<string, { phone: string; city: string; address: string; county?: string }> = {
         Kenya: {
@@ -78,10 +81,8 @@ export default function CheckoutPage() {
     const visibleTotalPrice = isMounted ? totalPrice : 0;
     
     const shippingFee = (() => {
-        if (deliveryInfo.country !== "Kenya") return 1500; // Flat international fee
-        if (deliveryMethod === "door" && selectedZoneId) {
-            const zone = deliveryOptions.zones.find(z => z.id === selectedZoneId);
-            return zone ? zone.fee : 500;
+        if (deliveryMethod === "door") {
+            return courierFee ?? 500;
         }
         if (deliveryMethod === "pickup" && selectedStationId) {
             const station = deliveryOptions.stations.find(s => s.id === selectedStationId);
@@ -112,6 +113,31 @@ export default function CheckoutPage() {
             })
             .catch(err => console.error("Failed to load delivery options", err));
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Dynamic Courier Fee Calculation
+    useEffect(() => {
+        if (deliveryMethod === "door" && deliveryInfo.county && deliveryInfo.city && deliveryInfo.country) {
+            setIsCalculatingCourier(true);
+            fetch("/api/delivery-options/quote", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    country: deliveryInfo.country,
+                    county: deliveryInfo.county,
+                    city: deliveryInfo.city,
+                })
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    setCourierFee(data.fee);
+                    setEstimatedDays(data.estimatedDays);
+                }
+            })
+            .catch(err => console.error("Failed to fetch courier rate", err))
+            .finally(() => setIsCalculatingCourier(false));
+        }
+    }, [deliveryMethod, deliveryInfo.county, deliveryInfo.city, deliveryInfo.country]);
 
     useEffect(() => {
         if (deliveryInfo.country !== "Kenya" && paymentMethod === "mpesa") {
@@ -150,7 +176,6 @@ export default function CheckoutPage() {
                     paymentMethod,
                     paymentType,
                     deliveryMethod,
-                    deliveryZoneId: deliveryMethod === "door" ? selectedZoneId : null,
                     pickupStationId: deliveryMethod === "pickup" ? selectedStationId : null,
                     shippingFee, // send calculated fee to verify
                 }),
@@ -234,21 +259,22 @@ export default function CheckoutPage() {
                                                 </div>
                                             </RadioGroup>
 
-                                            {deliveryMethod === "door" && deliveryOptions.zones.length > 0 && (
+                                            {deliveryMethod === "door" && (
                                                 <div className="mt-4 pt-4 border-t space-y-2">
-                                                    <Label htmlFor="zone">Select your Delivery Zone</Label>
-                                                    <select
-                                                        id="zone"
-                                                        value={selectedZoneId}
-                                                        onChange={(e) => setSelectedZoneId(e.target.value)}
-                                                        className="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground"
-                                                    >
-                                                        {deliveryOptions.zones.map(zone => (
-                                                            <option key={zone.id} value={zone.id}>
-                                                                {zone.name} (KES {zone.fee})
-                                                            </option>
-                                                        ))}
-                                                    </select>
+                                                    <Label>Motorspeed Courier Delivery</Label>
+                                                    {isCalculatingCourier ? (
+                                                        <p className="text-sm text-muted-foreground flex items-center"><Loader2 className="mr-2 h-4 w-4 animate-spin"/> Calculating dynamic rate for {deliveryInfo.city}...</p>
+                                                    ) : courierFee !== null ? (
+                                                        <div className="bg-green-50 p-3 rounded-lg border border-green-200">
+                                                            <p className="text-sm font-bold text-green-800 flex justify-between">
+                                                                <span>Door-to-Door Fee:</span>
+                                                                <span>KES {courierFee}</span>
+                                                            </p>
+                                                            {estimatedDays && <p className="text-xs text-green-600 mt-1">Estimated delivery: {estimatedDays}</p>}
+                                                        </div>
+                                                    ) : (
+                                                        <p className="text-sm text-muted-foreground">Please fill in your Country, County, and City below to calculate shipping.</p>
+                                                    )}
                                                 </div>
                                             )}
 
@@ -363,17 +389,16 @@ export default function CheckoutPage() {
                                                 onChange={(e) => setDeliveryInfo({ ...deliveryInfo, city: e.target.value })}
                                             />
                                         </div>
-                                        {deliveryInfo.country === "Kenya" && (
-                                            <div className="space-y-2">
-                                                <Label htmlFor="county">County</Label>
-                                                <Input
-                                                    id="county"
-                                                    placeholder="Nairobi"
-                                                    value={deliveryInfo.county}
-                                                    onChange={(e) => setDeliveryInfo({ ...deliveryInfo, county: e.target.value })}
-                                                />
-                                            </div>
-                                        )}
+                                        {/* Show County universally for the courier api, unless it's a country without states */}
+                                        <div className="space-y-2">
+                                            <Label htmlFor="county">County / Region / District</Label>
+                                            <Input
+                                                id="county"
+                                                placeholder="e.g. Nairobi, Dar es Salaam, Kampala"
+                                                value={deliveryInfo.county}
+                                                onChange={(e) => setDeliveryInfo({ ...deliveryInfo, county: e.target.value })}
+                                            />
+                                        </div>
                                     </div>
                                 </div>
                             )}
@@ -490,11 +515,9 @@ export default function CheckoutPage() {
                                             <div className="flex justify-between">
                                                 <span className="font-bold">Method:</span>
                                                 <span className="text-right">
-                                                    {deliveryInfo.country === "Kenya" 
-                                                        ? (deliveryMethod === "pickup" 
-                                                            ? `Pick-up Station (${deliveryOptions.stations.find(s => s.id === selectedStationId)?.name})` 
-                                                            : `Door Delivery (${deliveryOptions.zones.find(z => z.id === selectedZoneId)?.name})`)
-                                                        : "International Shipping"}
+                                                    {deliveryMethod === "pickup" 
+                                                        ? `Pick-up Station (${deliveryOptions.stations.find(s => s.id === selectedStationId)?.name})` 
+                                                        : `Motorspeed Door-to-Door Delivery`}
                                                 </span>
                                             </div>
                                             <div className="flex justify-between">

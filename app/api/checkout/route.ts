@@ -13,18 +13,20 @@ export async function POST(req: Request) {
         console.log("Total Price:", totalPrice);
         console.log("=== END REQUEST ===");
 
-        // Verify shipping fee from database to prevent tampering
+        // Verify shipping fee dynamically or from database to prevent tampering
         let shippingFee = 500;
-        if (deliveryInfo.country === "Kenya") {
-            if (deliveryMethod === "door" && deliveryZoneId) {
-                const zone = await prisma.deliveryZone.findUnique({ where: { id: deliveryZoneId } });
-                shippingFee = zone ? zone.fee : 500;
-            } else if (deliveryMethod === "pickup" && pickupStationId) {
-                const station = await prisma.pickupStation.findUnique({ where: { id: pickupStationId } });
-                shippingFee = station ? station.fee : 50;
-            }
-        } else {
-            shippingFee = 1500;
+        
+        if (deliveryMethod === "door") {
+            const { getMotorspeedQuote } = await import("@/lib/motorspeed");
+            const quote = await getMotorspeedQuote({
+                country: deliveryInfo.country,
+                county: deliveryInfo.county,
+                city: deliveryInfo.city,
+            });
+            shippingFee = quote.success ? quote.fee : 500;
+        } else if (deliveryMethod === "pickup" && pickupStationId) {
+            const station = await prisma.pickupStation.findUnique({ where: { id: pickupStationId } });
+            shippingFee = station ? station.fee : 50;
         }
 
         // 1. Resolve product IDs from slugs (cart stores productId which is the DB id)
@@ -85,7 +87,6 @@ export async function POST(req: Request) {
                 shippingCity: deliveryInfo.city,
                 shippingCounty: deliveryInfo.county,
                 shippingCountry: deliveryInfo.country,
-                deliveryZoneId: deliveryZoneId || null,
                 pickupStationId: pickupStationId || null,
                 mpesaTillNumber: deliveryInfo.tillNumber || null,
                 userId,
