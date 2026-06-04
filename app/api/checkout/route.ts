@@ -110,7 +110,19 @@ export async function POST(req: Request) {
             },
         });
 
-        // 3. Initiate Payment
+        // 3. Send Order Confirmation Email
+        if (deliveryInfo.email) {
+            try {
+                const { sendOrderConfirmationEmail } = await import("@/lib/email");
+                // Don't await if you don't want it to slow down checkout, but awaiting is fine
+                sendOrderConfirmationEmail(deliveryInfo.email, orderNumber, orderTotal);
+                console.log(`Order confirmation email triggered for ${deliveryInfo.email}`);
+            } catch (emailError) {
+                console.error("Failed to send confirmation email:", emailError);
+            }
+        }
+
+        // 4. Initiate Payment
         console.log("Processing payment for method:", paymentMethod);
 
         if (paymentMethod === "wallet") {
