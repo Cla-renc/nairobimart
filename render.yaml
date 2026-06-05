@@ -85,3 +85,23 @@ services:
       # ===== CJ DROPSHIPPING INTEGRATION =====
       - key: CJ_API_KEY
         sync: false
+
+  - type: worker
+    name: nairobimart-whatsapp-bot
+    runtime: node
+    # Note: Free tier does not support persistent disks. You may need to upgrade to 'starter' ($7/mo) to use the disk.
+    plan: starter
+    buildCommand: npm install
+    startCommand: node whatsapp-bot/bot.js
+    disk:
+      name: whatsapp-auth-data
+      mountPath: /opt/render/project/src/auth_info_baileys
+      sizeGB: 1
+    envVars:
+      - key: DATABASE_URL
+        fromService:
+          type: web
+          name: nairobimart-api
+          envVarKey: DATABASE_URL
+      - key: OPENAI_API_KEY
+        sync: false
