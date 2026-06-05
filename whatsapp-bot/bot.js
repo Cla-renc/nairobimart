@@ -1,7 +1,7 @@
 const { makeWASocket, useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys');
 const qrcode = require('qrcode-terminal');
 const { PrismaClient } = require('@prisma/client');
-const { OpenAI } = require('openai');
+// removed OpenAI import
 const pino = require('pino');
 const http = require('http');
 require('dotenv').config({ path: require('path').resolve(__dirname, '../.env.local') }); // Load env variables from parent dir
@@ -26,10 +26,7 @@ if (!process.env.GEMINI_API_KEY) {
     process.exit(1);
 }
 
-const openai = new OpenAI({
-    apiKey: process.env.GEMINI_API_KEY,
-    baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/", // Use Gemini via OpenAI compatibility layer
-});
+// We will use native fetch for Gemini to avoid SDK bugs
 
 // In-memory conversation history (For production, consider saving this to Redis or MongoDB)
 const conversationState = {};
@@ -163,16 +160,32 @@ STRICT OPERATING RULES:
 - If the customer asks questions unrelated to shopping, NairobiMart, or products (e.g., writing poems, politics, homework), politely decline and steer the conversation back to shopping.`;
 
             console.log("[DEBUG] Contacting Gemini AI for reply...");
-            // Call OpenAI API using Gemini
-            const completion = await openai.chat.completions.create({
-                model: "gemini-1.5-flash", // Fast and efficient model from Google
-                messages: [
-                    { role: "system", content: systemPrompt },
-                    ...conversationState[remoteJid]
-                ]
+            
+            // Format history for Gemini
+            const geminiHistory = conversationState[remoteJid].map(msg => ({
+                role: msg.role === "assistant" ? "model" : "user",
+                parts: [{ text: msg.content }]
+            }));
+
+            // Call Gemini natively using fetch to avoid 404 SDK issues
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    systemInstruction: {
+                        parts: [{ text: systemPrompt }]
+                    },
+                    contents: geminiHistory
+                })
             });
 
-            const replyText = completion.choices[0].message.content;
+            const data = await response.json();
+            
+            if (!response.ok) {
+                throw new Error("Gemini API Error: " + JSON.stringify(data));
+            }
+
+            const replyText = data.candidates[0].content.parts[0].text;
             console.log("[DEBUG] Gemini AI generated reply:", replyText);
 
             // Add bot reply to history
