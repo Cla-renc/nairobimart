@@ -1,20 +1,12 @@
 const { makeWASocket, useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys');
 const qrcode = require('qrcode-terminal');
 const { PrismaClient } = require('@prisma/client');
+const { useMongoDBAuthState } = require('./mongoAuthState');
 const pino = require('pino');
 const http = require('http');
-const fs = require('fs');
 const path = require('path');
-require('dotenv').config({ path: path.resolve(__dirname, '../.env.local') }); // Load env variables from parent dir
+require('dotenv').config({ path: path.resolve(__dirname, '../.env.local') });
 
-// Helper: delete the auth folder so the bot starts fresh on next restart
-function clearSession() {
-    const authPath = path.join(__dirname, '../auth_info_baileys');
-    if (fs.existsSync(authPath)) {
-        fs.rmSync(authPath, { recursive: true, force: true });
-        console.log('🗑️  Corrupted session cleared. Bot will restart fresh.');
-    }
-}
 
 // HTTP server to satisfy Render's port binding requirement for Web Services
 const server = http.createServer((req, res) => {
@@ -57,7 +49,8 @@ async function getProductCatalog() {
 async function startBot() {
     console.log("Starting NairobiMart AI WhatsApp Bot...");
 
-    const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys');
+    const { state, saveCreds } = await useMongoDBAuthState(prisma);
+    console.log('✅ Loaded auth state from MongoDB.');
     
     // Fetch the latest WhatsApp Web version to prevent 405 connection errors
     const { fetchLatestBaileysVersion } = require('@whiskeysockets/baileys');
@@ -115,8 +108,14 @@ async function startBot() {
 
             // 401 = WhatsApp rejected our session (corrupted/expired login)
             if (statusCode === 401 || reason === '401') {
-                console.log('⚠️  Session rejected by WhatsApp (401). Clearing session and restarting...');
-                clearSession();
+                console.log('⚠️  Session rejected by WhatsApp (401). Clearing MongoDB session and restarting...');
+                // Clear the session from MongoDB
+                try {
+                    await prisma.whatsAppSession.deleteMany({});
+                    console.log('🗑️  MongoDB session cleared. Restarting bot...');
+                } catch(e) {
+                    console.error('Failed to clear MongoDB session:', e.message);
+                }
                 setTimeout(startBot, 3000);
             } else if (statusCode !== DisconnectReason.loggedOut) {
                 console.log('Reconnecting...');
