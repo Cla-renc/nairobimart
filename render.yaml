@@ -103,5 +103,5 @@ services:
           type: web
           name: nairobimart-api
           envVarKey: DATABASE_URL
-      - key: OPENAI_API_KEY
+      - key: GROQ_API_KEY
         sync: false

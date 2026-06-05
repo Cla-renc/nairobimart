@@ -7,15 +7,16 @@ require('dotenv').config({ path: '../.env.local' }); // Load env variables from 
 
 const prisma = new PrismaClient();
 
-// Ensure OpenAI API key exists
-if (!process.env.OPENAI_API_KEY) {
-    console.error("❌ CRITICAL ERROR: OPENAI_API_KEY is missing from environment variables.");
+// Ensure Groq API key exists
+if (!process.env.GROQ_API_KEY) {
+    console.error("❌ CRITICAL ERROR: GROQ_API_KEY is missing from environment variables.");
     console.error("Please add it to your .env or .env.local file.");
     process.exit(1);
 }
 
 const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
+    apiKey: process.env.GROQ_API_KEY,
+    baseURL: "https://api.groq.com/openai/v1", // Use Groq's ultra-fast free servers instead of OpenAI
 });
 
 // In-memory conversation history (For production, consider saving this to Redis or MongoDB)
@@ -111,9 +112,9 @@ Negotiation Rules:
 4. Be concise and use short sentences suitable for WhatsApp. Use emojis naturally.
 5. If the user agrees to buy, direct them to checkout at our website (nairobimart.com).`;
 
-            // Call OpenAI
+            // Call OpenAI API using Groq's free servers
             const completion = await openai.chat.completions.create({
-                model: "gpt-4o-mini", // fast and cheap
+                model: "llama3-8b-8192", // completely free and incredibly fast model
                 messages: [
                     { role: "system", content: systemPrompt },
                     ...conversationState[remoteJid]
