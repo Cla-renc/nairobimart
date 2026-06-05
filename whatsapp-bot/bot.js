@@ -62,8 +62,13 @@ async function startBot() {
         browser: ["Ubuntu", "Chrome", "20.0.04"] 
     });
 
+    // Debugging info for Render
+    console.log(`[DEBUG] BOT_PHONE_NUMBER from env:`, process.env.BOT_PHONE_NUMBER);
+    console.log(`[DEBUG] Is registered?`, sock.authState.creds.registered);
+
     // If not logged in and a phone number is provided, use a Pairing Code!
     if (!sock.authState.creds.registered && process.env.BOT_PHONE_NUMBER) {
+        console.log(`[DEBUG] Attempting to request pairing code...`);
         setTimeout(async () => {
             try {
                 // Remove any +, spaces, or dashes from the number
