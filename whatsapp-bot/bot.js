@@ -3,7 +3,7 @@ const qrcode = require('qrcode-terminal');
 const { PrismaClient } = require('@prisma/client');
 const { OpenAI } = require('openai');
 const pino = require('pino');
-require('dotenv').config({ path: '../.env.local' }); // Load env variables from parent dir
+require('dotenv').config({ path: require('path').resolve(__dirname, '../.env.local') }); // Load env variables from parent dir
 
 const prisma = new PrismaClient();
 
