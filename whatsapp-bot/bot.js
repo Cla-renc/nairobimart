@@ -1,10 +1,20 @@
 const { makeWASocket, useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys');
 const qrcode = require('qrcode-terminal');
 const { PrismaClient } = require('@prisma/client');
-// removed OpenAI import
 const pino = require('pino');
 const http = require('http');
-require('dotenv').config({ path: require('path').resolve(__dirname, '../.env.local') }); // Load env variables from parent dir
+const fs = require('fs');
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '../.env.local') }); // Load env variables from parent dir
+
+// Helper: delete the auth folder so the bot starts fresh on next restart
+function clearSession() {
+    const authPath = path.join(__dirname, '../auth_info_baileys');
+    if (fs.existsSync(authPath)) {
+        fs.rmSync(authPath, { recursive: true, force: true });
+        console.log('🗑️  Corrupted session cleared. Bot will restart fresh.');
+    }
+}
 
 // HTTP server to satisfy Render's port binding requirement for Web Services
 const server = http.createServer((req, res) => {
@@ -74,14 +84,18 @@ async function startBot() {
                 // Remove any +, spaces, or dashes from the number
                 const cleanNumber = process.env.BOT_PHONE_NUMBER.replace(/[^0-9]/g, '');
                 const code = await sock.requestPairingCode(cleanNumber);
-                console.log(`\n======================================================`);
-                console.log(`🚀 YOUR PAIRING CODE IS: ${code}`);
-                console.log(`======================================================\n`);
-                console.log(`To login: Open WhatsApp -> Linked Devices -> Link a Device -> Link with phone number instead`);
+                console.log(`\n╔══════════════════════════════════════════════╗`);
+                console.log(`║   🚀 YOUR PAIRING CODE IS: ${code.padEnd(16)}║`);
+                console.log(`╚══════════════════════════════════════════════╝\n`);
+                console.log(`STEPS: Open WhatsApp on phone 0741206995`);
+                console.log(`→ Tap (⋮) Menu → Linked Devices → Link a Device`);
+                console.log(`→ Tap 'Link with phone number instead'`);
+                console.log(`→ Enter the code above. You have 60 seconds!`);
+                console.log(`→ If it expires, restart this service on Render.`);
             } catch (error) {
-                console.error("Failed to request pairing code:", error);
+                console.error("Failed to request pairing code:", error.message);
             }
-        }, 3000);
+        }, 5000); // 5 second delay to ensure socket is fully ready
     }
 
     sock.ev.on('creds.update', saveCreds);
@@ -95,10 +109,20 @@ async function startBot() {
         }
 
         if (connection === 'close') {
-            const shouldReconnect = (lastDisconnect.error)?.output?.statusCode !== DisconnectReason.loggedOut;
-            console.log('connection closed due to ', lastDisconnect.error, ', reconnecting ', shouldReconnect);
-            if (shouldReconnect) {
-                startBot();
+            const statusCode = lastDisconnect?.error?.output?.statusCode;
+            const reason = lastDisconnect?.error?.data?.reason;
+            console.log(`connection closed. Status: ${statusCode}, Reason: ${reason}`);
+
+            // 401 = WhatsApp rejected our session (corrupted/expired login)
+            if (statusCode === 401 || reason === '401') {
+                console.log('⚠️  Session rejected by WhatsApp (401). Clearing session and restarting...');
+                clearSession();
+                setTimeout(startBot, 3000);
+            } else if (statusCode !== DisconnectReason.loggedOut) {
+                console.log('Reconnecting...');
+                setTimeout(startBot, 5000);
+            } else {
+                console.log('Logged out. Please restart the service to get a new pairing code.');
             }
         } else if (connection === 'open') {
             console.log('✅ Bot successfully connected to WhatsApp!');
