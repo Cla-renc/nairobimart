@@ -57,17 +57,34 @@ async function startBot() {
     const sock = makeWASocket({
         version, // Pass the dynamically fetched version
         auth: state,
-        printQRInTerminal: false,
+        printQRInTerminal: !process.env.BOT_PHONE_NUMBER, // Only print QR if no phone number is provided
         logger: pino({ level: "silent" }), // Setting back to silent to keep it clean
         browser: ["Ubuntu", "Chrome", "20.0.04"] 
     });
+
+    // If not logged in and a phone number is provided, use a Pairing Code!
+    if (!sock.authState.creds.registered && process.env.BOT_PHONE_NUMBER) {
+        setTimeout(async () => {
+            try {
+                // Remove any +, spaces, or dashes from the number
+                const cleanNumber = process.env.BOT_PHONE_NUMBER.replace(/[^0-9]/g, '');
+                const code = await sock.requestPairingCode(cleanNumber);
+                console.log(`\n======================================================`);
+                console.log(`🚀 YOUR PAIRING CODE IS: ${code}`);
+                console.log(`======================================================\n`);
+                console.log(`To login: Open WhatsApp -> Linked Devices -> Link a Device -> Link with phone number instead`);
+            } catch (error) {
+                console.error("Failed to request pairing code:", error);
+            }
+        }, 3000);
+    }
 
     sock.ev.on('creds.update', saveCreds);
 
     sock.ev.on('connection.update', (update) => {
         const { connection, lastDisconnect, qr } = update;
         
-        if (qr) {
+        if (qr && !process.env.BOT_PHONE_NUMBER) {
             console.log("\nSCAN THIS QR CODE IN YOUR WHATSAPP TO LOG IN:\n");
             qrcode.generate(qr, { small: true });
         }
