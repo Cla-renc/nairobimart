@@ -43,7 +43,8 @@ async function startBot() {
     const sock = makeWASocket({
         auth: state,
         printQRInTerminal: false,
-        logger: pino({ level: "silent" }) // Reduce console spam
+        logger: pino({ level: "silent" }), // Reduce console spam
+        browser: ["Ubuntu", "Chrome", "20.0.04"] // Spoof browser to prevent WhatsApp 405 connection blocks
     });
 
     sock.ev.on('creds.update', saveCreds);
