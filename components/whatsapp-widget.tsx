@@ -18,7 +18,7 @@ export function WhatsAppWidget() {
     if (!isVisible) return null;
 
     // Real support number
-    const phoneNumber = "254759193674"; 
+    const phoneNumber = "254741206995"; 
     const message = "Hello NairobiMart, I am interested in a product...";
 
     return (
