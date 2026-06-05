@@ -7,7 +7,7 @@ services:
     name: nairobimart-api
     runtime: node
     plan: free # Can be upgraded to 'starter' or higher in the Render dashboard if needed
-    buildCommand: npm install --include=dev && npm run build
+    buildCommand: npm install --legacy-peer-deps --include=dev && npm run build
     startCommand: npm start
     healthCheckPath: /api/health
     envVars:
@@ -91,7 +91,7 @@ services:
     runtime: node
     # Note: Free tier does not support persistent disks. You may need to upgrade to 'starter' ($7/mo) to use the disk.
     plan: starter
-    buildCommand: npm install
+    buildCommand: npm install --legacy-peer-deps
     startCommand: node whatsapp-bot/bot.js
     disk:
       name: whatsapp-auth-data
