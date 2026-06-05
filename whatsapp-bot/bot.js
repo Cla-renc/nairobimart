@@ -39,12 +39,18 @@ async function startBot() {
     console.log("Starting NairobiMart AI WhatsApp Bot...");
 
     const { state, saveCreds } = await useMultiFileAuthState('auth_info_baileys');
+    
+    // Fetch the latest WhatsApp Web version to prevent 405 connection errors
+    const { fetchLatestBaileysVersion } = require('@whiskeysockets/baileys');
+    const { version, isLatest } = await fetchLatestBaileysVersion();
+    console.log(`Using WhatsApp v${version.join('.')}, isLatest: ${isLatest}`);
 
     const sock = makeWASocket({
+        version, // Pass the dynamically fetched version
         auth: state,
         printQRInTerminal: false,
-        logger: pino({ level: "silent" }), // Reduce console spam
-        browser: ["Ubuntu", "Chrome", "20.0.04"] // Spoof browser to prevent WhatsApp 405 connection blocks
+        logger: pino({ level: "silent" }), // Setting back to silent to keep it clean
+        browser: ["Ubuntu", "Chrome", "20.0.04"] 
     });
 
     sock.ev.on('creds.update', saveCreds);
@@ -71,6 +77,11 @@ async function startBot() {
     sock.ev.on('messages.upsert', async (m) => {
         try {
             const msg = m.messages[0];
+            
+            // Add a debug log to see if we're even receiving the event
+            console.log("\n[DEBUG] Incoming message event:", JSON.stringify(msg.message ? Object.keys(msg.message) : "No message object"));
+            console.log("[DEBUG] Is from me?", msg.key.fromMe);
+
             if (!msg.message || msg.key.fromMe) return;
 
             const remoteJid = msg.key.remoteJid;
@@ -80,9 +91,13 @@ async function startBot() {
 
             // Extract text
             const textMessage = msg.message.conversation || msg.message.extendedTextMessage?.text;
-            if (!textMessage) return;
+            
+            if (!textMessage) {
+                console.log("[DEBUG] Could not extract text from message. Message types:", Object.keys(msg.message));
+                return;
+            }
 
-            console.log(`Received message from ${remoteJid}: ${textMessage}`);
+            console.log(`✅ Received text message from ${remoteJid}: ${textMessage}`);
 
             // Get product catalog for context
             const catalog = await getProductCatalog();
