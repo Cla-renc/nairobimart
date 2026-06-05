@@ -3,20 +3,32 @@ const qrcode = require('qrcode-terminal');
 const { PrismaClient } = require('@prisma/client');
 const { OpenAI } = require('openai');
 const pino = require('pino');
+const http = require('http');
 require('dotenv').config({ path: require('path').resolve(__dirname, '../.env.local') }); // Load env variables from parent dir
+
+// HTTP server to satisfy Render's port binding requirement for Web Services
+const server = http.createServer((req, res) => {
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    res.end('WhatsApp Bot is running!');
+});
+
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
+    console.log(`HTTP Server listening on port ${PORT}`);
+});
 
 const prisma = new PrismaClient();
 
-// Ensure Groq API key exists
-if (!process.env.GROQ_API_KEY) {
-    console.error("❌ CRITICAL ERROR: GROQ_API_KEY is missing from environment variables.");
+// Ensure Gemini API key exists
+if (!process.env.GEMINI_API_KEY) {
+    console.error("❌ CRITICAL ERROR: GEMINI_API_KEY is missing from environment variables.");
     console.error("Please add it to your .env or .env.local file.");
     process.exit(1);
 }
 
 const openai = new OpenAI({
-    apiKey: process.env.GROQ_API_KEY,
-    baseURL: "https://api.groq.com/openai/v1", // Use Groq's ultra-fast free servers instead of OpenAI
+    apiKey: process.env.GEMINI_API_KEY,
+    baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/", // Use Gemini via OpenAI compatibility layer
 });
 
 // In-memory conversation history (For production, consider saving this to Redis or MongoDB)
@@ -99,8 +111,11 @@ async function startBot() {
 
             console.log(`✅ Received text message from ${remoteJid}: ${textMessage}`);
 
+            console.log("[DEBUG] Fetching product catalog from database...");
             // Get product catalog for context
             const catalog = await getProductCatalog();
+            console.log(`[DEBUG] Catalog fetched successfully! Found ${catalog.length} products.`);
+
             const catalogString = catalog.map(p => `- ${p.name} (Price: KES ${p.price}, Minimum Cost Allowed: KES ${p.costPrice}, Stock: ${p.stock})`).join("\n");
 
             // Build Conversation Context
@@ -128,9 +143,10 @@ Negotiation Rules:
 4. Be concise and use short sentences suitable for WhatsApp. Use emojis naturally.
 5. If the user agrees to buy, direct them to checkout at our website (nairobimart.com).`;
 
-            // Call OpenAI API using Groq's free servers
+            console.log("[DEBUG] Contacting Gemini AI for reply...");
+            // Call OpenAI API using Gemini
             const completion = await openai.chat.completions.create({
-                model: "llama3-8b-8192", // completely free and incredibly fast model
+                model: "gemini-1.5-flash", // Fast and efficient model from Google
                 messages: [
                     { role: "system", content: systemPrompt },
                     ...conversationState[remoteJid]
@@ -138,16 +154,18 @@ Negotiation Rules:
             });
 
             const replyText = completion.choices[0].message.content;
+            console.log("[DEBUG] Gemini AI generated reply:", replyText);
 
             // Add bot reply to history
             conversationState[remoteJid].push({ role: "assistant", content: replyText });
 
+            console.log("[DEBUG] Sending message back to WhatsApp...");
             // Send reply on WhatsApp
             await sock.sendMessage(remoteJid, { text: replyText });
-            console.log(`Replied to ${remoteJid}: ${replyText}`);
+            console.log(`✅ Replied successfully to ${remoteJid}!`);
 
         } catch (error) {
-            console.error("Error processing message:", error);
+            console.error("❌ Error processing message:", error);
         }
     });
 }
