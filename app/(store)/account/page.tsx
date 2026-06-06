@@ -21,6 +21,7 @@ import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import DailyCheckInButton from "./DailyCheckInButton";
+import DeleteRecentOrderButton from "./DeleteRecentOrderButton";
 
 interface ExtendedUser {
     id: string;
@@ -85,9 +86,10 @@ export default async function AccountPage() {
                         <h1 className="text-3xl font-extrabold text-primary">My Account</h1>
                         <p className="text-muted-foreground mt-1">Manage your profile, orders, and preferences.</p>
                     </div>
-                    <Button variant="outline" className="flex items-center gap-2">
+                    {/* Edit Profile — clickable */}
+                    <Link href="/account/complete-profile" className={cn(buttonVariants({ variant: "outline" }), "flex items-center gap-2")}>
                         <Settings className="h-4 w-4" /> Edit Profile
-                    </Button>
+                    </Link>
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -228,8 +230,10 @@ export default async function AccountPage() {
                                         </div>
                                     ) : (
                                         orders.map((order) => (
-                                            <div key={order.id} className="flex items-center justify-between p-4 rounded-2xl bg-muted/50 border border-transparent hover:border-accent/20 transition-all">
-                                                <div className="flex items-center gap-4">
+                                            <div key={order.id} className="relative flex items-center justify-between p-4 rounded-2xl bg-muted/50 border border-transparent hover:border-accent/20 transition-all group">
+                                                {/* Clicking the row goes to order detail */}
+                                                <Link href={`/order-success?id=${order.id}`} className="absolute inset-0 rounded-2xl" />
+                                                <div className="flex items-center gap-4 relative z-10 pointer-events-none">
                                                     <div className="h-12 w-12 rounded-xl bg-white flex items-center justify-center text-primary shadow-sm">
                                                         <Package className="h-6 w-6" />
                                                     </div>
@@ -238,14 +242,18 @@ export default async function AccountPage() {
                                                         <p className="text-[11px] text-muted-foreground">{formatFullDate(order.createdAt)}</p>
                                                     </div>
                                                 </div>
-                                                <div className="text-right">
-                                                    <p className="font-extrabold text-sm text-primary">KES {order.total.toLocaleString()}</p>
-                                                    <Badge className={cn(
-                                                        "mt-1 text-[10px] border-none uppercase font-bold px-2 py-0",
-                                                        order.status === 'delivered' ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"
-                                                    )}>
-                                                        {order.status}
-                                                    </Badge>
+                                                <div className="flex items-center gap-3 relative z-10">
+                                                    <div className="text-right">
+                                                        <p className="font-extrabold text-sm text-primary">KES {order.total.toLocaleString()}</p>
+                                                        <Badge className={cn(
+                                                            "mt-1 text-[10px] border-none uppercase font-bold px-2 py-0",
+                                                            order.status === 'delivered' ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"
+                                                        )}>
+                                                            {order.status}
+                                                        </Badge>
+                                                    </div>
+                                                    {/* Delete button — stops propagation to prevent navigating */}
+                                                    <DeleteRecentOrderButton orderId={order.id} />
                                                 </div>
                                             </div>
                                         ))
@@ -256,24 +264,30 @@ export default async function AccountPage() {
 
                         {/* Account Settings Grid */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <Card className="border-none shadow-sm hover:shadow-md transition-shadow cursor-pointer">
-                                <CardContent className="pt-6">
-                                    <div className="h-10 w-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mb-4">
-                                        <Settings className="h-5 w-5" />
-                                    </div>
-                                    <h4 className="font-bold mb-1">Security</h4>
-                                    <p className="text-xs text-muted-foreground">Change password and manage 2FA settings.</p>
-                                </CardContent>
-                            </Card>
-                            <Card className="border-none shadow-sm hover:shadow-md transition-shadow cursor-pointer">
-                                <CardContent className="pt-6">
-                                    <div className="h-10 w-10 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center mb-4">
-                                        <Mail className="h-5 w-5" />
-                                    </div>
-                                    <h4 className="font-bold mb-1">Privacy</h4>
-                                    <p className="text-xs text-muted-foreground">Manage your data and email preferences.</p>
-                                </CardContent>
-                            </Card>
+                            {/* Security — links to settings */}
+                            <Link href="/account/complete-profile" className="block">
+                                <Card className="border-none shadow-sm hover:shadow-md transition-shadow cursor-pointer h-full">
+                                    <CardContent className="pt-6">
+                                        <div className="h-10 w-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mb-4">
+                                            <Settings className="h-5 w-5" />
+                                        </div>
+                                        <h4 className="font-bold mb-1">Security</h4>
+                                        <p className="text-xs text-muted-foreground">Change password and manage 2FA settings.</p>
+                                    </CardContent>
+                                </Card>
+                            </Link>
+                            {/* Privacy — links to account page */}
+                            <Link href="/account/complete-profile" className="block">
+                                <Card className="border-none shadow-sm hover:shadow-md transition-shadow cursor-pointer h-full">
+                                    <CardContent className="pt-6">
+                                        <div className="h-10 w-10 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center mb-4">
+                                            <Mail className="h-5 w-5" />
+                                        </div>
+                                        <h4 className="font-bold mb-1">Privacy</h4>
+                                        <p className="text-xs text-muted-foreground">Manage your data and email preferences.</p>
+                                    </CardContent>
+                                </Card>
+                            </Link>
                         </div>
                     </div>
                 </div>

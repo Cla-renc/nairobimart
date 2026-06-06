@@ -37,6 +37,8 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { format } from "date-fns";
 import { toast } from "@/hooks/use-toast";
+import AdminDeleteOrderButton from "./AdminDeleteOrderButton";
+
 
 interface Order {
     id: string;
@@ -264,6 +266,13 @@ export default function AdminOrdersPage() {
                                                         <DropdownMenuSeparator />
                                                         <DropdownMenuItem className="flex items-center text-red-600 cursor-pointer" onClick={() => updateOrderStatus(order.id, "cancelled")}>
                                                             Cancel Order
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuSeparator />
+                                                        <DropdownMenuItem asChild>
+                                                            <AdminDeleteOrderButton
+                                                                orderId={order.id}
+                                                                onDeleted={fetchOrders}
+                                                            />
                                                         </DropdownMenuItem>
                                                     </DropdownMenuContent>
                                                 </DropdownMenu>

@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
+import DeleteOrderButton from "./DeleteOrderButton";
 
 export const dynamic = "force-dynamic";
 
@@ -160,6 +161,8 @@ export default async function OrdersPage() {
                                             >
                                                 Details <ChevronRight className="h-4 w-4 ml-1" />
                                             </Link>
+                                            {/* Delete order button */}
+                                            <DeleteOrderButton orderId={order.id} />
                                         </div>
                                     </div>
                                 </CardHeader>
