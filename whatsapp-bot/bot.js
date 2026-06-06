@@ -41,13 +41,27 @@ async function getProductCatalog() {
     try {
         const products = await prisma.product.findMany({
             where: { isActive: true },
-            select: { name: true, price: true, costPrice: true, stock: true },
+            select: { name: true, price: true, costPrice: true, stock: true, category: { select: { name: true } } },
             take: 25, // Limit to 25 products to stay within AI token limits
-            orderBy: { createdAt: 'desc' } // Most recently added products first
+            orderBy: { createdAt: 'desc' }
         });
         return products;
     } catch (error) {
         console.error("Error fetching catalog:", error);
+        return [];
+    }
+}
+
+async function getCategories() {
+    try {
+        const categories = await prisma.category.findMany({
+            where: { isActive: true, parentId: null }, // Top-level categories only
+            select: { name: true },
+            orderBy: { position: 'asc' }
+        });
+        return categories.map(c => c.name);
+    } catch (error) {
+        console.error("Error fetching categories:", error);
         return [];
     }
 }
@@ -159,15 +173,19 @@ async function startBot() {
 
             console.log(`✅ Received text message from ${remoteJid}: ${textMessage}`);
 
-            console.log("[DEBUG] Fetching product catalog from database...");
-            // Get product catalog for context
-            const catalog = await getProductCatalog();
-            console.log(`[DEBUG] Catalog fetched successfully! Found ${catalog.length} products.`);
+            console.log("[DEBUG] Fetching product catalog and categories from database...");
+            const [catalog, categoryNames] = await Promise.all([
+                getProductCatalog(),
+                getCategories()
+            ]);
+            console.log(`[DEBUG] Catalog fetched! Found ${catalog.length} products across ${categoryNames.length} categories.`);
 
             // Build compact catalog string to save tokens
             const catalogString = catalog.map(p => 
                 `${p.name} | KES ${p.price} | Min: KES ${p.costPrice} | Stock: ${p.stock > 0 ? p.stock : 'OUT'}`
             ).join("\n");
+
+            const categoriesString = categoryNames.join(", ");
 
             // Build Conversation Context
             if (!conversationState[remoteJid]) {
@@ -184,8 +202,13 @@ async function startBot() {
 
             const systemPrompt = `You are a NairobiMart sales agent in Kenya. Be friendly, brief, and use Kenyan warmth.
 
-PRODUCT CATALOG (format: Name | Price | Min Cost | Stock):
+OUR PRODUCT CATEGORIES (we stock ALL of these):
+${categoriesString}
+
+SAMPLE PRODUCTS FROM CATALOG (format: Name | Price | Min Cost | Stock):
 ${catalogString}
+
+IMPORTANT: The above is only a SAMPLE of our products. We stock items across ALL the categories listed above. If a customer asks about a category not shown in the sample, confirm we stock it and direct them to the website to browse the full range.
 
 RULES:
 1. NEVER sell below the Min Cost price. Offer small discounts only above Min Cost.
