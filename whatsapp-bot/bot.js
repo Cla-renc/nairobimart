@@ -2,6 +2,7 @@ const { makeWASocket, useMultiFileAuthState, DisconnectReason } = require('@whis
 const qrcode = require('qrcode-terminal');
 const { PrismaClient } = require('@prisma/client');
 const { useMongoDBAuthState } = require('./mongoAuthState');
+const { OpenAI } = require('openai');
 const pino = require('pino');
 const http = require('http');
 const path = require('path');
@@ -21,14 +22,17 @@ server.listen(PORT, () => {
 
 const prisma = new PrismaClient();
 
-// Ensure Gemini API key exists
-if (!process.env.GEMINI_API_KEY) {
-    console.error("❌ CRITICAL ERROR: GEMINI_API_KEY is missing from environment variables.");
-    console.error("Please add it to your .env or .env.local file.");
+// Ensure Groq API key exists
+if (!process.env.GROQ_API_KEY) {
+    console.error("❌ CRITICAL ERROR: GROQ_API_KEY is missing from environment variables.");
     process.exit(1);
 }
 
-// We will use native fetch for Gemini to avoid SDK bugs
+// Initialize Groq client via OpenAI SDK (fully compatible)
+const groq = new OpenAI({
+    apiKey: process.env.GROQ_API_KEY,
+    baseURL: "https://api.groq.com/openai/v1",
+});
 
 // In-memory conversation history (For production, consider saving this to Redis or MongoDB)
 const conversationState = {};
@@ -204,33 +208,19 @@ STRICT OPERATING RULES:
 - You are strictly a NairobiMart sales agent. 
 - If the customer asks questions unrelated to shopping, NairobiMart, or products (e.g., writing poems, politics, homework), politely decline and steer the conversation back to shopping.`;
 
-            console.log("[DEBUG] Contacting Gemini AI for reply...");
-            
-            // Format history for Gemini
-            const geminiHistory = conversationState[remoteJid].map(msg => ({
-                role: msg.role === "assistant" ? "model" : "user",
-                parts: [{ text: msg.content }]
-            }));
+            console.log("[DEBUG] Contacting Groq AI for reply...");
 
-            // Call Gemini natively using fetch to avoid 404 SDK issues
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    systemInstruction: {
-                        parts: [{ text: systemPrompt }]
-                    },
-                    contents: geminiHistory
-                })
+            // Call Groq via OpenAI-compatible SDK
+            const completion = await groq.chat.completions.create({
+                model: "llama3-8b-8192", // Fast, free Groq model
+                messages: [
+                    { role: "system", content: systemPrompt },
+                    ...conversationState[remoteJid]
+                ],
+                max_tokens: 500,
             });
 
-            const data = await response.json();
-            
-            if (!response.ok) {
-                throw new Error("Gemini API Error: " + JSON.stringify(data));
-            }
-
-            const replyText = data.candidates[0].content.parts[0].text;
+            const replyText = completion.choices[0].message.content;
             console.log("[DEBUG] Gemini AI generated reply:", replyText);
 
             // Add bot reply to history
