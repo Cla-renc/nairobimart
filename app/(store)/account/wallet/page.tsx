@@ -24,6 +24,27 @@ export default async function WalletPage() {
 
     if (!user) return null;
 
+    // Auto-sync: Recalculate the true balance from completed transactions.
+    // This fixes the case where walletBalance is 0 due to a schema migration
+    // resetting the field while WalletTransaction records already existed.
+    const completedTxs = user.walletTransactions.filter(tx => tx.status === "COMPLETED");
+    const calculatedBalance = completedTxs.reduce((acc, tx) => {
+        if (tx.type === "DEPOSIT" || tx.type === "REFUND" || tx.type === "CASHBACK") return acc + tx.amount;
+        if (tx.type === "PAYMENT") return acc - tx.amount;
+        return acc;
+    }, 0);
+    const safeBalance = Math.max(0, calculatedBalance);
+
+    // If the stored balance doesn't match the calculated balance, fix it in the DB.
+    if (safeBalance !== user.walletBalance) {
+        await prisma.user.update({
+            where: { id: user.id },
+            data: { walletBalance: safeBalance }
+        });
+        user.walletBalance = safeBalance; // update local variable for render
+        console.log(`🔄 Auto-synced wallet balance for ${user.email}: ${user.walletBalance} → ${safeBalance}`);
+    }
+
     const formatDate = (date: Date) => {
         return new Intl.DateTimeFormat('en-US', {
             month: 'short', day: 'numeric', year: 'numeric',

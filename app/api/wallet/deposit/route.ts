@@ -28,24 +28,25 @@ export async function POST(req: Request) {
         // In a real app, you would call Daraja API here and handle the callback in a separate webhook route
         
         // Let's directly credit the wallet for this simulation
-        const transaction = await prisma.walletTransaction.create({
-            data: {
-                userId: user.id,
-                amount: parseFloat(amount),
-                type: "DEPOSIT",
-                status: "COMPLETED",
-                reference: `MPESA-${Math.random().toString(36).substring(2, 10).toUpperCase()}`,
-            }
-        });
-
-        const updatedUser = await prisma.user.update({
-            where: { id: user.id },
-            data: {
-                walletBalance: {
-                    increment: parseFloat(amount)
+        const [transaction, updatedUser] = await prisma.$transaction([
+            prisma.walletTransaction.create({
+                data: {
+                    userId: user.id,
+                    amount: parseFloat(amount),
+                    type: "DEPOSIT",
+                    status: "COMPLETED",
+                    reference: `MPESA-${Math.random().toString(36).substring(2, 10).toUpperCase()}`,
                 }
-            }
-        });
+            }),
+            prisma.user.update({
+                where: { id: user.id },
+                data: {
+                    walletBalance: {
+                        increment: parseFloat(amount)
+                    }
+                }
+            })
+        ]);
 
         return NextResponse.json({ 
             success: true, 
