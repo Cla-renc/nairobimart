@@ -1,7 +1,7 @@
 import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
 import { ArrowLeft, MapPin, Building, Map, Phone, Edit, Package } from "lucide-react";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { buttonVariants } from "@/lib/button-variants";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
