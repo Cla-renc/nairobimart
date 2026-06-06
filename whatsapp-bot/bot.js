@@ -212,7 +212,7 @@ STRICT OPERATING RULES:
 
             // Call Groq via OpenAI-compatible SDK
             const completion = await groq.chat.completions.create({
-                model: "llama3-8b-8192", // Fast, free Groq model
+                model: "llama-3.1-8b-instant", // Fast, free Groq model
                 messages: [
                     { role: "system", content: systemPrompt },
                     ...conversationState[remoteJid]
