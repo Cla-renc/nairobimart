@@ -416,21 +416,48 @@ export default function CheckoutPage() {
                                             onValueChange={(val: "FULL" | "LAYBY" | "COMMITMENT") => setPaymentType(val)}
                                             className="grid grid-cols-1 md:grid-cols-3 gap-4"
                                         >
-                                            <div className={`flex items-center space-x-3 border rounded-lg p-3 cursor-pointer transition-colors ${paymentType === "FULL" ? "border-primary bg-primary/5" : "hover:border-accent"}`}>
+                                            <div
+                                                onClick={() => setPaymentType("FULL")}
+                                                className={`relative flex items-center space-x-3 border-2 rounded-lg p-3 cursor-pointer transition-all ${
+                                                    paymentType === "FULL"
+                                                        ? "border-primary bg-primary/5 shadow-sm"
+                                                        : "border-border hover:border-accent"
+                                                }`}>
                                                 <RadioGroupItem value="FULL" id="FULL" />
                                                 <Label htmlFor="FULL" className="cursor-pointer font-bold flex-1">Pay in Full</Label>
+                                                {paymentType === "FULL" && (
+                                                    <span className="absolute top-2 right-2 bg-primary text-white text-[10px] font-bold px-2 py-0.5 rounded-full">✓ Selected</span>
+                                                )}
                                             </div>
-                                            <div className={`flex flex-col border rounded-lg p-3 cursor-pointer transition-colors ${paymentType === "LAYBY" ? "border-primary bg-primary/5" : "hover:border-accent"}`}>
+                                            <div
+                                                onClick={() => setPaymentType("LAYBY")}
+                                                className={`relative flex flex-col border-2 rounded-lg p-3 cursor-pointer transition-all ${
+                                                    paymentType === "LAYBY"
+                                                        ? "border-primary bg-primary/5 shadow-sm"
+                                                        : "border-border hover:border-accent"
+                                                }`}>
                                                 <div className="flex items-center space-x-3">
                                                     <RadioGroupItem value="LAYBY" id="LAYBY" />
                                                     <Label htmlFor="LAYBY" className="cursor-pointer font-bold flex-1">Lipa Mdogo Mdogo</Label>
+                                                    {paymentType === "LAYBY" && (
+                                                        <span className="bg-primary text-white text-[10px] font-bold px-2 py-0.5 rounded-full">✓ Selected</span>
+                                                    )}
                                                 </div>
                                                 <p className="text-xs text-muted-foreground mt-2 ml-7">Lock your order with a 30% deposit.</p>
                                             </div>
-                                            <div className={`flex flex-col border rounded-lg p-3 cursor-pointer transition-colors ${paymentType === "COMMITMENT" ? "border-primary bg-primary/5" : "hover:border-accent"}`}>
+                                            <div
+                                                onClick={() => setPaymentType("COMMITMENT")}
+                                                className={`relative flex flex-col border-2 rounded-lg p-3 cursor-pointer transition-all ${
+                                                    paymentType === "COMMITMENT"
+                                                        ? "border-primary bg-primary/5 shadow-sm"
+                                                        : "border-border hover:border-accent"
+                                                }`}>
                                                 <div className="flex items-center space-x-3">
                                                     <RadioGroupItem value="COMMITMENT" id="COMMITMENT" />
                                                     <Label htmlFor="COMMITMENT" className="cursor-pointer font-bold flex-1">Pay on Delivery</Label>
+                                                    {paymentType === "COMMITMENT" && (
+                                                        <span className="bg-primary text-white text-[10px] font-bold px-2 py-0.5 rounded-full">✓ Selected</span>
+                                                    )}
                                                 </div>
                                                 <p className="text-xs text-muted-foreground mt-2 ml-7">Pay shipping now, item cost on delivery.</p>
                                             </div>
@@ -444,7 +471,13 @@ export default function CheckoutPage() {
                                         className="grid grid-cols-1 gap-4"
                                     >
                                         {isMpesaAvailable && (
-                                            <div className="flex items-center space-x-4 border rounded-xl p-4 bg-white hover:border-accent transition-colors cursor-pointer">
+                                            <div
+                                                onClick={() => setPaymentMethod("mpesa")}
+                                                className={`relative flex items-center space-x-4 border-2 rounded-xl p-4 bg-white transition-all cursor-pointer ${
+                                                    paymentMethod === "mpesa"
+                                                        ? "border-green-500 bg-green-50 shadow-sm"
+                                                        : "border-border hover:border-green-300"
+                                                }`}>
                                                 <RadioGroupItem value="mpesa" id="mpesa" />
                                                 <Label htmlFor="mpesa" className="flex-1 cursor-pointer">
                                                     <div className="flex items-center justify-between">
@@ -457,12 +490,23 @@ export default function CheckoutPage() {
                                                                 <p className="text-xs text-muted-foreground">Pay with M-Pesa on Pesapal&apos;s secure checkout</p>
                                                             </div>
                                                         </div>
-                                                        <span className="text-xs uppercase font-bold text-green-600 bg-green-50 px-2 py-1 rounded-full">Preferred</span>
+                                                        <div className="flex items-center gap-2">
+                                                            {paymentMethod === "mpesa" && (
+                                                                <span className="text-xs uppercase font-bold text-white bg-green-500 px-2 py-1 rounded-full">✓ Selected</span>
+                                                            )}
+                                                            <span className="text-xs uppercase font-bold text-green-600 bg-green-50 px-2 py-1 rounded-full">Preferred</span>
+                                                        </div>
                                                     </div>
                                                 </Label>
                                             </div>
                                         )}
-                                        <div className="flex items-center space-x-4 border rounded-xl p-4 bg-white hover:border-accent transition-colors cursor-pointer">
+                                        <div
+                                            onClick={() => setPaymentMethod("wallet")}
+                                            className={`relative flex items-center space-x-4 border-2 rounded-xl p-4 bg-white transition-all cursor-pointer ${
+                                                paymentMethod === "wallet"
+                                                    ? "border-purple-500 bg-purple-50 shadow-sm"
+                                                    : "border-border hover:border-purple-300"
+                                            }`}>
                                             <RadioGroupItem value="wallet" id="wallet" />
                                             <Label htmlFor="wallet" className="flex-1 cursor-pointer">
                                                 <div className="flex items-center justify-between">
@@ -478,11 +522,22 @@ export default function CheckoutPage() {
                                                             </Link>
                                                         </div>
                                                     </div>
-                                                    <span className="text-xs uppercase font-bold text-purple-600 bg-purple-50 px-2 py-1 rounded-full">Instant</span>
+                                                    <div className="flex items-center gap-2">
+                                                        {paymentMethod === "wallet" && (
+                                                            <span className="text-xs uppercase font-bold text-white bg-purple-500 px-2 py-1 rounded-full">✓ Selected</span>
+                                                        )}
+                                                        <span className="text-xs uppercase font-bold text-purple-600 bg-purple-50 px-2 py-1 rounded-full">Instant</span>
+                                                    </div>
                                                 </div>
                                             </Label>
                                         </div>
-                                        <div className="flex items-center space-x-4 border rounded-xl p-4 bg-white hover:border-accent transition-colors cursor-pointer">
+                                        <div
+                                            onClick={() => setPaymentMethod("pesapal")}
+                                            className={`relative flex items-center space-x-4 border-2 rounded-xl p-4 bg-white transition-all cursor-pointer ${
+                                                paymentMethod === "pesapal"
+                                                    ? "border-blue-500 bg-blue-50 shadow-sm"
+                                                    : "border-border hover:border-blue-300"
+                                            }`}>
                                             <RadioGroupItem value="pesapal" id="pesapal" />
                                             <Label htmlFor="pesapal" className="flex-1 cursor-pointer">
                                                 <div className="flex items-center justify-between">
@@ -495,7 +550,12 @@ export default function CheckoutPage() {
                                                             <p className="text-xs text-muted-foreground">Pay with card on Pesapal&apos;s secure checkout</p>
                                                         </div>
                                                     </div>
-                                                    <span className="text-xs uppercase font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-full">Global</span>
+                                                    <div className="flex items-center gap-2">
+                                                        {paymentMethod === "pesapal" && (
+                                                            <span className="text-xs uppercase font-bold text-white bg-blue-500 px-2 py-1 rounded-full">✓ Selected</span>
+                                                        )}
+                                                        <span className="text-xs uppercase font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-full">Global</span>
+                                                    </div>
                                                 </div>
                                             </Label>
                                         </div>
