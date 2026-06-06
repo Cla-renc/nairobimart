@@ -191,7 +191,7 @@ RULES:
 1. NEVER sell below the Min Cost price. Offer small discounts only above Min Cost.
 2. If stock is OUT, say it's sold out and suggest alternatives.
 3. If stock < 5, create urgency: "Only a few left!"
-4. To buy: direct them to www.nairobimart.com (M-Pesa & card accepted).
+4. To buy: direct them to https://nairobimart-gwna.vercel.app (M-Pesa & card accepted).
 5. Only discuss NairobiMart products. Decline off-topic requests politely.
 6. Keep replies short and mobile-friendly. Use emojis (🛒✨🔥🚚).`;
 
