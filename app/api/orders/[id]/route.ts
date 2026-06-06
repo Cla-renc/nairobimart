@@ -50,17 +50,17 @@ export async function DELETE(
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        // Resolve DB user
+        // Resolve DB user by email (most reliable)
         const dbUser = await prisma.user.findUnique({
             where: { email: session.user.email },
-            select: { id: true }
+            select: { id: true, role: true }
         });
 
         if (!dbUser) {
             return NextResponse.json({ error: "User not found" }, { status: 404 });
         }
 
-        // Verify the order belongs to this user
+        // Find the order
         const order = await prisma.order.findUnique({
             where: { id: params.id },
             select: { id: true, userId: true }
@@ -70,8 +70,12 @@ export async function DELETE(
             return NextResponse.json({ error: "Order not found" }, { status: 404 });
         }
 
-        if (order.userId !== dbUser.id) {
-            return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        // Admins can delete any order; users can only delete their own
+        const isAdmin = (dbUser.role as string) === "admin";
+        const isOwner = order.userId === dbUser.id;
+
+        if (!isAdmin && !isOwner) {
+            return NextResponse.json({ error: "You can only delete your own orders" }, { status: 403 });
         }
 
         await prisma.order.delete({ where: { id: params.id } });

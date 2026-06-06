@@ -86,8 +86,8 @@ export default async function AccountPage() {
                         <h1 className="text-3xl font-extrabold text-primary">My Account</h1>
                         <p className="text-muted-foreground mt-1">Manage your profile, orders, and preferences.</p>
                     </div>
-                    {/* Edit Profile — clickable */}
-                    <Link href="/account/complete-profile" className={cn(buttonVariants({ variant: "outline" }), "flex items-center gap-2")}>
+                    {/* Edit Profile — goes to dedicated edit-profile page */}
+                    <Link href="/account/edit-profile" className={cn(buttonVariants({ variant: "outline" }), "flex items-center gap-2")}>
                         <Settings className="h-4 w-4" /> Edit Profile
                     </Link>
                 </div>
@@ -173,7 +173,7 @@ export default async function AccountPage() {
                                     </div>
                                     <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:translate-x-1 transition-transform" />
                                 </Link>
-                                <Link href="#" className="flex items-center justify-between p-3 rounded-xl hover:bg-primary/5 group transition-colors">
+                                <Link href="/account/shipping" className="flex items-center justify-between p-3 rounded-xl hover:bg-primary/5 group transition-colors">
                                     <div className="flex items-center gap-3">
                                         <div className="p-2 rounded-lg bg-accent/10 text-accent">
                                             <MapPin className="h-4 w-4" />
@@ -264,8 +264,8 @@ export default async function AccountPage() {
 
                         {/* Account Settings Grid */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {/* Security — links to settings */}
-                            <Link href="/account/complete-profile" className="block">
+                            {/* Security — goes to dedicated security page */}
+                            <Link href="/account/security" className="block">
                                 <Card className="border-none shadow-sm hover:shadow-md transition-shadow cursor-pointer h-full">
                                     <CardContent className="pt-6">
                                         <div className="h-10 w-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mb-4">
@@ -276,8 +276,8 @@ export default async function AccountPage() {
                                     </CardContent>
                                 </Card>
                             </Link>
-                            {/* Privacy — links to account page */}
-                            <Link href="/account/complete-profile" className="block">
+                            {/* Privacy — goes to dedicated privacy page */}
+                            <Link href="/account/privacy" className="block">
                                 <Card className="border-none shadow-sm hover:shadow-md transition-shadow cursor-pointer h-full">
                                     <CardContent className="pt-6">
                                         <div className="h-10 w-10 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center mb-4">
