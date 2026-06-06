@@ -41,7 +41,9 @@ async function getProductCatalog() {
     try {
         const products = await prisma.product.findMany({
             where: { isActive: true },
-            select: { name: true, price: true, costPrice: true, description: true, stock: true }
+            select: { name: true, price: true, costPrice: true, stock: true },
+            take: 25, // Limit to 25 products to stay within AI token limits
+            orderBy: { createdAt: 'desc' } // Most recently added products first
         });
         return products;
     } catch (error) {
@@ -162,7 +164,10 @@ async function startBot() {
             const catalog = await getProductCatalog();
             console.log(`[DEBUG] Catalog fetched successfully! Found ${catalog.length} products.`);
 
-            const catalogString = catalog.map(p => `- ${p.name} (Price: KES ${p.price}, Minimum Cost Allowed: KES ${p.costPrice}, Stock: ${p.stock})`).join("\n");
+            // Build compact catalog string to save tokens
+            const catalogString = catalog.map(p => 
+                `${p.name} | KES ${p.price} | Min: KES ${p.costPrice} | Stock: ${p.stock > 0 ? p.stock : 'OUT'}`
+            ).join("\n");
 
             // Build Conversation Context
             if (!conversationState[remoteJid]) {
@@ -172,41 +177,23 @@ async function startBot() {
             // Add user message to history
             conversationState[remoteJid].push({ role: "user", content: textMessage });
 
-            // Keep only last 10 messages to save tokens
-            if (conversationState[remoteJid].length > 10) {
-                conversationState[remoteJid] = conversationState[remoteJid].slice(-10);
+            // Keep only last 4 messages to save tokens
+            if (conversationState[remoteJid].length > 4) {
+                conversationState[remoteJid] = conversationState[remoteJid].slice(-4);
             }
 
-            const systemPrompt = `You are a friendly, professional Kenyan sales agent for NairobiMart (a premier e-commerce store in Kenya). 
-Your goal is to help customers find products, close sales, and ensure profitability.
+            const systemPrompt = `You are a NairobiMart sales agent in Kenya. Be friendly, brief, and use Kenyan warmth.
 
-Here is our current product catalog and real-time stock:
+PRODUCT CATALOG (format: Name | Price | Min Cost | Stock):
 ${catalogString}
 
-STRICT OPERATING RULES:
-
-1. THE "PROTECT THE PROFIT" RULE (Pricing & Negotiation):
-- You may offer small discounts if the customer pushes for it.
-- CRITICAL: You must NEVER, under any circumstances, agree to or offer a price lower than the "Minimum Cost Allowed" (costPrice).
-- If they request a price below the costPrice, politely decline and state your "final offer" (which MUST be strictly greater than the costPrice).
-
-2. THE "URGENCY & SCARCITY" RULE (Stock Management):
-- Always check the stock quantity provided in the catalog.
-- If an item has less than 5 in stock, warn the customer to create urgency (e.g., "We only have a few pieces left!").
-- If stock is 0, politely tell them it is sold out and suggest another item. Do not sell out-of-stock items.
-
-3. THE "KENYAN FLAVOR" RULE (Tone & Language):
-- Be warm and welcoming. Use occasional Kenyan greetings (e.g., "Sasa!", "Karibu NairobiMart").
-- Keep sentences short, punchy, and easy to read on a mobile phone.
-- Use emojis naturally (🛒, ✨, 🚚, 🔥).
-
-4. THE "PUSH TO CHECKOUT" RULE (Closing the Sale):
-- You cannot manually collect M-Pesa payments over chat.
-- Once a customer agrees to buy, explicitly instruct them to complete the order securely on the website: "Great! Please complete your order securely on our website: www.nairobimart.com. We accept M-Pesa and card payments at checkout!"
-
-5. THE "STAY ON TOPIC" RULE:
-- You are strictly a NairobiMart sales agent. 
-- If the customer asks questions unrelated to shopping, NairobiMart, or products (e.g., writing poems, politics, homework), politely decline and steer the conversation back to shopping.`;
+RULES:
+1. NEVER sell below the Min Cost price. Offer small discounts only above Min Cost.
+2. If stock is OUT, say it's sold out and suggest alternatives.
+3. If stock < 5, create urgency: "Only a few left!"
+4. To buy: direct them to www.nairobimart.com (M-Pesa & card accepted).
+5. Only discuss NairobiMart products. Decline off-topic requests politely.
+6. Keep replies short and mobile-friendly. Use emojis (🛒✨🔥🚚).`;
 
             console.log("[DEBUG] Contacting Groq AI for reply...");
 
