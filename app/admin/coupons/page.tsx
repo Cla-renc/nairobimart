@@ -8,11 +8,23 @@ export default async function CouponsPage() {
         orderBy: { createdAt: 'desc' }
     });
 
-    // Serialize dates for client component
+    const ordersWithCoupons = await prisma.order.findMany({
+        where: { couponCode: { not: null } },
+        select: { couponCode: true }
+    });
+
+    const couponUsageMap = ordersWithCoupons.reduce<Record<string, number>>((acc, order) => {
+        if (order.couponCode) {
+            acc[order.couponCode] = (acc[order.couponCode] ?? 0) + 1;
+        }
+        return acc;
+    }, {});
+
     const serializedCoupons = coupons.map(coupon => ({
         ...coupon,
         createdAt: coupon.createdAt.toISOString(),
         expiresAt: coupon.expiresAt.toISOString(),
+        redemptionCount: couponUsageMap[coupon.code] ?? 0,
     }));
 
     return <CouponClient initialCoupons={serializedCoupons} />;

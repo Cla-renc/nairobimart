@@ -82,6 +82,7 @@ interface Coupon {
     minOrder: number;
     maxUses: number;
     usedCount: number;
+    redemptionCount?: number;
     expiresAt: string | Date; // handle both
     isActive: boolean;
     createdAt: string | Date;
@@ -227,8 +228,47 @@ export default function CouponClient({ initialCoupons }: CouponClientProps) {
                                 <Ticket className="h-5 w-5" />
                             </div>
                             <div>
-                                <p className="text-xs text-muted-foreground uppercase font-bold">Active</p>
+                                <p className="text-xs text-muted-foreground uppercase font-bold">Active Coupons</p>
                                 <h4 className="text-xl font-bold">{initialCoupons.filter(c => c.isActive).length}</h4>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card className="border-none shadow-sm">
+                    <CardContent className="pt-6">
+                        <div className="flex items-center gap-4">
+                            <div className="p-2 bg-secondary/10 text-secondary rounded-xl">
+                                <CheckCircle2 className="h-5 w-5" />
+                            </div>
+                            <div>
+                                <p className="text-xs text-muted-foreground uppercase font-bold">Total Redemptions</p>
+                                <h4 className="text-xl font-bold">{initialCoupons.reduce((sum, coupon) => sum + (coupon.redemptionCount ?? 0), 0)}</h4>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card className="border-none shadow-sm">
+                    <CardContent className="pt-6">
+                        <div className="flex items-center gap-4">
+                            <div className="p-2 bg-destructive/10 text-destructive rounded-xl">
+                                <XCircle className="h-5 w-5" />
+                            </div>
+                            <div>
+                                <p className="text-xs text-muted-foreground uppercase font-bold">Inactive Coupons</p>
+                                <h4 className="text-xl font-bold">{initialCoupons.filter(c => !c.isActive).length}</h4>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card className="border-none shadow-sm">
+                    <CardContent className="pt-6">
+                        <div className="flex items-center gap-4">
+                            <div className="p-2 bg-warning/10 text-warning rounded-xl">
+                                <Clock className="h-5 w-5" />
+                            </div>
+                            <div>
+                                <p className="text-xs text-muted-foreground uppercase font-bold">Expiring Soon</p>
+                                <h4 className="text-xl font-bold">{initialCoupons.filter(coupon => new Date(coupon.expiresAt) <= new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)).length}</h4>
                             </div>
                         </div>
                     </CardContent>
@@ -263,6 +303,7 @@ export default function CouponClient({ initialCoupons }: CouponClientProps) {
                                 <TableHead>Type</TableHead>
                                 <TableHead>Value</TableHead>
                                 <TableHead>Usage</TableHead>
+                                <TableHead>Redemptions</TableHead>
                                 <TableHead>Expires</TableHead>
                                 <TableHead>Status</TableHead>
                                 <TableHead className="text-right">Actions</TableHead>
@@ -296,6 +337,9 @@ export default function CouponClient({ initialCoupons }: CouponClientProps) {
                                                     />
                                                 </div>
                                             </div>
+                                        </TableCell>
+                                        <TableCell>
+                                            <span className="text-xs font-medium">{coupon.redemptionCount ?? 0}</span>
                                         </TableCell>
                                         <TableCell className="text-xs">
                                             <div className="flex items-center gap-1.5">
