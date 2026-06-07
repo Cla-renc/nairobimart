@@ -1,0 +1,22 @@
+name: Abandoned Cart - Daily
+
+on:
+  schedule:
+    - cron: '0 9 * * *' # runs daily at 09:00 UTC
+  workflow_dispatch:
+
+jobs:
+  run-abandoned-cart:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call abandoned-cart cron endpoint
+        env:
+          BACKEND_URL: ${{ secrets.RENDER_BACKEND_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$BACKEND_URL" ]; then echo "RENDER_BACKEND_URL secret is not set"; exit 1; fi
+          echo "Calling $BACKEND_URL/api/cron/abandoned-cart"
+          http_status=$(curl -sS -o /tmp/abandoned_response.txt -w "%{http_code}" -X GET "$BACKEND_URL/api/cron/abandoned-cart" -H "Authorization: Bearer $CRON_SECRET") || true
+          echo "HTTP status: $http_status"
+          cat /tmp/abandoned_response.txt || true
+          if [ "$http_status" -ge 400 ]; then echo "Abandoned cart cron call failed"; exit 1; fi
