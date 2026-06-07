@@ -9,6 +9,7 @@ type CartSyncItem = {
     price?: number | string;
 };
 
+// This endpoint now performs a merge: incoming quantities are added to existing server-side quantities.
 export async function POST(req: Request) {
     const session = await auth();
     if (!session?.user?.email) {
@@ -37,47 +38,50 @@ export async function POST(req: Request) {
             .filter(isCartSyncItem)
             .map((item) => ({
                 productId: item.productId,
-                variantId: item.variantId || null,
+                variantId: item.variantId ?? null,
                 quantity: Number(item.quantity),
                 price: Number(item.price ?? 0) || 0,
             }));
 
+        // Fetch existing items for user to perform merge
         const existing = await prisma.cartItem.findMany({ where: { userId: user.id } });
 
-        const incomingKeys = normalized.map((item) => `${item.productId}:${item.variantId ?? ""}`);
+        const processed: { productId: string; variantId: string | null; quantity: number; action: 'created' | 'merged' }[] = [];
 
-        await Promise.all(
-            normalized.map(async (item) => {
-                await prisma.cartItem.upsert({
-                    where: {
-                        userId_productId_variantId: {
-                            userId: user.id,
-                            productId: item.productId,
-                            variantId: item.variantId as string,
-                        },
+        for (const item of normalized) {
+            const existingItem = await prisma.cartItem.findUnique({
+                where: {
+                    userId_productId_variantId: {
+                        userId: user.id,
+                        productId: item.productId,
+                        variantId: item.variantId as string,
                     },
-                    create: {
+                },
+            });
+
+            if (existingItem) {
+                const newQuantity = existingItem.quantity + item.quantity;
+                await prisma.cartItem.update({
+                    where: { id: existingItem.id },
+                    data: { quantity: newQuantity },
+                });
+                processed.push({ productId: item.productId, variantId: item.variantId, quantity: newQuantity, action: 'merged' });
+            } else {
+                await prisma.cartItem.create({
+                    data: {
                         userId: user.id,
                         productId: item.productId,
                         variantId: item.variantId ?? undefined,
                         quantity: item.quantity,
                     },
-                    update: {
-                        quantity: item.quantity,
-                    },
                 });
-            })
-        );
-
-        const toDeleteIds = existing
-            .filter((item) => !incomingKeys.includes(`${item.productId}:${item.variantId ?? ""}`))
-            .map((item) => item.id);
-
-        if (toDeleteIds.length > 0) {
-            await prisma.cartItem.deleteMany({ where: { id: { in: toDeleteIds } } });
+                processed.push({ productId: item.productId, variantId: item.variantId, quantity: item.quantity, action: 'created' });
+            }
         }
 
-        return NextResponse.json({ success: true, syncedItems: normalized.length });
+        // Note: do not delete existing server-side items during merge; keep items user previously had.
+
+        return NextResponse.json({ success: true, processedCount: processed.length, processed });
     } catch (error) {
         console.error("Cart sync failed:", error);
         return NextResponse.json({ success: false, message: "Failed to sync cart" }, { status: 500 });

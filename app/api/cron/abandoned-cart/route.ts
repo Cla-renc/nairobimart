@@ -4,8 +4,7 @@ import { sendSMS } from '@/lib/sms';
 import { createRecoveryCoupon } from '@/lib/coupons';
 import { sendMarketingEmail } from '@/lib/email';
 
-// This is to secure the cron route from public access.
-// Vercel will send a CRON_SECRET header if configured.
+// Secure the cron route from public access using CRON_SECRET header.
 export async function GET(req: Request) {
     const authHeader = req.headers.get('authorization');
     if (
@@ -16,6 +15,7 @@ export async function GET(req: Request) {
     }
 
     try {
+        const now = new Date();
         const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
         const abandonedCarts = await prisma.cartItem.findMany({
@@ -65,35 +65,55 @@ export async function GET(req: Request) {
         }, {} as Record<string, { user: { id: string; name: string | null; email: string | null; phone: string | null }; items: { productName: string; quantity: number; price: number }[] }>);
 
         const results: { email: string | null; phone: string | null; sent: boolean; itemsCount: number; coupon: string | null }[] = [];
+        let emailsSent = 0;
+        let smsSent = 0;
+        let couponsCreated = 0;
+        let usersUpdated = 0;
 
         for (const data of Object.values(cartsByUser)) {
             const coupon = await createRecoveryCoupon(data.user.id, 7, 7);
+            couponsCreated++;
             const message = `Hey ${data.user.name || 'there'}, you left ${data.items.length} item(s) in your cart! Use ${coupon.code} for 7% off and complete your purchase at NairobiMart.`;
 
+            let sent = false;
             if (data.user.phone) {
                 await sendSMS(data.user.phone, message);
-                results.push({ email: data.user.email, phone: data.user.phone, sent: true, itemsCount: data.items.length, coupon: coupon.code });
-                continue;
-            }
-
-            if (data.user.email) {
+                smsSent++;
+                sent = true;
+            } else if (data.user.email) {
                 await sendMarketingEmail(
                     data.user.email,
                     "You left items in your NairobiMart cart",
                     `<p>Hi ${data.user.name || "there"},</p><p>You left ${data.items.length} item(s) in your cart.</p><p>Use <strong>${coupon.code}</strong> for 7% off your next order. Offer expires in 7 days.</p>`
                 );
-                results.push({ email: data.user.email, phone: data.user.phone, sent: true, itemsCount: data.items.length, coupon: coupon.code });
-                continue;
+                emailsSent++;
+                sent = true;
             }
 
-            results.push({ email: data.user.email, phone: data.user.phone, sent: false, itemsCount: data.items.length, coupon: coupon.code });
+            // Update user's last notification timestamp so we don't resend too frequently
+            try {
+                await prisma.user.update({ where: { id: data.user.id }, data: { lastAbandonedCartNotificationAt: now } });
+                usersUpdated++;
+            } catch (e) {
+                console.error(`Failed to update lastAbandonedCartNotificationAt for user ${data.user.id}:`, e);
+            }
+
+            results.push({ email: data.user.email, phone: data.user.phone, sent, itemsCount: data.items.length, coupon: coupon.code });
         }
 
-        return NextResponse.json({
+        const summary = {
             success: true,
             processedCarts: results.length,
+            couponsCreated,
+            emailsSent,
+            smsSent,
+            usersUpdated,
             details: results,
-        });
+        };
+
+        console.log('Abandoned cart cron summary:', summary);
+
+        return NextResponse.json(summary);
     } catch (error) {
         console.error('Abandoned cart cron error:', error);
         return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });

@@ -9,14 +9,31 @@ jobs:
   run-abandoned-cart:
     runs-on: ubuntu-latest
     steps:
-      - name: Call abandoned-cart cron endpoint
+      - name: Call abandoned-cart cron endpoint (with retries)
         env:
           BACKEND_URL: ${{ secrets.RENDER_BACKEND_URL }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
           if [ -z "$BACKEND_URL" ]; then echo "RENDER_BACKEND_URL secret is not set"; exit 1; fi
           echo "Calling $BACKEND_URL/api/cron/abandoned-cart"
-          http_status=$(curl -sS -o /tmp/abandoned_response.txt -w "%{http_code}" -X GET "$BACKEND_URL/api/cron/abandoned-cart" -H "Authorization: Bearer $CRON_SECRET") || true
-          echo "HTTP status: $http_status"
-          cat /tmp/abandoned_response.txt || true
-          if [ "$http_status" -ge 400 ]; then echo "Abandoned cart cron call failed"; exit 1; fi
+          attempts=0
+          max_attempts=3
+          sleep_time=2
+          while [ $attempts -lt $max_attempts ]; do
+            attempts=$((attempts+1))
+            echo "Attempt $attempts/$max_attempts"
+            http_status=$(curl -sS -o /tmp/abandoned_response.txt -w "%{http_code}" -X GET "$BACKEND_URL/api/cron/abandoned-cart" -H "Authorization: Bearer $CRON_SECRET") || true
+            echo "HTTP status: $http_status"
+            cat /tmp/abandoned_response.txt || true
+            if [ "$http_status" -ge 200 -a "$http_status" -lt 300 ]; then
+              echo "Success on attempt $attempts"
+              exit 0
+            fi
+            if [ $attempts -lt $max_attempts ]; then
+              echo "Retrying in $sleep_time seconds..."
+              sleep $sleep_time
+              sleep_time=$((sleep_time * 2))
+            fi
+          done
+          echo "Abandoned cart cron call failed after $max_attempts attempts";
+          exit 1
