@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { sendSMS } from '@/lib/sms';
+import { createRecoveryCoupon } from '@/lib/coupons';
+import { sendMarketingEmail } from '@/lib/email';
 
 // This is to secure the cron route from public access.
 // Vercel will send a CRON_SECRET header if configured.
@@ -14,13 +16,18 @@ export async function GET(req: Request) {
     }
 
     try {
-        // Find users with cart items older than 24 hours
         const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
         const abandonedCarts = await prisma.cartItem.findMany({
             where: {
                 updatedAt: {
                     lte: oneDayAgo,
+                },
+                user: {
+                    OR: [
+                        { lastAbandonedCartNotificationAt: null },
+                        { lastAbandonedCartNotificationAt: { lte: oneDayAgo } },
+                    ],
                 },
             },
             include: {
@@ -41,7 +48,6 @@ export async function GET(req: Request) {
             },
         });
 
-        // Group by user
         const cartsByUser = abandonedCarts.reduce((acc, item) => {
             const userId = item.userId;
             if (!acc[userId]) {
@@ -58,23 +64,29 @@ export async function GET(req: Request) {
             return acc;
         }, {} as Record<string, { user: { id: string; name: string | null; email: string | null; phone: string | null }; items: { productName: string; quantity: number; price: number }[] }>);
 
-        // Process each abandoned cart
-        const results: { email: string | null; phone: string | null; sent: boolean; itemsCount: number }[] = [];
+        const results: { email: string | null; phone: string | null; sent: boolean; itemsCount: number; coupon: string | null }[] = [];
+
         for (const data of Object.values(cartsByUser)) {
-            const message = `Hey ${data.user.name || 'there'}, you left ${data.items.length} item(s) in your cart! Complete your purchase at NairobiMart and get 5% off with code CART5.`;
-            
+            const coupon = await createRecoveryCoupon(data.user.id, 7, 7);
+            const message = `Hey ${data.user.name || 'there'}, you left ${data.items.length} item(s) in your cart! Use ${coupon.code} for 7% off and complete your purchase at NairobiMart.`;
+
             if (data.user.phone) {
                 await sendSMS(data.user.phone, message);
-            } else {
-                console.log(`[MOCK EMAIL to ${data.user.email}]: ${message}`);
+                results.push({ email: data.user.email, phone: data.user.phone, sent: true, itemsCount: data.items.length, coupon: coupon.code });
+                continue;
             }
-            
-            results.push({
-                email: data.user.email,
-                phone: data.user.phone,
-                sent: true,
-                itemsCount: data.items.length
-            });
+
+            if (data.user.email) {
+                await sendMarketingEmail(
+                    data.user.email,
+                    "You left items in your NairobiMart cart",
+                    `<p>Hi ${data.user.name || "there"},</p><p>You left ${data.items.length} item(s) in your cart.</p><p>Use <strong>${coupon.code}</strong> for 7% off your next order. Offer expires in 7 days.</p>`
+                );
+                results.push({ email: data.user.email, phone: data.user.phone, sent: true, itemsCount: data.items.length, coupon: coupon.code });
+                continue;
+            }
+
+            results.push({ email: data.user.email, phone: data.user.phone, sent: false, itemsCount: data.items.length, coupon: coupon.code });
         }
 
         return NextResponse.json({

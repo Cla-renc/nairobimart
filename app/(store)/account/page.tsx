@@ -21,8 +21,7 @@ import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import DailyCheckInButton from "./DailyCheckInButton";
-import DeleteRecentOrderButton from "./DeleteRecentOrderButton";
-
+import DeleteRecentOrderButton from "./DeleteRecentOrderButton";import { getLoyaltyTierInfo } from "@/lib/loyalty";
 interface ExtendedUser {
     id: string;
     name?: string | null;
@@ -48,7 +47,13 @@ export default async function AccountPage() {
 
     // Fetch real orders from database
     const dbUser = await prisma.user.findUnique({
-        where: { email: user.email! }
+        where: { email: user.email! },
+        select: {
+            id: true,
+            totalSpent: true,
+            loyaltyPoints: true,
+            lastCheckInDate: true,
+        },
     });
 
     const orders = await prisma.order.findMany({
@@ -61,6 +66,7 @@ export default async function AccountPage() {
     today.setHours(0, 0, 0, 0);
     const hasCheckedIn = dbUser?.lastCheckInDate ? dbUser.lastCheckInDate >= today : false;
 
+    const tierInfo = getLoyaltyTierInfo(dbUser?.totalSpent ?? 0);
     const pendingOrdersCount = orders.filter(o => o.status === 'pending' || o.status === 'processing').length;
 
     const formatDate = (date: Date | string) => {
@@ -138,13 +144,21 @@ export default async function AccountPage() {
                                             </p>
                                         </div>
                                     </div>
-                                    <div className="flex justify-between items-center bg-primary/5 p-3 rounded-xl mt-6 border border-primary/10">
-                                        <div>
-                                            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Loyalty Points</p>
-                                            <p className="text-2xl font-extrabold text-accent">{dbUser?.loyaltyPoints || 0}</p>
-                                        </div>
-                                        <div>
+                                    <div className="grid grid-cols-1 gap-4 mt-6 sm:grid-cols-2">
+                                        <div className="flex flex-col justify-between bg-primary/5 p-4 rounded-2xl border border-primary/10">
+                                            <div>
+                                                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Loyalty Points</p>
+                                                <p className="text-2xl font-extrabold text-accent">{dbUser?.loyaltyPoints || 0}</p>
+                                            </div>
                                             <DailyCheckInButton hasCheckedIn={hasCheckedIn} />
+                                        </div>
+                                        <div className="flex flex-col justify-between bg-primary/5 p-4 rounded-2xl border border-primary/10">
+                                            <div>
+                                                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Tier</p>
+                                                <p className="text-2xl font-extrabold text-primary capitalize">{tierInfo.label}</p>
+                                                <p className="text-xs text-muted-foreground mt-1">Total spent: KES {(dbUser?.totalSpent ?? 0).toLocaleString()}</p>
+                                            </div>
+                                            <Link href="/account/loyalty" className={cn(buttonVariants({ variant: "outline" }), "mt-4 w-full text-center")}>View loyalty</Link>
                                         </div>
                                     </div>
                                 </div>

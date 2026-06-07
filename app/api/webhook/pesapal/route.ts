@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+import { processPurchaseRewards } from "@/lib/loyalty";
 
 export async function POST(request: NextRequest) {
     try {
@@ -23,6 +24,8 @@ export async function POST(request: NextRequest) {
                         pesapalTransactionId: body.order_tracking_id || body.transaction_id,
                     },
                 });
+
+                await processPurchaseRewards(orderId);
 
                 console.log(`✅ Order ${orderId} marked as paid via PesaPal`);
                 return NextResponse.json({ success: true });

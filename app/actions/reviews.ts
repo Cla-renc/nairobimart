@@ -3,6 +3,7 @@
 import prisma from "@/lib/prisma";
 import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
+import { addLoyaltyPoints } from "@/lib/loyalty";
 
 export async function submitReview(data: {
     productId: string;
@@ -63,6 +64,8 @@ export async function submitReview(data: {
                 isApproved: false, // Default to pending approval by admin
             }
         });
+
+        await addLoyaltyPoints(session.user.id, 50, "review", completedOrder.id, "Verified product review reward");
 
         revalidatePath(`/products/${data.productId}`); // Can be adjusted depending on route structure
 

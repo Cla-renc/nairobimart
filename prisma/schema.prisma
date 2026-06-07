@@ -33,28 +33,40 @@ enum CouponType {
   fixed_amount
 }
 
+enum LoyaltyTier {
+  bronze
+  silver
+  gold
+  platinum
+}
+
 model User {
-  id            String    @id @default(auto()) @map("_id") @db.ObjectId
-  name          String?
-  email         String    @unique
-  passwordHash  String?
-  phone         String?
+  id             String      @id @default(auto()) @map("_id") @db.ObjectId
+  name           String?
+  email          String      @unique
+  passwordHash   String?
+  phone          String?
   defaultAddress String?
   defaultCity    String?
   defaultCounty  String?
-  loyaltyPoints  Int       @default(0)
-  walletBalance  Float     @default(0)
+  loyaltyTier    LoyaltyTier @default(bronze)
+  totalSpent     Float       @default(0)
+  loyaltyPoints  Int         @default(0)
+  walletBalance  Float       @default(0)
   lastCheckInDate DateTime?
-  role          UserRole  @default(customer)
-  emailVerified DateTime?
-  image         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  role           UserRole    @default(customer)
+  emailVerified  DateTime?
+  image          String?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  lastAbandonedCartNotificationAt DateTime?
+  lastWinBackSentAt DateTime?
 
   orders        Order[]
   reviews       Review[]
   wishlist      Wishlist[]
   cartItems     CartItem[]
+  pointsHistory PointsEntry[]
   accounts      Account[]
   walletTransactions WalletTransaction[]
   recentlyViewed     RecentlyViewed[]
@@ -144,6 +156,7 @@ model Order {
   subtotal           Float
   shippingFee        Float
   discount           Float       @default(0)
+  couponCode         String?
   total              Float
   paymentMethod      String      // 'mpesa', 'pesapal', 'cod'
   paymentStatus      PaymentStatus @default(pending)
@@ -354,6 +367,17 @@ model WalletTransaction {
   reference String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model PointsEntry {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  points    Int
+  reason    String
+  details   String?
+  orderId   String?  @db.ObjectId
+  createdAt DateTime @default(now())
 }
 
 model RecentlyViewed {

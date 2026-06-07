@@ -28,7 +28,14 @@ export async function POST() {
             where: { id: user.id },
             data: {
                 loyaltyPoints: { increment: 10 },
-                lastCheckInDate: new Date()
+                lastCheckInDate: new Date(),
+                pointsHistory: {
+                    create: {
+                        points: 10,
+                        reason: "daily_checkin",
+                        details: "Daily loyalty check-in reward",
+                    }
+                }
             }
         });
 

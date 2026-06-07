@@ -73,6 +73,9 @@ export default function CheckoutPage() {
     const getCityPlaceholder = () => countryPlaceholders[deliveryInfo.country]?.city || "Nairobi";
     const getAddressPlaceholder = () => countryPlaceholders[deliveryInfo.country]?.address || "Nairobi West, Apartment 4B";
     const [isMounted, setIsMounted] = useState(false);
+    const [couponCode, setCouponCode] = useState("");
+    const [couponDiscount, setCouponDiscount] = useState(0);
+    const [couponMessage, setCouponMessage] = useState<string | null>(null);
 
     const { items, getTotalPrice, clearCart } = useCartStore();
     const router = useRouter();
@@ -92,7 +95,7 @@ export default function CheckoutPage() {
 
     const isMpesaAvailable = deliveryInfo.country === "Kenya";
 
-    const finalTotal = visibleTotalPrice + shippingFee;
+    const finalTotal = visibleTotalPrice + shippingFee - couponDiscount;
     const laybyDeposit = Math.round(finalTotal * 0.3);
     const laybyBalance = finalTotal - laybyDeposit;
     const commitmentDeposit = shippingFee > 0 ? shippingFee : 500;
@@ -147,6 +150,36 @@ export default function CheckoutPage() {
 
     const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
+    const applyCoupon = async () => {
+        setCouponMessage(null);
+        if (!couponCode.trim()) {
+            setCouponMessage("Enter a coupon code to apply.");
+            return;
+        }
+
+        try {
+            const response = await fetch("/api/coupons/validate", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ code: couponCode.trim(), subtotal: totalPrice }),
+            });
+
+            const data = await response.json();
+            if (!data.success) {
+                setCouponDiscount(0);
+                setCouponMessage(data.message || "Invalid coupon code.");
+                return;
+            }
+
+            setCouponDiscount(data.amount);
+            setCouponMessage(`Coupon applied: -KES ${data.amount.toLocaleString()}`);
+        } catch (error) {
+            setCouponDiscount(0);
+            setCouponMessage("Failed to validate coupon. Try again later.");
+            console.error("Coupon apply failed:", error);
+        }
+    };
+
     const handleConfirmOrder = async () => {
         setCheckoutError(null);
         if (!paymentMethod) {
@@ -178,6 +211,7 @@ export default function CheckoutPage() {
                     deliveryMethod,
                     pickupStationId: deliveryMethod === "pickup" ? selectedStationId : null,
                     shippingFee, // send calculated fee to verify
+                    couponCode: couponCode.trim(),
                 }),
             });
 
@@ -680,6 +714,12 @@ export default function CheckoutPage() {
                                     <span>Shipping Fee</span>
                                     <span className="font-medium">KES {shippingFee.toLocaleString()}</span>
                                 </div>
+                                {couponDiscount > 0 && (
+                                    <div className="flex justify-between text-sm text-green-700">
+                                        <span>Coupon Discount</span>
+                                        <span className="font-medium">- KES {couponDiscount.toLocaleString()}</span>
+                                    </div>
+                                )}
                                 <div className="flex justify-between text-lg font-bold pt-2 border-t">
                                     <span>Total</span>
                                     <span className="text-accent">KES {finalTotal.toLocaleString()}</span>
@@ -711,8 +751,24 @@ export default function CheckoutPage() {
                             </div>
 
                             <div className="pt-4">
-                                <Input placeholder="Coupon code" className="mb-2" />
-                                <Button variant="outline" className="w-full text-xs">Apply Coupon</Button>
+                                <Input
+                                    placeholder="Coupon code"
+                                    className="mb-2"
+                                    value={couponCode}
+                                    onChange={(event) => setCouponCode(event.target.value)}
+                                />
+                                <Button
+                                    variant="outline"
+                                    className="w-full text-xs"
+                                    onClick={applyCoupon}
+                                >
+                                    Apply Coupon
+                                </Button>
+                                {couponMessage && (
+                                    <p className={couponDiscount > 0 ? "text-xs mt-2 text-green-700" : "text-xs mt-2 text-red-600"}>
+                                        {couponMessage}
+                                    </p>
+                                )}
                             </div>
                         </CardContent>
                     </Card>

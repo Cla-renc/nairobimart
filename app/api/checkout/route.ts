@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import { createPesaPalCheckout } from "@/lib/pesapal";
+import { processPurchaseRewards } from "@/lib/loyalty";
 import prisma from "@/lib/prisma";
+import { applyCouponCode, validateCouponCode } from "@/lib/coupons";
 
 export async function POST(req: Request) {
     try {
-        const { items, totalPrice, deliveryInfo, paymentMethod, paymentType, deliveryMethod, pickupStationId } = await req.json();
+        const { items, totalPrice, deliveryInfo, paymentMethod, paymentType, deliveryMethod, pickupStationId, couponCode } = await req.json();
 
         console.log("=== CHECKOUT REQUEST ===");
         console.log("Payment Method:", paymentMethod);
@@ -50,18 +52,34 @@ export async function POST(req: Request) {
         );
 
         const orderTotal = totalPrice + shippingFee;
+        let couponDiscount = 0;
+        let couponValidationError = null;
+
+        if (couponCode) {
+            const validation = await validateCouponCode(couponCode, totalPrice);
+            if (!validation.valid) {
+                couponValidationError = validation.error || "Coupon code is invalid.";
+            } else {
+                couponDiscount = validation.amount;
+            }
+        }
+
+        if (couponValidationError) {
+            return NextResponse.json({ success: false, message: couponValidationError }, { status: 400 });
+        }
+
+        const totalAfterDiscount = Math.max(orderTotal - couponDiscount, 0);
         let depositAmount = null;
         let balanceRemaining = null;
-        let amountToCharge = orderTotal;
+        let amountToCharge = totalAfterDiscount;
 
         if (paymentType === "LAYBY") {
-            depositAmount = Math.round(orderTotal * 0.3);
-            balanceRemaining = orderTotal - depositAmount;
+            depositAmount = Math.round(totalAfterDiscount * 0.3);
+            balanceRemaining = totalAfterDiscount - depositAmount;
             amountToCharge = depositAmount;
         } else if (paymentType === "COMMITMENT") {
-            // Commitment fee is exactly the shipping fee to cover courier risk
             depositAmount = shippingFee > 0 ? shippingFee : 500;
-            balanceRemaining = orderTotal - depositAmount;
+            balanceRemaining = totalAfterDiscount - depositAmount;
             amountToCharge = depositAmount;
         }
 
@@ -81,7 +99,9 @@ export async function POST(req: Request) {
                 orderNumber,
                 subtotal: totalPrice,
                 shippingFee,
-                total: orderTotal,
+                discount: couponDiscount,
+                couponCode: couponCode ? couponCode.toUpperCase() : null,
+                total: totalAfterDiscount,
                 paymentMethod,
                 paymentType: paymentType || "FULL",
                 depositAmount,
@@ -110,12 +130,20 @@ export async function POST(req: Request) {
             },
         });
 
+        if (couponCode) {
+            try {
+                await applyCouponCode(couponCode, totalPrice);
+            } catch (couponError) {
+                console.warn("Coupon apply error:", couponError);
+            }
+        }
+
         // 3. Send Order Confirmation Email
         if (deliveryInfo.email) {
             try {
                 const { sendOrderConfirmationEmail } = await import("@/lib/email");
                 // Don't await if you don't want it to slow down checkout, but awaiting is fine
-                sendOrderConfirmationEmail(deliveryInfo.email, orderNumber, orderTotal);
+                sendOrderConfirmationEmail(deliveryInfo.email, orderNumber, totalAfterDiscount);
                 console.log(`Order confirmation email triggered for ${deliveryInfo.email}`);
             } catch (emailError) {
                 console.error("Failed to send confirmation email:", emailError);
@@ -161,6 +189,8 @@ export async function POST(req: Request) {
                 where: { orderId: order.id },
                 data: { paymentStatus: "completed" }
             });
+
+            await processPurchaseRewards(order.id);
 
             return NextResponse.json({
                 success: true,

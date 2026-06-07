@@ -25,6 +25,42 @@ const CartDrawer = ({ children }: { children: React.ReactElement }) => {
         setIsMounted(true);
     }, []);
 
+    useEffect(() => {
+        if (!isMounted) {
+            return;
+        }
+
+        const payload = items.map((item) => ({
+            productId: item.productId,
+            variantId: item.variantId,
+            quantity: item.quantity,
+            price: item.price,
+        }));
+
+        const controller = new AbortController();
+        const syncCart = async () => {
+            try {
+                await fetch("/api/user/cart-sync", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ items: payload }),
+                    signal: controller.signal,
+                });
+            } catch (error) {
+                const err = error as { name?: string };
+                if (err.name !== "AbortError") {
+                    console.warn("Cart sync failed", error);
+                }
+            }
+        };
+
+        const timeoutId = window.setTimeout(syncCart, 600);
+        return () => {
+            window.clearTimeout(timeoutId);
+            controller.abort();
+        };
+    }, [items, isMounted]);
+
     return (
         <Sheet>
             <SheetTrigger render={children} />
