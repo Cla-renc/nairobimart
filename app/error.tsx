@@ -1,14 +1,15 @@
 "use client";
-import * as Sentry from "@sentry/nextjs";
 import React from "react";
 
 export default function GlobalError({ error }: { error: Error }) {
   React.useEffect(() => {
-    try {
-      Sentry.captureException(error);
-    } catch (e) {
-      // ignore
-    }
+    import("@sentry/nextjs")
+      .then((Sentry) => {
+        Sentry.captureException(error);
+      })
+      .catch(() => {
+        // ignore
+      });
   }, [error]);
 
   return (
@@ -16,7 +17,7 @@ export default function GlobalError({ error }: { error: Error }) {
       <body>
         <div style={{ padding: 24 }}>
           <h1>Something went wrong</h1>
-          <p>We're tracking this error and will investigate.</p>
+          <p>We&apos;re tracking this error and will investigate.</p>
         </div>
       </body>
     </html>

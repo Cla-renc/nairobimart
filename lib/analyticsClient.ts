@@ -1,12 +1,16 @@
-export function trackEvent(name: string, params: Record<string, any> = {}) {
+declare global {
+  interface Window {
+    gtag?: (...args: unknown[]) => void;
+  }
+}
+
+export function trackEvent(name: string, params: Record<string, unknown> = {}) {
   try {
     if (typeof window === 'undefined') return;
-    // @ts-ignore
     if (typeof window.gtag === 'function') {
-      // @ts-ignore
       window.gtag('event', name, params);
     }
-  } catch (e) {
+  } catch {
     // ignore
   }
 }

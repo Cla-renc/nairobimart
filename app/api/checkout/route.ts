@@ -5,6 +5,15 @@ import { processPurchaseRewards } from "@/lib/loyalty";
 import prisma from "@/lib/prisma";
 import { applyCouponCode, validateCouponCode } from "@/lib/coupons";
 
+type CheckoutItem = {
+    productId: string;
+    price: number;
+    quantity: number;
+    variantId?: string;
+    id?: string;
+    name?: string;
+};
+
 export async function POST(req: Request) {
     try {
         const { items, totalPrice, deliveryInfo, paymentMethod, paymentType, deliveryMethod, pickupStationId, couponCode, gaClientId } = await req.json();
@@ -34,7 +43,7 @@ export async function POST(req: Request) {
 
         // 1. Resolve product IDs from slugs (cart stores productId which is the DB id)
         const resolvedItems = await Promise.all(
-            (items as { productId: string; price: number; quantity: number; variantId?: string }[]).map(
+            (items as CheckoutItem[]).map(
                 async (item) => {
                     // look up product cost price for margin tracking
                     const product = await prisma.product.findUnique({
@@ -133,7 +142,7 @@ export async function POST(req: Request) {
 
         // Send GA4 purchase event (best-effort)
         try {
-            const gaItems = (items as any[]).map(i => ({
+            const gaItems = (items as CheckoutItem[]).map(i => ({
                 item_id: i.productId || i.id || i.name,
                 item_name: i.name,
                 price: i.price,

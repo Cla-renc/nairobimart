@@ -2,9 +2,17 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 
+type SearchResult = {
+  id: string;
+  slug: string;
+  images?: Array<{ url?: string }>;
+  name: string;
+  price: number;
+};
+
 export default function SearchBox() {
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<any[]>([]);
+  const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const timer = useRef<number | null>(null);
@@ -55,6 +63,7 @@ export default function SearchBox() {
               onClick={() => router.push(`/products/${p.slug}`)}
             >
               <div className="flex items-center">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={p.images?.[0]?.url || '/images/nairobimart-logo.svg'} alt={p.name} className="mr-3 h-10 w-10 object-cover" />
                 <div>
                   <div className="font-medium">{p.name}</div>
