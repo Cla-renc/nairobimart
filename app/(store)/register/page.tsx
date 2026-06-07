@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
@@ -37,6 +37,7 @@ const registerSchema = z.object({
     phone: z.string().min(10, "Valid phone number is required"),
     password: z.string().min(6, "Password must be at least 6 characters"),
     confirmPassword: z.string().min(6, "Please confirm your password"),
+    referralCode: z.string().optional(),
 }).refine((data) => data.password === data.confirmPassword, {
     message: "Passwords don't match",
     path: ["confirmPassword"],
@@ -49,6 +50,8 @@ export default function RegisterPage() {
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const referralCodeQuery = searchParams.get("ref") || searchParams.get("referral") || "";
     const { toast } = useToast();
 
     const form = useForm<RegisterValues>({
@@ -59,6 +62,7 @@ export default function RegisterPage() {
             phone: "",
             password: "",
             confirmPassword: "",
+            referralCode: referralCodeQuery || undefined,
         },
     });
 
@@ -224,6 +228,23 @@ export default function RegisterPage() {
                                                     {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                                                 </button>
                                             </div>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="referralCode"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Referral Code (optional)</FormLabel>
+                                            <FormControl>
+                                                <Input
+                                                    placeholder="Enter a referral code"
+                                                    className="h-11"
+                                                    {...field}
+                                                />
+                                            </FormControl>
                                             <FormMessage />
                                         </FormItem>
                                     )}

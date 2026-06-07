@@ -44,18 +44,28 @@ export async function GET(req: NextRequest) {
                 },
                 orders: {
                     select: { total: true },
+                },
+                referredUsers: {
+                    select: { id: true }
                 }
             }
         });
 
-        const enriched = customers.map(c => ({
-            ...c,
-            orderCount: c._count.orders,
-            reviewCount: c._count.reviews,
-            totalSpent: c.orders.reduce((sum, o) => sum + o.total, 0),
-            orders: undefined,
-            _count: undefined,
-        }));
+        const enriched = customers.map(c => {
+            const referredUsers = c.referredUsers as unknown as { id: string }[] | undefined;
+            const referralCount = referredUsers?.length ?? 0;
+
+            return {
+                ...c,
+                orderCount: c._count.orders,
+                reviewCount: c._count.reviews,
+                totalSpent: c.orders.reduce((sum, o) => sum + o.total, 0),
+                referralCount,
+                orders: undefined,
+                _count: undefined,
+                referredUsers: undefined,
+            };
+        });
 
         return NextResponse.json(enriched);
     } catch (error) {

@@ -61,6 +61,10 @@ model User {
   updatedAt      DateTime    @updatedAt
   lastAbandonedCartNotificationAt DateTime?
   lastWinBackSentAt DateTime?
+  referralCode   String?      @unique
+  referredById   String?      @db.ObjectId
+  referredBy     User?        @relation("Referrals", fields: [referredById], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  referredUsers  User[]       @relation("Referrals")
 
   orders        Order[]
   reviews       Review[]

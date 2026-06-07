@@ -36,6 +36,7 @@ export default async function EditProductPage({
         isFlashSale: product.isFlashSale,
         flashSalePrice: product.flashSalePrice || 0,
         flashSaleEndsAt: product.flashSaleEndsAt ? new Date(product.flashSaleEndsAt).toISOString().slice(0, 16) : "",
+        images: product.images.map((image) => ({ url: image.url })),
     };
 
     return (

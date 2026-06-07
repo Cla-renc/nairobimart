@@ -6,11 +6,11 @@ import * as z from "zod";
 import {
     Plus,
     Trash2,
-    Image as ImageIcon,
     Loader2,
     ExternalLink,
     ArrowLeft
 } from "lucide-react";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import {
     Form,
@@ -32,7 +32,7 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { useState } from "react";
+import { useState, useRef, type ChangeEvent } from "react";
 import { Switch } from "@/components/ui/switch";
 import Link from "next/link";
 
@@ -50,6 +50,7 @@ const productSchema = z.object({
     isFlashSale: z.boolean().optional(),
     flashSalePrice: z.number().optional(),
     flashSaleEndsAt: z.string().optional().or(z.literal("")),
+    images: z.array(z.union([z.string(), z.object({ url: z.string(), publicId: z.string().optional() })])).optional(),
 });
 
 type ProductFormValues = z.infer<typeof productSchema>;
@@ -61,6 +62,62 @@ const ProductForm = ({ initialData, productId }: { initialData?: Partial<Product
     const { toast } = useToast();
     const router = useRouter();
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isUploadingImages, setIsUploadingImages] = useState(false);
+    const [uploadedImages, setUploadedImages] = useState<{ url: string; publicId?: string }[]>(
+        initialData?.images?.map((image) => (typeof image === "string" ? { url: image } : image)) || []
+    );
+    const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+    const fileToDataUrl = (file: File) =>
+        new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = () => reject(new Error("Failed to read file"));
+            reader.readAsDataURL(file);
+        });
+
+    const uploadProductImages = async (files: FileList) => {
+        if (!files.length) return;
+        setIsUploadingImages(true);
+
+        try {
+            const uploaded: { url: string; publicId?: string }[] = [];
+
+            for (const file of Array.from(files)) {
+                const dataUrl = await fileToDataUrl(file);
+                const res = await fetch("/api/admin/products/upload-image", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ file: dataUrl, fileName: file.name }),
+                });
+
+                if (!res.ok) {
+                    throw new Error("Image upload failed");
+                }
+
+                const json = await res.json();
+                uploaded.push({ url: json.url, publicId: json.publicId });
+            }
+
+            setUploadedImages((prev) => [...prev, ...uploaded]);
+            toast({ title: "Images uploaded", description: `${uploaded.length} image${uploaded.length === 1 ? "" : "s"} added.` });
+        } catch {
+            toast({ title: "Upload failed", description: "Unable to upload product images. Please try again.", variant: "destructive" });
+        } finally {
+            setIsUploadingImages(false);
+        }
+    };
+
+    const handleImageChange = async (event: ChangeEvent<HTMLInputElement>) => {
+        if (!event.target.files?.length) return;
+
+        await uploadProductImages(event.target.files);
+        event.target.value = "";
+    };
+
+    const removeImage = (index: number) => {
+        setUploadedImages((prev) => prev.filter((_, idx) => idx !== index));
+    };
 
     const form = useForm<ProductFormValues>({
         resolver: zodResolver(productSchema),
@@ -78,6 +135,7 @@ const ProductForm = ({ initialData, productId }: { initialData?: Partial<Product
             isFlashSale: initialData?.isFlashSale || false,
             flashSalePrice: initialData?.flashSalePrice || 0,
             flashSaleEndsAt: initialData?.flashSaleEndsAt || "",
+            images: initialData?.images?.map((image) => (typeof image === "string" ? image : image.url)) || [],
         },
     });
 
@@ -93,7 +151,10 @@ const ProductForm = ({ initialData, productId }: { initialData?: Partial<Product
             const res = await fetch(url, {
                 method,
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(values),
+                body: JSON.stringify({
+                    ...values,
+                    images: uploadedImages.map((image) => image.url),
+                }),
             });
 
             if (!res.ok) throw new Error("Something went wrong");
@@ -202,20 +263,49 @@ const ProductForm = ({ initialData, productId }: { initialData?: Partial<Product
                                 <CardDescription>Upload high-quality product images to attract customers.</CardDescription>
                             </CardHeader>
                             <CardContent>
+                                <input
+                                    type="file"
+                                    ref={fileInputRef}
+                                    className="hidden"
+                                    accept="image/*"
+                                    multiple
+                                    onChange={handleImageChange}
+                                />
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                    <div className="aspect-square border-2 border-dashed rounded-xl flex flex-col items-center justify-center cursor-pointer hover:bg-muted/50 transition-colors">
-                                        <Plus className="h-8 w-8 text-muted-foreground" />
-                                        <span className="text-xs text-muted-foreground mt-2 font-medium">Add Image</span>
-                                    </div>
-                                    {/* Placeholder for uploaded images */}
-                                    <div className="aspect-square bg-muted rounded-xl relative overflow-hidden group">
-                                        <div className="absolute inset-0 flex items-center justify-center">
-                                            <ImageIcon className="h-8 w-8 text-muted-foreground/30" />
+                                    <button
+                                        type="button"
+                                        disabled={isUploadingImages}
+                                        onClick={() => fileInputRef.current?.click()}
+                                        className="aspect-square border-2 border-dashed rounded-xl flex flex-col items-center justify-center cursor-pointer hover:bg-muted/50 transition-colors focus:outline-none focus:ring-2 focus:ring-primary disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                        {isUploadingImages ? (
+                                            <Loader2 className="animate-spin h-6 w-6 text-muted-foreground" />
+                                        ) : (
+                                            <Plus className="h-8 w-8 text-muted-foreground" />
+                                        )}
+                                        <span className="text-xs text-muted-foreground mt-2 font-medium">
+                                            {isUploadingImages ? "Uploading..." : "Add Images"}
+                                        </span>
+                                    </button>
+                                    {uploadedImages.map((image, index) => (
+                                        <div key={`${image.url}-${index}`} className="aspect-square rounded-xl overflow-hidden relative">
+                                            <Image
+                                                src={image.url}
+                                                alt={`Product image ${index + 1}`}
+                                                fill
+                                                sizes="200px"
+                                                unoptimized
+                                                className="object-cover"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => removeImage(index)}
+                                                className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-md shadow-lg"
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </button>
                                         </div>
-                                        <button className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-md opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <Trash2 className="h-4 w-4" />
-                                        </button>
-                                    </div>
+                                    ))}
                                 </div>
                                 <p className="text-[10px] text-muted-foreground mt-4">Accepted formats: JPG, PNG, WEBP. Max size: 2MB per image.</p>
                             </CardContent>

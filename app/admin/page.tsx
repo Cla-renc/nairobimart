@@ -44,6 +44,10 @@ export default async function AdminDashboard() {
         where: { role: "customer" }
     });
 
+    const totalReferrals = await prisma.user.count({
+        where: { referredById: { not: null } }
+    });
+
     // 4. Calculate total revenue and profit
     let totalRevenue = 0;
     let totalProfit = 0;
@@ -123,6 +127,16 @@ export default async function AdminDashboard() {
                     <CardContent>
                         <div className="text-2xl font-bold text-green-600">KES {totalProfit.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}</div>
                         <p className="text-xs text-muted-foreground mt-1">Revenue minus item costs</p>
+                    </CardContent>
+                </Card>
+                <Card className="border-none shadow-sm bg-yellow-50/50">
+                    <CardHeader className="flex flex-row items-center justify-between pb-2">
+                        <CardTitle className="text-sm font-medium">Total Referrals</CardTitle>
+                        <Users className="h-4 w-4 text-yellow-600" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold text-yellow-700">{totalReferrals.toLocaleString()}</div>
+                        <p className="text-xs text-muted-foreground mt-1">Customers acquired through referrals</p>
                     </CardContent>
                 </Card>
                 <Card className="border-none shadow-sm">

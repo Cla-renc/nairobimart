@@ -53,6 +53,12 @@ export default async function AccountPage() {
             totalSpent: true,
             loyaltyPoints: true,
             lastCheckInDate: true,
+            referralCode: true,
+            referredUsers: {
+                select: {
+                    id: true,
+                },
+            },
         },
     });
 
@@ -159,6 +165,16 @@ export default async function AccountPage() {
                                                 <p className="text-xs text-muted-foreground mt-1">Total spent: KES {(dbUser?.totalSpent ?? 0).toLocaleString()}</p>
                                             </div>
                                             <Link href="/account/loyalty" className={cn(buttonVariants({ variant: "outline" }), "mt-4 w-full text-center")}>View loyalty</Link>
+                                        </div>
+                                    </div>
+                                    <div className="mt-6 rounded-2xl border border-primary/10 bg-primary/5 p-4">
+                                        <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Referral Program</p>
+                                        <div className="mt-3">
+                                            <p className="text-sm font-semibold">Your referral code</p>
+                                            <p className="text-xl font-bold truncate">{dbUser?.referralCode || "No referral code assigned"}</p>
+                                            <p className="text-sm text-muted-foreground mt-2">Share this code with friends to earn rewards when they sign up.</p>
+                                            <Link href="/referral" className={cn(buttonVariants({ variant: "outline" }), "mt-4 inline-flex h-11 items-center justify-center w-full")}>Manage referrals</Link>
+                                            <p className="text-xs text-muted-foreground mt-3">Referred customers: {Array.isArray(dbUser?.referredUsers) ? (dbUser.referredUsers as { id: string }[]).length : 0}</p>
                                         </div>
                                     </div>
                                 </div>

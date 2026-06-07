@@ -19,6 +19,13 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
                 phone: true,
                 role: true,
                 image: true,
+                referralCode: true,
+                referredBy: {
+                    select: { id: true, email: true, name: true }
+                },
+                referredUsers: {
+                    select: { id: true }
+                },
                 createdAt: true,
                 orders: {
                     orderBy: { createdAt: "desc" },

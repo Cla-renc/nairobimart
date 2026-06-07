@@ -44,7 +44,8 @@ export async function PATCH(
             cjProductId,
             isFlashSale,
             flashSalePrice,
-            flashSaleEndsAt
+            flashSaleEndsAt,
+            images
         } = body;
 
         // Find or create category
@@ -74,6 +75,10 @@ export async function PATCH(
                 isFlashSale: isFlashSale ?? false,
                 flashSalePrice: flashSalePrice ? parseFloat(flashSalePrice) : null,
                 flashSaleEndsAt: flashSaleEndsAt ? new Date(flashSaleEndsAt) : null,
+                images: images ? {
+                    deleteMany: {},
+                    create: images.map((url: string) => ({ url }))
+                } : undefined,
             },
         });
 

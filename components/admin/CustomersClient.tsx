@@ -36,6 +36,7 @@ type Customer = {
     phone: string | null;
     role: string;
     image: string | null;
+    referralCount?: number;
     createdAt: string;
     orderCount: number;
     reviewCount: number;
@@ -43,6 +44,10 @@ type Customer = {
 };
 
 type CustomerDetail = Customer & {
+    referralCode?: string | null;
+    referredBy?: { id: string; email: string | null; name: string | null } | null;
+    referralCount?: number;
+    referredUsers?: { id: string }[];
     orders: Order[];
     _count?: { orders: number; reviews: number; wishlist: number };
     totalSpent: number;
@@ -177,6 +182,7 @@ export default function CustomersClient() {
         total: customers.length,
         activeThisMonth: customers.filter(c => new Date(c.createdAt) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)).length,
         admins: customers.filter(c => c.role === "admin").length,
+        referrals: customers.reduce((sum, c) => sum + (c.referralCount ?? 0), 0),
     };
 
     const getRoleBadge = (role: string) => {
@@ -237,6 +243,17 @@ export default function CustomersClient() {
                         </div>
                     </CardContent>
                 </Card>
+                <Card className="border-none shadow-sm bg-yellow-50/50">
+                    <CardContent className="pt-6">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm font-medium text-yellow-600 uppercase tracking-wider">Total Referrals</p>
+                                <h3 className="text-3xl font-bold mt-1">{loading ? "—" : stats.referrals}</h3>
+                            </div>
+                            <div className="p-3 bg-yellow-100 text-yellow-600 rounded-2xl"><Users className="h-6 w-6" /></div>
+                        </div>
+                    </CardContent>
+                </Card>
             </div>
 
             {/* Table */}
@@ -275,9 +292,10 @@ export default function CustomersClient() {
                     <Table>
                         <TableHeader className="bg-muted/50">
                             <TableRow>
-                                <TableHead className="w-[250px]">Customer</TableHead>
+                                <TableHead className="w-[220px]">Customer</TableHead>
                                 <TableHead>Contact</TableHead>
                                 <TableHead>Role</TableHead>
+                                <TableHead>Referrals</TableHead>
                                 <TableHead>Orders</TableHead>
                                 <TableHead>Total Spent</TableHead>
                                 <TableHead>Joined</TableHead>
@@ -288,7 +306,7 @@ export default function CustomersClient() {
                             {loading ? (
                                 Array.from({ length: 4 }).map((_, i) => (
                                     <TableRow key={i}>
-                                        {Array.from({ length: 7 }).map((_, j) => (
+                                        {Array.from({ length: 8 }).map((_, j) => (
                                             <TableCell key={j}>
                                                 <div className="h-4 bg-muted animate-pulse rounded" />
                                             </TableCell>
@@ -297,7 +315,7 @@ export default function CustomersClient() {
                                 ))
                             ) : customers.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={7} className="text-center py-12 text-muted-foreground">
+                                    <TableCell colSpan={8} className="text-center py-12 text-muted-foreground">
                                         <Users className="h-8 w-8 mx-auto mb-2 opacity-30" />
                                         No customers found
                                     </TableCell>
@@ -332,6 +350,9 @@ export default function CustomersClient() {
                                         </div>
                                     </TableCell>
                                     <TableCell>{getRoleBadge(customer.role)}</TableCell>
+                                    <TableCell>
+                                        <span className="font-medium">{customer.referralCount ?? 0}</span>
+                                    </TableCell>
                                     <TableCell>
                                         <span className="font-medium">{customer.orderCount ?? 0}</span>
                                     </TableCell>
@@ -423,6 +444,17 @@ export default function CustomersClient() {
                                             <h3 className="text-lg font-bold">{selectedCustomer.name || "Unnamed User"}</h3>
                                             <p className="text-sm text-muted-foreground">{selectedCustomer.email}</p>
                                             {getRoleBadge(selectedCustomer.role)}
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 mt-4">
+                                        <div className="bg-yellow-50 rounded-xl p-3 text-center">
+                                            <p className="text-xs font-semibold text-yellow-700 uppercase mb-1">Referral Code</p>
+                                            <p className="text-sm font-semibold">{selectedCustomer.referralCode || "N/A"}</p>
+                                        </div>
+                                        <div className="bg-yellow-50 rounded-xl p-3 text-center">
+                                            <p className="text-xs font-semibold text-yellow-700 uppercase mb-1">Referred Customers</p>
+                                            <p className="text-2xl font-bold">{selectedCustomer.referralCount ?? selectedCustomer.referredUsers?.length ?? 0}</p>
                                         </div>
                                     </div>
 

@@ -43,9 +43,6 @@ export async function POST(req: Request) {
                 price: Number(item.price ?? 0) || 0,
             }));
 
-        // Fetch existing items for user to perform merge
-        const existing = await prisma.cartItem.findMany({ where: { userId: user.id } });
-
         const processed: { productId: string; variantId: string | null; quantity: number; action: 'created' | 'merged' }[] = [];
 
         for (const item of normalized) {
