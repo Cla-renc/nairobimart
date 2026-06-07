@@ -4,6 +4,8 @@ import "./globals.css";
 import { Inter as Geist } from "next/font/google";
 import { cn } from "../lib/utils";
 import { Toaster } from "@/components/ui/toaster";
+import PWARegister from "@/components/PWARegister";
+import Analytics from "@/components/Analytics";
 import { SessionProvider } from "next-auth/react";
 
 const geist = Geist({ subsets: ['latin'], variable: '--font-sans' });
@@ -35,12 +37,18 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={cn("font-sans", geist.variable)} suppressHydrationWarning>
+      <head>
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#0D1B2A" />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <SessionProvider>
+          <Analytics />
           {children}
           <Toaster />
+          <PWARegister />
         </SessionProvider>
       </body>
     </html>

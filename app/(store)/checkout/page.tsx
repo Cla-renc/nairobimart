@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { trackEvent, getGaClientId } from "@/lib/analyticsClient";
 import {
     CreditCard,
     MapPin,
@@ -103,6 +104,17 @@ export default function CheckoutPage() {
 
     useEffect(() => {
         setIsMounted(true);
+        // GA: begin_checkout
+        try {
+            trackEvent('begin_checkout', {
+                value: totalPrice,
+                currency: 'KES',
+                items: items.map(i => ({ item_id: i.id, item_name: i.name, price: i.price, quantity: i.quantity }))
+            });
+        } catch (e) {
+            console.warn('begin_checkout track failed', e);
+        }
+
         // Default to pesapal (Visa) if no payment method has been chosen yet
         setPaymentMethod((prev) => prev || "pesapal");
 
@@ -212,6 +224,7 @@ export default function CheckoutPage() {
                     pickupStationId: deliveryMethod === "pickup" ? selectedStationId : null,
                     shippingFee, // send calculated fee to verify
                     couponCode: couponCode.trim(),
+                    gaClientId: getGaClientId(),
                 }),
             });
 

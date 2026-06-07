@@ -2,10 +2,8 @@
 
 import Link from "next/link";
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { useCartStore } from "@/store/cartStore";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
     Search,
     ShoppingCart,
@@ -13,6 +11,7 @@ import {
     User as UserIcon,
     Heart,
 } from "lucide-react";
+import SearchBox from "@/components/store/SearchBox";
 import BrandLogo from "@/components/store/BrandLogo";
 import {
     Sheet,
@@ -45,22 +44,14 @@ interface NavbarProps {
 
 const Navbar = ({ user }: NavbarProps) => {
     const [isSearchOpen, setIsSearchOpen] = useState(false);
-    const [searchQuery, setSearchQuery] = useState("");
     const [isMounted, setIsMounted] = useState(false);
-    const router = useRouter();
     const cartItemsCount = useCartStore((state) => state.getTotalItems());
 
     useEffect(() => {
         setIsMounted(true);
     }, []);
 
-    const handleSearch = (e?: React.FormEvent) => {
-        if (e) e.preventDefault();
-        if (searchQuery.trim()) {
-            router.push(`/products?search=${encodeURIComponent(searchQuery.trim())}`);
-            setIsSearchOpen(false);
-        }
-    };
+    // Search handled by SearchBox component
 
     const navLinks = [
         { name: "Home", href: "/" },
@@ -129,19 +120,9 @@ const Navbar = ({ user }: NavbarProps) => {
 
                 {/* Actions */}
                 <div className="flex items-center space-x-2 md:space-x-4">
-                    <form onSubmit={handleSearch} className="hidden lg:flex relative w-64">
-                        <Input
-                            type="search"
-                            placeholder="Search products..."
-                            className="pl-8 h-9"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                        />
-                        <Search
-                            className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground cursor-pointer hover:text-accent"
-                            onClick={() => handleSearch()}
-                        />
-                    </form>
+                    <div className="hidden lg:block w-64">
+                        <SearchBox />
+                    </div>
 
                     <Button
                         variant="ghost"

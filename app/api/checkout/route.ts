@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import { createPesaPalCheckout } from "@/lib/pesapal";
+import { sendGaPurchaseEvent } from "@/lib/gaServer";
 import { processPurchaseRewards } from "@/lib/loyalty";
 import prisma from "@/lib/prisma";
 import { applyCouponCode, validateCouponCode } from "@/lib/coupons";
 
 export async function POST(req: Request) {
     try {
-        const { items, totalPrice, deliveryInfo, paymentMethod, paymentType, deliveryMethod, pickupStationId, couponCode } = await req.json();
+        const { items, totalPrice, deliveryInfo, paymentMethod, paymentType, deliveryMethod, pickupStationId, couponCode, gaClientId } = await req.json();
 
         console.log("=== CHECKOUT REQUEST ===");
         console.log("Payment Method:", paymentMethod);
@@ -129,6 +130,26 @@ export async function POST(req: Request) {
                 }
             },
         });
+
+        // Send GA4 purchase event (best-effort)
+        try {
+            const gaItems = (items as any[]).map(i => ({
+                item_id: i.productId || i.id || i.name,
+                item_name: i.name,
+                price: i.price,
+                quantity: i.quantity
+            }));
+            // fire-and-forget but await to capture errors when possible
+            await sendGaPurchaseEvent({
+                clientId: gaClientId || null,
+                transactionId: order.orderNumber,
+                value: totalAfterDiscount,
+                currency: 'KES',
+                items: gaItems
+            });
+        } catch (e) {
+            console.warn('GA purchase send failed', e);
+        }
 
         if (couponCode) {
             try {
