@@ -118,36 +118,37 @@ async function startBot() {
     console.log(`[DEBUG] BOT_PHONE_NUMBER from env:`, process.env.BOT_PHONE_NUMBER);
     console.log(`[DEBUG] Is registered?`, sock.authState.creds.registered);
 
-    // If not logged in and a phone number is provided, use a Pairing Code!
-    if (!sock.authState.creds.registered && process.env.BOT_PHONE_NUMBER) {
-        console.log(`[DEBUG] Attempting to request pairing code...`);
-        setTimeout(async () => {
-            try {
-                // Remove any +, spaces, or dashes from the number
-                const cleanNumber = process.env.BOT_PHONE_NUMBER.replace(/[^0-9]/g, '');
-                const code = await sock.requestPairingCode(cleanNumber);
-                console.log(`\n╔══════════════════════════════════════════════╗`);
-                console.log(`║   🚀 YOUR PAIRING CODE IS: ${code.padEnd(16)}║`);
-                console.log(`╚══════════════════════════════════════════════╝\n`);
-                console.log(`STEPS: Open WhatsApp on your host phone`);
-                console.log(`→ Tap (⋮) Menu → Linked Devices → Link a Device`);
-                console.log(`→ Tap 'Link with phone number instead'`);
-                console.log(`→ Enter the code above. You have 60 seconds!`);
-                console.log(`→ If it expires, restart this service on Render.`);
-            } catch (error) {
-                console.error("Failed to request pairing code:", error.message);
-            }
-        }, 5000); // 5 second delay to ensure socket is fully ready
-    }
+    // We will request pairing code only when the socket tells us it's ready (via the qr event)
 
     sock.ev.on('creds.update', saveCreds);
 
     sock.ev.on('connection.update', async (update) => {
         const { connection, lastDisconnect, qr } = update;
         
-        if (qr && !process.env.BOT_PHONE_NUMBER) {
-            console.log("\nSCAN THIS QR CODE IN YOUR WHATSAPP TO LOG IN:\n");
-            qrcode.generate(qr, { small: true });
+        if (qr && !sock.authState.creds.registered) {
+            if (process.env.BOT_PHONE_NUMBER) {
+                console.log(`[DEBUG] Socket ready! Requesting pairing code...`);
+                // Short delay to ensure crypto is ready
+                setTimeout(async () => {
+                    try {
+                        const cleanNumber = process.env.BOT_PHONE_NUMBER.replace(/[^0-9]/g, '');
+                        const code = await sock.requestPairingCode(cleanNumber);
+                        console.log(`\n╔══════════════════════════════════════════════╗`);
+                        console.log(`║   🚀 YOUR PAIRING CODE IS: ${code.padEnd(16)}║`);
+                        console.log(`╚══════════════════════════════════════════════╝\n`);
+                        console.log(`STEPS: Open WhatsApp on your host phone`);
+                        console.log(`→ Tap (⋮) Menu → Linked Devices → Link a Device`);
+                        console.log(`→ Tap 'Link with phone number instead'`);
+                        console.log(`→ Enter the code above. You have 60 seconds!`);
+                        console.log(`→ If it expires, restart this service on Render.`);
+                    } catch (error) {
+                        console.error("Failed to request pairing code:", error.message);
+                    }
+                }, 3000);
+            } else {
+                console.log("\nSCAN THIS QR CODE IN YOUR WHATSAPP TO LOG IN:\n");
+                qrcode.generate(qr, { small: true });
+            }
         }
 
         if (connection === 'close') {
