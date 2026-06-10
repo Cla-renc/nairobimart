@@ -63,7 +63,7 @@ export default async function ProductDetailPage({ params }: { params: { slug: st
         select: { orderId: true },
     });
     const orderIds = orderItemsWithCurrent.map(oi => oi.orderId);
-    let freqBoughtProducts: any[] = [];
+    let freqBoughtProducts: typeof relatedProductsDb = [];
     
     if (orderIds.length > 0) {
         const relatedItems = await prisma.orderItem.findMany({
@@ -85,9 +85,9 @@ export default async function ProductDetailPage({ params }: { params: { slug: st
         }
         
         freqBoughtProducts = Array.from(freqMap.values())
-            .sort((a: any, b: any) => b.count - a.count)
+            .sort((a: { count: number }, b: { count: number }) => b.count - a.count)
             .slice(0, 4)
-            .map((item: any) => item.product);
+            .map((item: { product: typeof relatedProductsDb[0] }) => item.product);
     }
 
     // Generate JSON-LD Schema

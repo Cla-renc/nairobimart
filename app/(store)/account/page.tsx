@@ -22,7 +22,7 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import DailyCheckInButton from "./DailyCheckInButton";
 import DeleteRecentOrderButton from "./DeleteRecentOrderButton";
-import { getLoyaltyTierInfo, getNextLoyaltyTier, LOYALTY_TIERS } from "@/lib/loyalty";
+import { getLoyaltyTierInfo, getNextLoyaltyTier } from "@/lib/loyalty";
 interface ExtendedUser {
     id: string;
     name?: string | null;
