@@ -401,3 +401,10 @@ model WhatsAppSession {
   value     String   @db.String
   updatedAt DateTime @updatedAt
 }
+
+model WhatsAppConversation {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  remoteJid String   @unique
+  messages  Json     @default("[]")
+  updatedAt DateTime @updatedAt
+}

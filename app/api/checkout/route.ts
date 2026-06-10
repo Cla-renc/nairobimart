@@ -102,7 +102,33 @@ export async function POST(req: Request) {
             if (user) userId = user.id;
         }
 
-        // 2. Create Order with its Items in one transaction
+        // 2. Real-time Inventory Check and Lock
+        const lockedProducts: { id: string, qty: number }[] = [];
+        try {
+            for (const item of resolvedItems) {
+                if (!item.productId) continue;
+                const updateRes = await prisma.product.updateMany({
+                    where: { id: item.productId, stock: { gte: item.quantity } },
+                    data: { stock: { decrement: item.quantity } }
+                });
+                
+                if (updateRes.count === 0) {
+                    throw new Error(`Insufficient stock for one or more items in your cart.`);
+                }
+                lockedProducts.push({ id: item.productId, qty: item.quantity });
+            }
+        } catch (e) {
+            // Rollback optimistic locks
+            for (const locked of lockedProducts) {
+                await prisma.product.update({
+                    where: { id: locked.id },
+                    data: { stock: { increment: locked.qty } }
+                });
+            }
+            return NextResponse.json({ success: false, message: e instanceof Error ? e.message : "Out of stock for one or more items." }, { status: 400 });
+        }
+
+        // 3. Create Order with its Items in one transaction
         const orderNumber = `ORD-${Math.floor(Math.random() * 100000).toString()}`;
         const order = await prisma.order.create({
             data: {
@@ -168,7 +194,7 @@ export async function POST(req: Request) {
             }
         }
 
-        // 3. Send Order Confirmation Email
+        // 4. Send Order Confirmation Email
         if (deliveryInfo.email) {
             try {
                 const { sendOrderConfirmationEmail } = await import("@/lib/email");
@@ -180,7 +206,7 @@ export async function POST(req: Request) {
             }
         }
 
-        // 4. Initiate Payment
+        // 5. Initiate Payment
         console.log("Processing payment for method:", paymentMethod);
 
         if (paymentMethod === "wallet") {

@@ -68,10 +68,12 @@ interface RelatedProduct {
 export default function ProductDetailClient({
     product,
     relatedProducts,
+    frequentlyBought = [],
     reviews = []
 }: {
     product: ProductDetail,
     relatedProducts: RelatedProduct[],
+    frequentlyBought?: RelatedProduct[],
     reviews?: Review[]
 }) {
     const [selectedImage, setSelectedImage] = useState(0);
@@ -522,6 +524,30 @@ export default function ProductDetailClient({
                     </div>
                 </details>
             </div>
+
+            {/* Frequently Bought Together */}
+            {frequentlyBought.length > 0 && (
+                <div className="mt-16 space-y-8 bg-muted/20 p-8 rounded-3xl border">
+                    <div>
+                        <h2 className="text-3xl font-black text-primary tracking-tighter uppercase">Frequently Bought Together</h2>
+                        <p className="text-muted-foreground mt-2">Customers usually buy these items together</p>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+                        {frequentlyBought.map((p) => (
+                            <ProductCard key={p.id} product={{
+                                id: p.id,
+                                name: p.name,
+                                slug: p.slug,
+                                price: p.price,
+                                comparePrice: p.comparePrice || undefined,
+                                image: p.images?.[0]?.url || "/images/placeholder.jpg",
+                                category: p.category?.name || "Uncategorized",
+                                rating: 4.8
+                            }} />
+                        ))}
+                    </div>
+                </div>
+            )}
 
             {/* Related Products */}
             <div className="mt-24 space-y-12">

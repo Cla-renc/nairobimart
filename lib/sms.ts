@@ -1,10 +1,15 @@
+import * as Sentry from "@sentry/nextjs";
+
 export const sendSMS = async (to: string, message: string) => {
     const username = process.env.AFRICASTALKING_USERNAME;
     const apiKey = process.env.AFRICASTALKING_API_KEY;
 
     if (!username || !apiKey) {
-        console.warn("Africa's Talking credentials missing. SMS not sent.");
-        console.log(`[MOCK SMS to ${to}]: ${message}`);
+        const errorMsg = `SMS not sent to ${to}: Africa's Talking credentials missing.`;
+        console.warn(errorMsg);
+        if (process.env.NODE_ENV === "production") {
+            Sentry.captureMessage(errorMsg, "warning");
+        }
         return { success: false, error: "Missing credentials" };
     }
 
@@ -44,11 +49,18 @@ export const sendSMS = async (to: string, message: string) => {
             console.log("SMS sent successfully:", data);
             return { success: true, data };
         } else {
-            console.error("Failed to send SMS:", data);
+            const errMsg = `SMS to ${to} failed: ${JSON.stringify(data)}`;
+            console.error(errMsg);
+            if (process.env.NODE_ENV === "production") {
+                Sentry.captureMessage(errMsg, "error");
+            }
             return { success: false, error: data };
         }
     } catch (error) {
         console.error("SMS exception:", error);
+        if (process.env.NODE_ENV === "production") {
+            Sentry.captureException(error);
+        }
         return { success: false, error };
     }
 };

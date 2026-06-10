@@ -19,6 +19,8 @@ export default function AnalyticsCharts() {
         revenueData: { date: string; revenue: number }[];
         topProducts: { name: string; sales: number }[];
         abandonmentRate: number;
+        conversionRate: number;
+        lowStockProducts: { id: string; name: string; stock: number; slug: string }[];
     } | null>(null);
 
     useEffect(() => {
@@ -29,7 +31,9 @@ export default function AnalyticsCharts() {
                     setData({
                         revenueData: res.revenueData,
                         topProducts: res.topProducts,
-                        abandonmentRate: res.abandonmentRate
+                        abandonmentRate: res.abandonmentRate,
+                        conversionRate: res.conversionRate,
+                        lowStockProducts: res.lowStockProducts || []
                     });
                 }
             })
@@ -99,6 +103,38 @@ export default function AnalyticsCharts() {
                 </div>
                 <div className="text-3xl font-black text-red-600">
                     {data.abandonmentRate}%
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                {/* Real Conversion Rate */}
+                <div className="bg-green-50 p-6 rounded-xl border border-green-100 shadow-sm flex justify-between items-center">
+                    <div>
+                        <h3 className="font-bold text-green-700">Conversion Rate (30 Days)</h3>
+                        <p className="text-sm text-green-600/80">Registered users who placed an order.</p>
+                    </div>
+                    <div className="text-3xl font-black text-green-700">
+                        {data.conversionRate}%
+                    </div>
+                </div>
+
+                {/* Low Stock Alert */}
+                <div className="bg-orange-50 p-6 rounded-xl border border-orange-100 shadow-sm">
+                    <h3 className="font-bold text-orange-700 mb-3">⚠️ Low Stock Alert</h3>
+                    {data.lowStockProducts.length === 0 ? (
+                        <p className="text-sm text-green-700 font-medium">✅ All products are well-stocked!</p>
+                    ) : (
+                        <ul className="space-y-2">
+                            {data.lowStockProducts.map(p => (
+                                <li key={p.id} className="flex justify-between items-center text-sm">
+                                    <a href={`/admin/products/${p.id}`} className="font-medium text-primary hover:underline truncate max-w-[200px]">{p.name}</a>
+                                    <span className={`font-black px-2 py-0.5 rounded-full text-xs ${
+                                        p.stock === 0 ? 'bg-red-200 text-red-800' : 'bg-orange-200 text-orange-800'
+                                    }`}>{p.stock === 0 ? 'OUT OF STOCK' : `${p.stock} left`}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
                 </div>
             </div>
         </>

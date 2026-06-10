@@ -64,21 +64,37 @@ export async function GET() {
 
         // 3. Cart Abandonment Rate
         const totalOrdersCount = await prisma.order.count();
-        // Carts are stored by userId and productId. To count unique carts, count unique users with items.
         const carts = await prisma.cartItem.findMany({
             select: { userId: true },
             distinct: ['userId']
         });
-        
-        // Simple metric: 
         const totalCarts = carts.length + totalOrdersCount; 
         const abandonmentRate = totalCarts === 0 ? 0 : Math.round((carts.length / totalCarts) * 100);
+
+        // 4. Real Conversion Rate: orders placed / unique visitors (approximated by registered users in last 30 days)
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        const recentUsers = await prisma.user.count({ where: { createdAt: { gte: thirtyDaysAgo } } });
+        const recentOrdersCount = await prisma.order.count({
+            where: { createdAt: { gte: thirtyDaysAgo }, status: { notIn: ["cancelled", "refunded"] } }
+        });
+        const conversionRate = recentUsers === 0 ? 0 : ((recentOrdersCount / recentUsers) * 100).toFixed(1);
+
+        // 5. Low stock products (stock <= 5)
+        const lowStockProducts = await prisma.product.findMany({
+            where: { isActive: true, stock: { lte: 5 } },
+            select: { id: true, name: true, stock: true, slug: true },
+            orderBy: { stock: 'asc' },
+            take: 10
+        });
 
         return NextResponse.json({
             success: true,
             revenueData,
             topProducts,
-            abandonmentRate
+            abandonmentRate,
+            conversionRate: Number(conversionRate),
+            lowStockProducts
         });
 
     } catch (error) {

@@ -34,8 +34,7 @@ const groq = new OpenAI({
     baseURL: "https://api.groq.com/openai/v1",
 });
 
-// In-memory conversation history (For production, consider saving this to Redis or MongoDB)
-const conversationState = {};
+// In-memory conversation history removed. State is now persisted to MongoDB via Prisma.
 
 async function getProductCatalog() {
     try {
@@ -62,6 +61,26 @@ async function getCategories() {
         return categories.map(c => c.name);
     } catch (error) {
         console.error("Error fetching categories:", error);
+        return [];
+    }
+}
+
+async function searchProductsInDB(query) {
+    try {
+        const results = await prisma.product.findMany({
+            where: {
+                isActive: true,
+                OR: [
+                    { name: { contains: query, mode: 'insensitive' } },
+                    { description: { contains: query, mode: 'insensitive' } },
+                ]
+            },
+            select: { name: true, price: true, stock: true, category: { select: { name: true } } },
+            take: 8
+        });
+        return results;
+    } catch (error) {
+        console.error("Error searching products:", error);
         return [];
     }
 }
@@ -100,7 +119,7 @@ async function startBot() {
                 console.log(`\n╔══════════════════════════════════════════════╗`);
                 console.log(`║   🚀 YOUR PAIRING CODE IS: ${code.padEnd(16)}║`);
                 console.log(`╚══════════════════════════════════════════════╝\n`);
-                console.log(`STEPS: Open WhatsApp on phone 0741206995`);
+                console.log(`STEPS: Open WhatsApp on your host phone`);
                 console.log(`→ Tap (⋮) Menu → Linked Devices → Link a Device`);
                 console.log(`→ Tap 'Link with phone number instead'`);
                 console.log(`→ Enter the code above. You have 60 seconds!`);
@@ -187,54 +206,112 @@ async function startBot() {
 
             const categoriesString = categoryNames.join(", ");
 
-            // Build Conversation Context
-            if (!conversationState[remoteJid]) {
-                conversationState[remoteJid] = [];
-            }
+            // Retrieve history from DB
+            let conversationRecord = await prisma.whatsAppConversation.findUnique({ where: { remoteJid } });
+            let chatHistory = conversationRecord ? conversationRecord.messages : [];
             
-            // Add user message to history
-            conversationState[remoteJid].push({ role: "user", content: textMessage });
+            // Add user message
+            chatHistory.push({ role: "user", content: textMessage });
 
-            // Keep only last 4 messages to save tokens
-            if (conversationState[remoteJid].length > 4) {
-                conversationState[remoteJid] = conversationState[remoteJid].slice(-4);
+            // Keep only last 8 messages to save tokens
+            if (chatHistory.length > 8) {
+                chatHistory = chatHistory.slice(-8);
             }
 
+            const websiteUrl = process.env.NEXT_PUBLIC_URL || "https://nairobimart-gwna.vercel.app";
             const systemPrompt = `You are a NairobiMart sales agent in Kenya. Be friendly, brief, and use Kenyan warmth.
 
-OUR PRODUCT CATEGORIES (we stock ALL of these):
+OUR PRODUCT CATEGORIES:
 ${categoriesString}
 
-SAMPLE PRODUCTS FROM CATALOG (format: Name | Price | Min Cost | Stock):
-${catalogString}
-
-IMPORTANT: The above is only a SAMPLE of our products. We stock items across ALL the categories listed above. If a customer asks about a category not shown in the sample, confirm we stock it and direct them to the website to browse the full range.
+IMPORTANT: We stock items across ALL the categories listed above. If a customer asks about a product, you should use the search_catalog tool to find it.
 
 RULES:
-1. NEVER sell below the Min Cost price. Offer small discounts only above Min Cost.
+1. Use the search_catalog tool to look up product prices and stock before answering.
 2. If stock is OUT, say it's sold out and suggest alternatives.
 3. If stock < 5, create urgency: "Only a few left!"
-4. To buy: direct them to https://nairobimart-gwna.vercel.app (M-Pesa & card accepted).
+4. To buy: direct them to ${websiteUrl} (M-Pesa & card accepted).
 5. Only discuss NairobiMart products. Decline off-topic requests politely.
 6. Keep replies short and mobile-friendly. Use emojis (🛒✨🔥🚚).`;
 
             console.log("[DEBUG] Contacting Groq AI for reply...");
 
-            // Call Groq via OpenAI-compatible SDK
-            const completion = await groq.chat.completions.create({
-                model: "llama-3.1-8b-instant", // Fast, free Groq model
+            const tools = [
+                {
+                    type: "function",
+                    function: {
+                        name: "search_catalog",
+                        description: "Search the product catalog for specific items by keyword.",
+                        parameters: {
+                            type: "object",
+                            properties: {
+                                query: { type: "string", description: "Search keyword" }
+                            },
+                            required: ["query"]
+                        }
+                    }
+                }
+            ];
+
+            // Call Groq
+            let completion = await groq.chat.completions.create({
+                model: "llama-3.1-8b-instant",
                 messages: [
                     { role: "system", content: systemPrompt },
-                    ...conversationState[remoteJid]
+                    ...chatHistory
                 ],
+                tools: tools,
+                tool_choice: "auto",
                 max_tokens: 500,
             });
 
-            const replyText = completion.choices[0].message.content;
-            console.log("[DEBUG] Gemini AI generated reply:", replyText);
+            const responseMessage = completion.choices[0].message;
+            let replyText = responseMessage.content;
+
+            // Handle tool calling
+            if (responseMessage.tool_calls) {
+                console.log("[DEBUG] Tool call detected:", responseMessage.tool_calls[0].function.name);
+                chatHistory.push(responseMessage); // append tool call
+                
+                for (const toolCall of responseMessage.tool_calls) {
+                    if (toolCall.function.name === "search_catalog") {
+                        const args = JSON.parse(toolCall.function.arguments);
+                        // Query the database directly for accurate, real-time results
+                        const results = await searchProductsInDB(args.query);
+                        const toolResult = results.length > 0 
+                            ? results.map(p => `${p.name} | KES ${p.price} | Stock: ${p.stock > 0 ? p.stock : 'OUT OF STOCK'} | Category: ${p.category?.name || 'N/A'}`).join("\n")
+                            : "No products found for that query.";
+                        
+                        chatHistory.push({
+                            role: "tool",
+                            tool_call_id: toolCall.id,
+                            content: toolResult
+                        });
+                    }
+                }
+
+                // Second call with tool results
+                completion = await groq.chat.completions.create({
+                    model: "llama-3.1-8b-instant",
+                    messages: [
+                        { role: "system", content: systemPrompt },
+                        ...chatHistory
+                    ]
+                });
+                replyText = completion.choices[0].message.content;
+            }
+
+            console.log("[DEBUG] AI generated reply:", replyText);
 
             // Add bot reply to history
-            conversationState[remoteJid].push({ role: "assistant", content: replyText });
+            chatHistory.push({ role: "assistant", content: replyText });
+
+            // Save history back to DB
+            await prisma.whatsAppConversation.upsert({
+                where: { remoteJid },
+                update: { messages: chatHistory },
+                create: { remoteJid, messages: chatHistory }
+            });
 
             console.log("[DEBUG] Sending message back to WhatsApp...");
             // Send reply on WhatsApp

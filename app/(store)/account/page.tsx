@@ -21,7 +21,8 @@ import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import DailyCheckInButton from "./DailyCheckInButton";
-import DeleteRecentOrderButton from "./DeleteRecentOrderButton";import { getLoyaltyTierInfo } from "@/lib/loyalty";
+import DeleteRecentOrderButton from "./DeleteRecentOrderButton";
+import { getLoyaltyTierInfo, getNextLoyaltyTier, LOYALTY_TIERS } from "@/lib/loyalty";
 interface ExtendedUser {
     id: string;
     name?: string | null;
@@ -73,6 +74,13 @@ export default async function AccountPage() {
     const hasCheckedIn = dbUser?.lastCheckInDate ? dbUser.lastCheckInDate >= today : false;
 
     const tierInfo = getLoyaltyTierInfo(dbUser?.totalSpent ?? 0);
+    const nextTierInfo = getNextLoyaltyTier(dbUser?.totalSpent ?? 0);
+    const totalSpent = dbUser?.totalSpent ?? 0;
+    // Calculate progress % toward the next tier
+    const progressPercent = nextTierInfo
+        ? Math.min(Math.round(((totalSpent - tierInfo.threshold) / (nextTierInfo.threshold - tierInfo.threshold)) * 100), 100)
+        : 100;
+    const amountToNext = nextTierInfo ? Math.max(nextTierInfo.threshold - totalSpent, 0) : 0;
     const pendingOrdersCount = orders.filter(o => o.status === 'pending' || o.status === 'processing').length;
 
     const formatDate = (date: Date | string) => {
@@ -218,6 +226,45 @@ export default async function AccountPage() {
 
                     {/* Right Column: Recent Activity / Dashboard */}
                     <div className="lg:col-span-2 space-y-8">
+                        {/* Loyalty Tier Progress Bar */}
+                        <div className="bg-gradient-to-r from-primary/90 to-accent/80 text-white rounded-3xl p-6 shadow-lg">
+                            <div className="flex items-center justify-between mb-3">
+                                <div>
+                                    <p className="text-xs uppercase font-black tracking-widest opacity-80">Your Loyalty Status</p>
+                                    <h3 className="text-2xl font-extrabold capitalize mt-1">{tierInfo.label} Member 🏆</h3>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-xs opacity-80 uppercase font-bold tracking-widest">Total Spent</p>
+                                    <p className="text-xl font-extrabold">KES {totalSpent.toLocaleString()}</p>
+                                </div>
+                            </div>
+
+                            {nextTierInfo ? (
+                                <>
+                                    <div className="flex justify-between text-xs font-bold mb-1 opacity-90">
+                                        <span>{tierInfo.label}</span>
+                                        <span>{nextTierInfo.label} — KES {nextTierInfo.threshold.toLocaleString()}</span>
+                                    </div>
+                                    <div className="w-full bg-white/20 rounded-full h-3">
+                                        <div
+                                            className="bg-white h-3 rounded-full transition-all duration-700"
+                                            style={{ width: `${progressPercent}%` }}
+                                        />
+                                    </div>
+                                    <p className="text-xs mt-2 font-semibold opacity-90">
+                                        🚀 Spend just <strong>KES {amountToNext.toLocaleString()}</strong> more to reach <strong>{nextTierInfo.label}</strong>!
+                                    </p>
+                                </>
+                            ) : (
+                                <>
+                                    <div className="w-full bg-white/20 rounded-full h-3 mt-2">
+                                        <div className="bg-white h-3 rounded-full w-full" />
+                                    </div>
+                                    <p className="text-xs mt-2 font-semibold opacity-90">🎉 You&apos;ve reached the highest tier — Platinum!</p>
+                                </>
+                            )}
+                        </div>
+
                         {/* Welcome Banner */}
                         <div className="bg-primary text-white rounded-3xl p-8 shadow-lg relative overflow-hidden">
                             <div className="relative z-10">

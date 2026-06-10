@@ -57,11 +57,74 @@ export default async function ProductDetailPage({ params }: { params: { slug: st
         include: { images: true, category: true }
     });
 
+    // Frequently Bought Together Logic
+    const orderItemsWithCurrent = await prisma.orderItem.findMany({
+        where: { productId: product.id },
+        select: { orderId: true },
+    });
+    const orderIds = orderItemsWithCurrent.map(oi => oi.orderId);
+    let freqBoughtProducts: any[] = [];
+    
+    if (orderIds.length > 0) {
+        const relatedItems = await prisma.orderItem.findMany({
+            where: {
+                orderId: { in: orderIds },
+                productId: { not: product.id },
+            },
+            include: {
+                product: { include: { images: true, category: true } }
+            }
+        });
+        
+        const freqMap = new Map();
+        for (const item of relatedItems) {
+            if (!freqMap.has(item.productId)) {
+                freqMap.set(item.productId, { count: 0, product: item.product });
+            }
+            freqMap.get(item.productId).count++;
+        }
+        
+        freqBoughtProducts = Array.from(freqMap.values())
+            .sort((a: any, b: any) => b.count - a.count)
+            .slice(0, 4)
+            .map((item: any) => item.product);
+    }
+
+    // Generate JSON-LD Schema
+    const jsonLd = {
+        "@context": "https://schema.org/",
+        "@type": "Product",
+        "name": product.name,
+        "image": product.images.length > 0 ? product.images[0].url : "",
+        "description": product.description,
+        "sku": product.id,
+        "offers": {
+            "@type": "Offer",
+            "url": `https://nairobimart.com/products/${product.slug}`,
+            "priceCurrency": "KES",
+            "price": product.price,
+            "itemCondition": "https://schema.org/NewCondition",
+            "availability": product.stock > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock"
+        },
+        "aggregateRating": reviews.length > 0 ? {
+            "@type": "AggregateRating",
+            "ratingValue": (reviews.reduce((acc, r) => acc + r.rating, 0) / reviews.length).toFixed(1),
+            "reviewCount": reviews.length
+        } : undefined
+    };
+
     return (
-        <ProductDetailClient
-            product={JSON.parse(JSON.stringify(product))}
-            relatedProducts={JSON.parse(JSON.stringify(relatedProductsDb))}
-            reviews={JSON.parse(JSON.stringify(reviews))}
-        />
+        <>
+            <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+            />
+            <ProductDetailClient
+                product={JSON.parse(JSON.stringify(product))}
+                relatedProducts={JSON.parse(JSON.stringify(relatedProductsDb))}
+                frequentlyBought={JSON.parse(JSON.stringify(freqBoughtProducts))}
+                reviews={JSON.parse(JSON.stringify(reviews))}
+            />
+        </>
     );
 }
