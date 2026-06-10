@@ -1,4 +1,4 @@
-const { makeWASocket, useMultiFileAuthState, DisconnectReason } = require('@whiskeysockets/baileys');
+const { makeWASocket, useMultiFileAuthState, DisconnectReason, makeCacheableSignalKeyStore } = require('@whiskeysockets/baileys');
 const qrcode = require('qrcode-terminal');
 const { PrismaClient } = require('@prisma/client');
 const { useMongoDBAuthState } = require('./mongoAuthState');
@@ -96,12 +96,22 @@ async function startBot() {
     const { version, isLatest } = await fetchLatestBaileysVersion();
     console.log(`Using WhatsApp v${version.join('.')}, isLatest: ${isLatest}`);
 
+    const logger = pino({ level: "silent" });
     const sock = makeWASocket({
         version, // Pass the dynamically fetched version
-        auth: state,
+        auth: {
+            creds: state.creds,
+            keys: makeCacheableSignalKeyStore(state.keys, logger)
+        },
         printQRInTerminal: !process.env.BOT_PHONE_NUMBER, // Only print QR if no phone number is provided
-        logger: pino({ level: "silent" }), // Setting back to silent to keep it clean
-        browser: ["Ubuntu", "Chrome", "20.0.04"] 
+        logger, 
+        browser: ["Ubuntu", "Chrome", "20.0.04"],
+        markOnlineOnConnect: false, // Prevents suspicious constant online status
+        syncFullHistory: false, // Prevents memory crashes on reconnect
+        generateHighQualityLinkPreview: false,
+        getMessage: async (key) => {
+            return { conversation: 'hello' }; // Dummy return to prevent crash on missing message
+        }
     });
 
     // Debugging info for Render
