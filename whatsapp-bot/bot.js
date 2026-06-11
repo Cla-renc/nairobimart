@@ -1,4 +1,4 @@
-const { makeWASocket, useMultiFileAuthState, DisconnectReason, makeCacheableSignalKeyStore } = require('@whiskeysockets/baileys');
+const { makeWASocket, useMultiFileAuthState, DisconnectReason, makeCacheableSignalKeyStore, Browsers } = require('@whiskeysockets/baileys');
 const qrcode = require('qrcode-terminal');
 const { PrismaClient } = require('@prisma/client');
 const { useMongoDBAuthState } = require('./mongoAuthState');
@@ -105,7 +105,7 @@ async function startBot() {
         },
         printQRInTerminal: !process.env.BOT_PHONE_NUMBER, // Only print QR if no phone number is provided
         logger, 
-        browser: ["Ubuntu", "Chrome", "20.0.04"],
+        browser: Browsers.ubuntu('Chrome'),
         markOnlineOnConnect: false, // Prevents suspicious constant online status
         syncFullHistory: false, // Prevents memory crashes on reconnect
         generateHighQualityLinkPreview: false,
@@ -122,14 +122,18 @@ async function startBot() {
 
     sock.ev.on('creds.update', saveCreds);
 
+    let pairingCodeRequested = false;
+
     sock.ev.on('connection.update', async (update) => {
         const { connection, lastDisconnect, qr } = update;
         
         if (qr && !sock.authState.creds.registered) {
             if (process.env.BOT_PHONE_NUMBER) {
-                console.log(`[DEBUG] Socket ready! Requesting pairing code...`);
-                // Short delay to ensure crypto is ready
-                setTimeout(async () => {
+                if (!pairingCodeRequested) {
+                    pairingCodeRequested = true;
+                    console.log(`[DEBUG] Socket ready! Requesting pairing code...`);
+                    // Short delay to ensure crypto is ready
+                    setTimeout(async () => {
                     try {
                         const cleanNumber = process.env.BOT_PHONE_NUMBER.replace(/[^0-9]/g, '');
                         const code = await sock.requestPairingCode(cleanNumber);
@@ -143,6 +147,7 @@ async function startBot() {
                         console.log(`→ If it expires, restart this service on Render.`);
                     } catch (error) {
                         console.error("Failed to request pairing code:", error.message);
+                        pairingCodeRequested = false; // allow retry if it failed
                     }
                 }, 3000);
             } else {
