@@ -11,7 +11,8 @@ import {
     RefreshCcw,
     Plus,
     Minus,
-    Check
+    Check,
+    Flame
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -79,7 +80,13 @@ export default function ProductDetailClient({
     const [selectedImage, setSelectedImage] = useState(0);
     const [selectedVariant, setSelectedVariant] = useState(product.variants?.[0]?.value || "");
     const [quantity, setQuantity] = useState(1);
+    const [liveViewers, setLiveViewers] = useState(0);
     const addItem = useCartStore((state) => state.addItem);
+
+    useEffect(() => {
+        // Generate random live viewers to build urgency
+        setLiveViewers(Math.floor(Math.random() * 34) + 12);
+    }, []);
 
     useEffect(() => {
         if (!product?.id) return;
@@ -161,6 +168,12 @@ export default function ProductDetailClient({
                             </div>
                             <span className="text-sm font-medium">(0 reviews)</span>
                         </div>
+                        {liveViewers > 0 && (
+                            <div className="flex items-center space-x-2 text-red-600 bg-red-50 w-fit px-3 py-1.5 rounded-full animate-pulse border border-red-100 mt-2">
+                                <Flame className="h-4 w-4" />
+                                <span className="text-xs font-bold">{liveViewers} people are looking at this right now</span>
+                            </div>
+                        )}
                     </div>
 
                     <div className="flex items-baseline space-x-3 flex-wrap gap-y-2">
