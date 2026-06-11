@@ -89,6 +89,14 @@ async function searchProductsInDB(query) {
 async function startBot() {
     console.log("Starting NairobiMart AI WhatsApp Bot...");
 
+    // TEMPORARY FIX: Wipe the corrupted MongoDB session keys to force a clean start
+    try {
+        await prisma.whatsAppSession.deleteMany({});
+        console.log('🗑️  MongoDB session forcefully cleared for a fresh start!');
+    } catch(e) {
+        console.error('Failed to clear MongoDB session:', e.message);
+    }
+
     const { state, saveCreds } = await useMongoDBAuthState(prisma);
     console.log('✅ Loaded auth state from MongoDB.');
     
