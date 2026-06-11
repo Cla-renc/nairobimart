@@ -10,7 +10,6 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
     env:
-      NODE_ENV: production
       NEXTAUTH_SECRET: ci-test-secret-key-change-in-production
       NEXTAUTH_URL: http://localhost:3000
       NEXT_PUBLIC_URL: http://localhost:3000
