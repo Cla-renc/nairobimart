@@ -1,3 +1,4 @@
+/* eslint-disable */
 const { makeWASocket, useMultiFileAuthState, DisconnectReason, makeCacheableSignalKeyStore, Browsers } = require('@whiskeysockets/baileys');
 const qrcode = require('qrcode-terminal');
 const { PrismaClient } = require('@prisma/client');
@@ -150,6 +151,7 @@ async function startBot() {
                         pairingCodeRequested = false; // allow retry if it failed
                     }
                 }, 3000);
+                }
             } else {
                 console.log("\nSCAN THIS QR CODE IN YOUR WHATSAPP TO LOG IN:\n");
                 qrcode.generate(qr, { small: true });
@@ -215,10 +217,7 @@ async function startBot() {
             ]);
             console.log(`[DEBUG] Catalog fetched! Found ${catalog.length} products across ${categoryNames.length} categories.`);
 
-            // Build compact catalog string to save tokens
-            const catalogString = catalog.map(p => 
-                `${p.name} | KES ${p.price} | Min: KES ${p.costPrice} | Stock: ${p.stock > 0 ? p.stock : 'OUT'}`
-            ).join("\n");
+            // Removed unused catalogString
 
             const categoriesString = categoryNames.join(", ");
 

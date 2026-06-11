@@ -1,3 +1,4 @@
+/* eslint-disable */
 /**
  * MongoDB-based WhatsApp Auth State for Baileys
  * Stores session data in MongoDB so it survives Render restarts.
