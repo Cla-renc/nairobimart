@@ -14,7 +14,12 @@ import {
     Headphones,
     Camera,
     Package,
-    LucideIcon
+    LucideIcon,
+    Monitor,
+    ChefHat,
+    ShieldCheck,
+    Car,
+    Sparkles
 } from "lucide-react";
 
 const ICON_MAP: Record<string, LucideIcon> = {
@@ -28,6 +33,13 @@ const ICON_MAP: Record<string, LucideIcon> = {
     'Toys': Gamepad,
     'Audio': Headphones,
     'Photography': Camera,
+    'Electronics & Phone Accessories': Smartphone,
+    'Computer & Office': Monitor,
+    'Kitchen Gadgets': ChefHat,
+    'Smart Home & Security': ShieldCheck,
+    'Automotive Accessories': Car,
+    'Fashion & Clothing': Shirt,
+    'Beauty & Skincare': Sparkles,
 };
 
 const COLOR_MAP: Record<string, string> = {
@@ -37,6 +49,13 @@ const COLOR_MAP: Record<string, string> = {
     'Home': "bg-green-100 text-green-600",
     'Gifts': "bg-yellow-100 text-yellow-600",
     'Beauty': "bg-rose-100 text-rose-600",
+    'Electronics & Phone Accessories': "bg-blue-100 text-blue-600",
+    'Computer & Office': "bg-indigo-100 text-indigo-600",
+    'Kitchen Gadgets': "bg-orange-100 text-orange-600",
+    'Smart Home & Security': "bg-green-100 text-green-600",
+    'Automotive Accessories': "bg-slate-100 text-slate-600",
+    'Fashion & Clothing': "bg-pink-100 text-pink-600",
+    'Beauty & Skincare': "bg-rose-100 text-rose-600",
 };
 
 export default async function CategoriesPage() {
