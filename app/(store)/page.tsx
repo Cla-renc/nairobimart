@@ -77,7 +77,8 @@ export default async function HomePage() {
         name: cat.name,
         href: `/products?category=${cat.slug}`,
         icon: ICON_MAP[cat.name] || Package,
-        color: COLOR_MAP[cat.name] || "bg-gray-100 text-gray-600"
+        color: COLOR_MAP[cat.name] || "bg-gray-100 text-gray-600",
+        imageUrl: cat.imageUrl
     }));
 
     // Fetch featured products first
@@ -162,10 +163,14 @@ export default async function HomePage() {
                                 href={category.href}
                                 className="group flex flex-col items-center p-6 bg-white rounded-xl shadow-sm hover:shadow-md hover:bg-muted/50 transition-all duration-300"
                             >
-                                <div className={`p-4 rounded-full ${category.color} group-hover:scale-110 transition-transform`}>
-                                    <category.icon className="h-6 w-6" />
+                                <div className={`relative w-20 h-20 rounded-full flex items-center justify-center overflow-hidden ${category.imageUrl ? 'bg-transparent' : category.color} group-hover:scale-110 transition-transform`}>
+                                    {category.imageUrl ? (
+                                        <Image src={category.imageUrl} alt={category.name} fill className="object-cover" sizes="(max-width: 768px) 80px, 80px" />
+                                    ) : (
+                                        <category.icon className="h-8 w-8" />
+                                    )}
                                 </div>
-                                <span className="mt-4 font-semibold text-primary">{category.name}</span>
+                                <span className="mt-4 font-semibold text-primary text-center leading-tight">{category.name}</span>
                             </Link>
                         ))}
                     </div>

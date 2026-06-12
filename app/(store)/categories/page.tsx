@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import prisma from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -73,6 +74,7 @@ export default async function CategoriesPage() {
         name: cat.name,
         slug: cat.slug,
         icon: ICON_MAP[cat.name] || Package,
+        imageUrl: cat.imageUrl,
         count: cat._count.products,
         color: COLOR_MAP[cat.name] || "bg-gray-100 text-gray-600",
         href: `/products?category=${cat.slug}`
@@ -101,8 +103,12 @@ export default async function CategoriesPage() {
                             href={cat.href}
                             className="group p-8 bg-white border rounded-3xl shadow-sm hover:shadow-xl hover:border-accent/40 transition-all duration-500 flex flex-col items-center text-center space-y-6"
                         >
-                            <div className={`p-6 rounded-3xl ${cat.color} group-hover:scale-110 group-hover:rotate-6 transition-transform duration-500`}>
-                                <cat.icon className="h-10 w-10" />
+                            <div className={`relative w-24 h-24 rounded-3xl flex items-center justify-center overflow-hidden ${cat.imageUrl ? 'bg-transparent' : cat.color} group-hover:scale-110 group-hover:rotate-6 transition-transform duration-500`}>
+                                {cat.imageUrl ? (
+                                    <Image src={cat.imageUrl} alt={cat.name} fill className="object-cover" sizes="(max-width: 768px) 96px, 96px" />
+                                ) : (
+                                    <cat.icon className="h-10 w-10" />
+                                )}
                             </div>
                             <div className="space-y-1">
                                 <h3 className="text-xl font-bold text-primary group-hover:text-accent transition-colors">{cat.name}</h3>

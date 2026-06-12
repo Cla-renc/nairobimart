@@ -21,7 +21,15 @@ import {
 } from "lucide-react";
 
 // Categories will be fetched from database
-const fallbackCategories = ["Electronics", "Laptops", "Accessories", "Fashion", "Home", "Gifts", "Beauty"];
+const fallbackCategories = [
+    { name: "Electronics", slug: "electronics" },
+    { name: "Laptops", slug: "laptops" },
+    { name: "Accessories", slug: "accessories" },
+    { name: "Fashion", slug: "fashion" },
+    { name: "Home", slug: "home" },
+    { name: "Gifts", slug: "gifts" },
+    { name: "Beauty", slug: "beauty" }
+];
 
 interface Product {
     id: string;
@@ -42,7 +50,7 @@ function ProductsContent() {
     const initialCategory = searchParams.get("category");
 
     const [allProducts, setAllProducts] = useState<Product[]>([]);
-    const [categories, setCategories] = useState<string[]>(fallbackCategories);
+    const [categories, setCategories] = useState<{name: string, slug: string}[]>(fallbackCategories);
     const [loading, setLoading] = useState(true);
 
     const [priceRange, setPriceRange] = useState<number[]>([0, 50000]);
@@ -62,10 +70,10 @@ function ProductsContent() {
                 setAllProducts(Array.isArray(prodData) ? prodData : []);
 
                 // Fetch Categories names
-                const catRes = await fetch('/api/admin/categories');
+                const catRes = await fetch('/api/categories');
                 const catData = await catRes.json();
                 if (Array.isArray(catData)) {
-                    setCategories(catData.map((c: { name: string }) => c.name));
+                    setCategories(catData.map((c: { name: string, slug: string }) => ({ name: c.name, slug: c.slug })));
                 }
             } catch (err) {
                 console.error("Failed to load store data:", err);
@@ -80,12 +88,14 @@ function ProductsContent() {
     useEffect(() => {
         if (initialCategory && categories.length > 0) {
             const decodedCategory = decodeURIComponent(initialCategory);
-            const foundCategory = categories.find(c => c.toLowerCase() === decodedCategory.toLowerCase());
+            const foundCategory = categories.find(c => c.slug === decodedCategory || c.name.toLowerCase() === decodedCategory.toLowerCase());
             if (foundCategory) {
-                setSelectedCategories([foundCategory]);
+                // Only set if not already selected to prevent infinite loop
+                setSelectedCategories(prev => prev.includes(foundCategory.name) ? prev : [foundCategory.name]);
             }
         } else if (!initialCategory) {
-            setSelectedCategories([]);
+            // we only clear on initial mount if there is no category
+            // but actually we shouldn't force clear it continuously
         }
     }, [initialCategory, categories]);
 
@@ -172,14 +182,14 @@ function ProductsContent() {
                                     <h4 className="font-semibold text-xs uppercase tracking-widest text-muted-foreground">Categories</h4>
                                     <div className="space-y-2">
                                         {categories.map((category) => (
-                                            <div key={category} className="flex items-center space-x-2">
+                                            <div key={category.slug} className="flex items-center space-x-2">
                                                 <Checkbox
-                                                    id={category}
-                                                    checked={selectedCategories.includes(category)}
-                                                    onCheckedChange={() => toggleCategory(category)}
+                                                    id={category.slug}
+                                                    checked={selectedCategories.includes(category.name)}
+                                                    onCheckedChange={() => toggleCategory(category.name)}
                                                 />
-                                                <Label htmlFor={category} className="text-sm font-medium leading-none cursor-pointer hover:text-accent transition-colors">
-                                                    {category}
+                                                <Label htmlFor={category.slug} className="text-sm font-medium leading-none cursor-pointer hover:text-accent transition-colors">
+                                                    {category.name}
                                                 </Label>
                                             </div>
                                         ))}
