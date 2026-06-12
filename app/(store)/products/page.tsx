@@ -87,15 +87,27 @@ function ProductsContent() {
     // Handle initial category from URL
     useEffect(() => {
         if (initialCategory && categories.length > 0) {
-            const decodedCategory = decodeURIComponent(initialCategory);
-            const foundCategory = categories.find(c => c.slug === decodedCategory || c.name.toLowerCase() === decodedCategory.toLowerCase());
+            const safeDecode = decodeURIComponent(initialCategory).trim().toLowerCase();
+            
+            const foundCategory = categories.find(c => {
+                const slugMatch = c.slug.trim().toLowerCase() === safeDecode;
+                const nameMatch = c.name.trim().toLowerCase() === safeDecode;
+                // Fuzzy match for cases where slug uses spaces instead of hyphens or vice versa
+                const fuzzySlugMatch = c.slug.trim().toLowerCase().replace(/-/g, ' ') === safeDecode.replace(/-/g, ' ');
+                const fuzzyNameMatch = c.name.trim().toLowerCase().replace(/\\s+/g, '-') === safeDecode.replace(/\\s+/g, '-');
+                
+                return slugMatch || nameMatch || fuzzySlugMatch || fuzzyNameMatch;
+            });
+
             if (foundCategory) {
                 // Only set if not already selected to prevent infinite loop
-                setSelectedCategories(prev => prev.includes(foundCategory.name) ? prev : [foundCategory.name]);
+                setSelectedCategories(prev => {
+                    if (!prev.includes(foundCategory.name)) {
+                        return [foundCategory.name];
+                    }
+                    return prev;
+                });
             }
-        } else if (!initialCategory) {
-            // we only clear on initial mount if there is no category
-            // but actually we shouldn't force clear it continuously
         }
     }, [initialCategory, categories]);
 
