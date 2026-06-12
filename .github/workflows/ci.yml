@@ -59,6 +59,8 @@ jobs:
 
       - name: Generate Prisma Client
         run: npx prisma generate
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL || 'mongodb://mongodb:27017/nairobimart-test' }}
 
       - name: Run linter
         run: npm run lint
