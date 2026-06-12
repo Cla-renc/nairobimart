@@ -54,7 +54,8 @@ function ProductsContent() {
     const [loading, setLoading] = useState(true);
 
     const [priceRange, setPriceRange] = useState<number[]>([0, 50000]);
-    const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+    const [selectedCategoriesState, setSelectedCategoriesState] = useState<string[]>([]);
+    const [hasInteracted, setHasInteracted] = useState(false);
     const [sortBy, setSortBy] = useState("newest");
     const [currentPage, setCurrentPage] = useState(1);
     const productsPerPage = 8;
@@ -84,45 +85,48 @@ function ProductsContent() {
         loadData();
     }, []);
 
-    // Handle initial category from URL
-    useEffect(() => {
-        if (initialCategory && categories.length > 0) {
+    // Synchronously derive active categories from URL if user hasn't interacted yet
+    // This completely eliminates useEffect race conditions
+    const activeCategories = (() => {
+        if (!hasInteracted && initialCategory && selectedCategoriesState.length === 0) {
             const safeDecode = decodeURIComponent(initialCategory).trim().toLowerCase();
-            
             const foundCategory = categories.find(c => {
+                if (!c || !c.slug || !c.name) return false;
                 const slugMatch = c.slug.trim().toLowerCase() === safeDecode;
                 const nameMatch = c.name.trim().toLowerCase() === safeDecode;
-                // Fuzzy match for cases where slug uses spaces instead of hyphens or vice versa
                 const fuzzySlugMatch = c.slug.trim().toLowerCase().replace(/-/g, ' ') === safeDecode.replace(/-/g, ' ');
                 const fuzzyNameMatch = c.name.trim().toLowerCase().replace(/\\s+/g, '-') === safeDecode.replace(/\\s+/g, '-');
-                
                 return slugMatch || nameMatch || fuzzySlugMatch || fuzzyNameMatch;
             });
-
             if (foundCategory) {
-                // Only set if not already selected to prevent infinite loop
-                setSelectedCategories(prev => {
-                    if (!prev.includes(foundCategory.name)) {
-                        return [foundCategory.name];
-                    }
-                    return prev;
-                });
+                return [foundCategory.name];
             }
         }
-    }, [initialCategory, categories]);
+        return selectedCategoriesState;
+    })();
 
     const toggleCategory = (category: string) => {
-        setSelectedCategories(prev =>
-            prev.includes(category)
-                ? prev.filter(c => c !== category)
-                : [...prev, category]
-        );
+        setHasInteracted(true);
+        setSelectedCategoriesState(prev => {
+            // If this is the first interaction, start from the URL-derived state
+            const currentState = (!hasInteracted && initialCategory && prev.length === 0) ? activeCategories : prev;
+            return currentState.includes(category)
+                ? currentState.filter(c => c !== category)
+                : [...currentState, category];
+        });
+        setCurrentPage(1);
+    };
+
+    const clearFilters = () => {
+        setHasInteracted(true);
+        setSelectedCategoriesState([]);
+        setPriceRange([0, 50000]);
         setCurrentPage(1);
     };
 
     const filteredProducts = allProducts.filter(product => {
         // Category Filter
-        const matchesCategory = selectedCategories.length === 0 || selectedCategories.includes(product.category);
+        const matchesCategory = activeCategories.length === 0 || activeCategories.includes(product.category);
 
         // Price Filter
         const matchesPrice = Number(product.price) >= priceRange[0] && Number(product.price) <= priceRange[1];
@@ -197,7 +201,7 @@ function ProductsContent() {
                                             <div key={category.slug} className="flex items-center space-x-2">
                                                 <Checkbox
                                                     id={category.slug}
-                                                    checked={selectedCategories.includes(category.name)}
+                                                    checked={activeCategories.includes(category.name)}
                                                     onCheckedChange={() => toggleCategory(category.name)}
                                                 />
                                                 <Label htmlFor={category.slug} className="text-sm font-medium leading-none cursor-pointer hover:text-accent transition-colors">
@@ -242,11 +246,7 @@ function ProductsContent() {
                                 <Button
                                     variant="ghost"
                                     className="w-full text-[11px] font-bold uppercase tracking-widest text-muted-foreground hover:text-accent transition-colors"
-                                    onClick={() => {
-                                        setSelectedCategories([]);
-                                        setPriceRange([0, 50000]);
-                                        setCurrentPage(1);
-                                    }}
+                                    onClick={clearFilters}
                                 >
                                     Clear All Filters
                                 </Button>
@@ -260,7 +260,7 @@ function ProductsContent() {
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
                         <div>
                             <h1 className="text-3xl font-black text-primary tracking-tighter uppercase leading-none">
-                                {selectedCategories.length === 1 ? selectedCategories[0] : "All"} <span className="text-accent">Products</span>
+                                {activeCategories.length === 1 ? activeCategories[0] : "All"} <span className="text-accent">Products</span>
                             </h1>
                             <p className="text-muted-foreground mt-2 text-sm font-medium">Found {sortedProducts.length} items from global fulfillment centers</p>
                         </div>
@@ -298,10 +298,7 @@ function ProductsContent() {
                             <Button
                                 variant="outline"
                                 className="rounded-xl border-accent text-accent font-bold mt-4"
-                                onClick={() => {
-                                    setSelectedCategories([]);
-                                    setPriceRange([0, 50000]);
-                                }}
+                                onClick={clearFilters}
                             >
                                 Reset All Filters
                             </Button>
