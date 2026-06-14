@@ -265,7 +265,8 @@ export async function POST(req: Request) {
             }
 
             try {
-                await initiatePayHeroStkPush(amountToCharge, deliveryInfo.phone, order.id);
+                const finalPayHeroAmount = Math.round(amountToCharge);
+                await initiatePayHeroStkPush(finalPayHeroAmount, deliveryInfo.phone, order.id);
                 return NextResponse.json({
                     success: true,
                     orderId: order.id,

@@ -1,33 +1,41 @@
-const username = "Upl4CgskeVTi2Bpgv7ln";
-const password = "yCVT5mSdkWLolwsXu7cWpHVCktunlUF7QoQ5HCwT";
-const channelId = 9338;
+const fs = require('fs');
+
+const envPath = '.env.local';
+const envContent = fs.readFileSync(envPath, 'utf8');
+const env = {};
+envContent.split('\n').forEach(line => {
+    const [key, value] = line.split('=');
+    if (key && value) env[key.trim()] = value.trim();
+});
+
+const username = env.PAYHERO_API_USERNAME;
+const password = env.PAYHERO_API_PASSWORD;
+const channelId = env.PAYHERO_CHANNEL_ID;
+
 const auth = Buffer.from(`${username}:${password}`).toString('base64');
 
-async function test() {
-    try {
-        const payload = {
-            amount: 1,
-            phone_number: "0759193674",
-            channel_id: channelId,
-            provider: "m-pesa",
-            external_reference: "TEST-001",
-            callback_url: "https://nairobimart-gwna-20z44orhd-yaaclarence-gmailcoms-projects.vercel.app/api/webhook/payhero"
-        };
+const payload = {
+    amount: 1,
+    phone_number: "0712345678",
+    channel_id: parseInt(channelId, 10),
+    provider: "m-pesa",
+    external_reference: "TEST-123",
+    callback_url: "https://google.com"
+};
 
-        const response = await fetch("https://backend.payhero.co.ke/api/v2/payments/initiate-stk-push", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Basic ${auth}`
-            },
-            body: JSON.stringify(payload)
-        });
-
-        const text = await response.text();
-        console.log("Status:", response.status);
-        console.log("Body:", text);
-    } catch (e) {
-        console.error(e);
-    }
-}
-test();
+fetch("https://backend.payhero.co.ke/api/v2/payments", {
+    method: "POST",
+    headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Basic ${auth}`
+    },
+    body: JSON.stringify(payload)
+})
+.then(res => res.json())
+.then(data => {
+    console.log("Pay Hero Response:");
+    console.dir(data, { depth: null });
+})
+.catch(err => {
+    console.error("Fetch Error:", err);
+});
