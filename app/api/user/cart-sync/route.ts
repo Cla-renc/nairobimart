@@ -46,13 +46,11 @@ export async function POST(req: Request) {
         const processed: { productId: string; variantId: string | null; quantity: number; action: 'created' | 'merged' }[] = [];
 
         for (const item of normalized) {
-            const existingItem = await prisma.cartItem.findUnique({
+            const existingItem = await prisma.cartItem.findFirst({
                 where: {
-                    userId_productId_variantId: {
-                        userId: user.id,
-                        productId: item.productId,
-                        variantId: item.variantId as string,
-                    },
+                    userId: user.id,
+                    productId: item.productId,
+                    variantId: item.variantId,
                 },
             });
 
