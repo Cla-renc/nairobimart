@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createPesaPalCheckout } from "@/lib/pesapal";
+import { initiatePayHeroStkPush } from "@/lib/payhero";
 import { sendGaPurchaseEvent } from "@/lib/gaServer";
 import { processPurchaseRewards } from "@/lib/loyalty";
 import prisma from "@/lib/prisma";
@@ -256,8 +257,30 @@ export async function POST(req: Request) {
             });
         }
 
-        if (paymentMethod === "mpesa" || paymentMethod === "pesapal") {
-            console.log("Initiating Pesapal checkout — supports M-Pesa and Card");
+        if (paymentMethod === "mpesa") {
+            console.log("Initiating Pay Hero STK Push for M-Pesa");
+
+            if (!deliveryInfo.phone) {
+                return NextResponse.json({ success: false, message: "Phone number is required for M-Pesa payments" }, { status: 400 });
+            }
+
+            try {
+                await initiatePayHeroStkPush(amountToCharge, deliveryInfo.phone, order.id);
+                return NextResponse.json({
+                    success: true,
+                    orderId: order.id,
+                    type: "mpesa",
+                    message: "Please check your phone and enter your M-Pesa PIN.",
+                    url: `/success?order_id=${order.id}&payment=mpesa_pending`
+                });
+            } catch (error) {
+                console.error("Pay Hero STK Push Error:", error);
+                return NextResponse.json({ success: false, message: "Failed to initiate M-Pesa payment" }, { status: 500 });
+            }
+        }
+
+        if (paymentMethod === "pesapal") {
+            console.log("Initiating Pesapal checkout — supports Card");
 
             // Map cart items to PesaPalLineItem format
             const pesapalItems = (items as { name: string; image?: string; price: number; quantity: number }[]).map(
