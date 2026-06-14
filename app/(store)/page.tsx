@@ -75,7 +75,7 @@ export default async function HomePage() {
 
     const liveCategories = categoriesDb.map(cat => ({
         name: cat.name,
-        href: `/products?category=${cat.slug}`,
+        href: `/products?category=${encodeURIComponent(cat.slug)}`,
         icon: ICON_MAP[cat.name] || Package,
         color: COLOR_MAP[cat.name] || "bg-gray-100 text-gray-600",
         imageUrl: cat.imageUrl

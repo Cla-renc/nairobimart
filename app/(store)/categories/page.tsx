@@ -77,7 +77,7 @@ export default async function CategoriesPage() {
         imageUrl: cat.imageUrl,
         count: cat._count.products,
         color: COLOR_MAP[cat.name] || "bg-gray-100 text-gray-600",
-        href: `/products?category=${cat.slug}`
+        href: `/products?category=${encodeURIComponent(cat.slug)}`
     }));
 
     return (

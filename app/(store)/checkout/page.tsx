@@ -534,7 +534,7 @@ export default function CheckoutPage() {
                                                             </div>
                                                             <div>
                                                                 <p className="font-bold">M-Pesa</p>
-                                                                <p className="text-xs text-muted-foreground">Pay with M-Pesa on Pesapal&apos;s secure checkout</p>
+                                                                <p className="text-xs text-muted-foreground">Pay with M-Pesa via Pay Hero secure checkout</p>
                                                             </div>
                                                         </div>
                                                         <div className="flex items-center gap-2">
@@ -645,7 +645,7 @@ export default function CheckoutPage() {
                                             <div className="flex justify-between">
                                                 <span className="font-bold">Payment Method:</span>
                                                 <span className="text-right">
-                                                    {paymentMethod === "mpesa" ? "M-Pesa via Pesapal" :
+                                                    {paymentMethod === "mpesa" ? "M-Pesa via Pay Hero" :
                                                         paymentMethod === "wallet" ? "NairobiMart Wallet" :
                                                         paymentMethod === "pesapal" ? "Card (Visa/Mastercard) via Pesapal" : "Unknown"}
                                                 </span>

@@ -20,17 +20,6 @@ import {
     Loader2
 } from "lucide-react";
 
-// Categories will be fetched from database
-const fallbackCategories = [
-    { name: "Electronics", slug: "electronics" },
-    { name: "Laptops", slug: "laptops" },
-    { name: "Accessories", slug: "accessories" },
-    { name: "Fashion", slug: "fashion" },
-    { name: "Home", slug: "home" },
-    { name: "Gifts", slug: "gifts" },
-    { name: "Beauty", slug: "beauty" }
-];
-
 interface Product {
     id: string;
     name: string;
@@ -50,7 +39,7 @@ function ProductsContent() {
     const initialCategory = searchParams.get("category");
 
     const [allProducts, setAllProducts] = useState<Product[]>([]);
-    const [categories, setCategories] = useState<{name: string, slug: string}[]>(fallbackCategories);
+    const [categories, setCategories] = useState<{name: string, slug: string}[]>([]);
     const [loading, setLoading] = useState(true);
 
     const [priceRange, setPriceRange] = useState<number[]>([0, 50000]);
