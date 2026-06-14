@@ -275,7 +275,8 @@ export async function POST(req: Request) {
                 });
             } catch (error) {
                 console.error("Pay Hero STK Push Error:", error);
-                return NextResponse.json({ success: false, message: "Failed to initiate M-Pesa payment" }, { status: 500 });
+                const msg = error instanceof Error ? error.message : "Failed to initiate M-Pesa payment";
+                return NextResponse.json({ success: false, message: msg }, { status: 500 });
             }
         }
 

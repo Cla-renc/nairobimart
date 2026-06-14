@@ -55,7 +55,7 @@ export const initiatePayHeroStkPush = async (
 
         if (!response.ok) {
             console.error("Pay Hero API Error:", data);
-            throw new Error(`Pay Hero API error: ${data.message || 'Unknown error'}`);
+            throw new Error(`Pay Hero API error: ${JSON.stringify(data)}`);
         }
 
         console.log("Pay Hero STK Push Initiated:", data);
