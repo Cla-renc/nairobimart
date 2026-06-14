@@ -42,7 +42,7 @@ export const initiatePayHeroStkPush = async (
     };
 
     try {
-        const response = await fetch("https://backend.payhero.co.ke/api/v2/payments/initiate-stk-push", {
+        const response = await fetch("https://backend.payhero.co.ke/api/v2/payments", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
