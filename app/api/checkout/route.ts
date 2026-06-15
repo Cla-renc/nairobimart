@@ -257,7 +257,7 @@ export async function POST(req: Request) {
             });
         }
 
-        if (paymentMethod === "mpesa") {
+        if (paymentMethod === "mpesa" || paymentMethod === "mpesa_till") {
             console.log("Initiating Pay Hero STK Push for M-Pesa");
 
             if (!deliveryInfo.phone) {
@@ -266,12 +266,15 @@ export async function POST(req: Request) {
 
             try {
                 const finalPayHeroAmount = Math.round(amountToCharge);
-                await initiatePayHeroStkPush(finalPayHeroAmount, deliveryInfo.phone, order.id);
+                const tillNumber = paymentMethod === "mpesa_till" ? "3510645" : deliveryInfo.tillNumber;
+                await initiatePayHeroStkPush(finalPayHeroAmount, deliveryInfo.phone, order.id, tillNumber);
                 return NextResponse.json({
                     success: true,
                     orderId: order.id,
                     type: "mpesa",
-                    message: "Please check your phone and enter your M-Pesa PIN.",
+                    message: paymentMethod === "mpesa_till"
+                        ? "Please complete payment on your phone using till number 3510645."
+                        : "Please check your phone and enter your M-Pesa PIN.",
                     url: `/success?order_id=${order.id}&payment=mpesa_pending`
                 });
             } catch (error) {

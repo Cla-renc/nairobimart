@@ -9,7 +9,8 @@ export interface PayHeroStkResponse {
 export const initiatePayHeroStkPush = async (
     amount: number,
     phoneNumber: string,
-    orderId: string
+    orderId: string,
+    tillNumber?: string
 ): Promise<PayHeroStkResponse> => {
     const baseUrl = process.env.NEXT_PUBLIC_URL || "http://localhost:3000";
     const callbackUrl = `${baseUrl}/api/webhook/payhero`;
@@ -32,7 +33,17 @@ export const initiatePayHeroStkPush = async (
 
     const auth = Buffer.from(`${username}:${password}`).toString('base64');
 
-    const payload = {
+    type PayHeroPaymentPayload = {
+        amount: number;
+        phone_number: string;
+        channel_id: number;
+        provider: string;
+        external_reference: string;
+        callback_url: string;
+        till_number?: string;
+    };
+
+    const payload: PayHeroPaymentPayload = {
         amount,
         phone_number: formattedPhone,
         channel_id: parseInt(channelId, 10),
@@ -40,6 +51,10 @@ export const initiatePayHeroStkPush = async (
         external_reference: orderId,
         callback_url: callbackUrl,
     };
+
+    if (tillNumber) {
+        payload.till_number = tillNumber;
+    }
 
     try {
         const response = await fetch("https://backend.payhero.co.ke/api/v2/payments", {
