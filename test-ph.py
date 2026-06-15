@@ -4,7 +4,7 @@ import base64
 
 username = "Upl4CgskeVTi2Bpgv7ln"
 password = "yCVT5mSdkWLolwsXu7cWpHVCktunlUF7QoQ5HCwT"
-channel_id = 9338
+channel_id = 9371
 
 auth_str = f"{username}:{password}"
 auth_b64 = base64.b64encode(auth_str.encode("utf-8")).decode("utf-8")

@@ -24,10 +24,12 @@ export const initiatePayHeroStkPush = async (
 
     // Format phone number to start with 0 (e.g. 0712345678 or 01...) if it has 254
     let formattedPhone = phoneNumber.replace(/\s+/g, '');
-    if (formattedPhone.startsWith('+254')) {
-        formattedPhone = '0' + formattedPhone.substring(4);
-    } else if (formattedPhone.startsWith('254')) {
-        formattedPhone = '0' + formattedPhone.substring(3);
+    if (formattedPhone.startsWith('0')) {
+        formattedPhone = '254' + formattedPhone.substring(1);
+    } else if (formattedPhone.startsWith('+254')) {
+        formattedPhone = '254' + formattedPhone.substring(4);
+    } else if (!formattedPhone.startsWith('254')) {
+        formattedPhone = '254' + formattedPhone;
     }
 
     const auth = Buffer.from(`${username}:${password}`).toString('base64');
