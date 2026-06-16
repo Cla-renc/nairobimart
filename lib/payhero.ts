@@ -34,12 +34,13 @@ export const initiatePayHeroStkPush = async (
         throw new Error("Pay Hero credentials are not configured. Set PAYHERO_AUTH_TOKEN or PAYHERO_API_USERNAME and PAYHERO_API_PASSWORD.");
     }
 
-    // Format phone number to start with 0 (e.g. 0712345678 or 01...)
-    let formattedPhone = phoneNumber.replace(/\s+/g, '');
-    if (formattedPhone.startsWith('+254')) {
-        formattedPhone = '0' + formattedPhone.substring(4);
-    } else if (formattedPhone.startsWith('254')) {
-        formattedPhone = '0' + formattedPhone.substring(3);
+    // Format phone number to start with 254 (e.g. 254712345678 or 2541...)
+    let formattedPhone = phoneNumber.replace(/[\s+]/g, '');
+    if (formattedPhone.startsWith('0')) {
+        formattedPhone = '254' + formattedPhone.substring(1);
+    } else if (!formattedPhone.startsWith('254')) {
+        // If it somehow doesn't start with 0 or 254, assume it's missing the prefix
+        formattedPhone = '254' + formattedPhone;
     }
 
     type PayHeroPaymentPayload = {
