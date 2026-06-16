@@ -521,37 +521,6 @@ export default function CheckoutPage() {
                                             <>
                                                 <div
                                                     onClick={() => {
-                                                        setPaymentMethod("mpesa");
-                                                        setDeliveryInfo({ ...deliveryInfo, tillNumber: "" });
-                                                    }}
-                                                    className={`relative flex items-center space-x-4 border-2 rounded-xl p-4 bg-white transition-all cursor-pointer ${
-                                                        paymentMethod === "mpesa"
-                                                            ? "border-green-500 bg-green-50 shadow-sm"
-                                                            : "border-border hover:border-green-300"
-                                                    }`}>
-                                                    <RadioGroupItem value="mpesa" id="mpesa" />
-                                                    <Label htmlFor="mpesa" className="flex-1 cursor-pointer">
-                                                        <div className="flex items-center justify-between">
-                                                            <div className="flex items-center space-x-3">
-                                                                <div className="bg-green-100 p-2 rounded-lg">
-                                                                    <Smartphone className="h-6 w-6 text-green-600" />
-                                                                </div>
-                                                                <div>
-                                                                    <p className="font-bold">M-Pesa</p>
-                                                                    <p className="text-xs text-muted-foreground">Pay with M-Pesa via Pay Hero secure checkout</p>
-                                                                </div>
-                                                            </div>
-                                                            <div className="flex items-center gap-2">
-                                                                {paymentMethod === "mpesa" && (
-                                                                    <span className="text-xs uppercase font-bold text-white bg-green-500 px-2 py-1 rounded-full">✓ Selected</span>
-                                                                )}
-                                                                <span className="text-xs uppercase font-bold text-green-600 bg-green-50 px-2 py-1 rounded-full">Preferred</span>
-                                                            </div>
-                                                        </div>
-                                                    </Label>
-                                                </div>
-                                                <div
-                                                    onClick={() => {
                                                         setPaymentMethod("mpesa_till");
                                                         setDeliveryInfo({ ...deliveryInfo, tillNumber: "3510645" });
                                                     }}
@@ -681,13 +650,12 @@ export default function CheckoutPage() {
                                             <div className="flex justify-between">
                                                 <span className="font-bold">Payment Method:</span>
                                                 <span className="text-right">
-                                                    {paymentMethod === "mpesa" ? "M-Pesa via Pay Hero" :
-                                                        paymentMethod === "mpesa_till" ? "M-Pesa (Till 3510645) via Pay Hero" :
+                                                    {paymentMethod === "mpesa_till" ? "M-Pesa (Till 3510645) via Pay Hero" :
                                                         paymentMethod === "wallet" ? "NairobiMart Wallet" :
                                                         paymentMethod === "pesapal" ? "Card (Visa/Mastercard) via Pesapal" : "Unknown"}
                                                 </span>
                                             </div>
-                                            {(paymentMethod === "mpesa" || paymentMethod === "mpesa_till") && deliveryInfo.country === "Kenya" && (
+                                            {paymentMethod === "mpesa_till" && deliveryInfo.country === "Kenya" && (
                                                 <div className="flex justify-between">
                                                     <span className="font-bold">M-Pesa Contact:</span>
                                                     <span className="text-right">{paymentMethod === "mpesa_till" ? `Till: 3510645` : (deliveryInfo.tillNumber ? `Till: ${deliveryInfo.tillNumber}` : `Phone: ${deliveryInfo.phone}`)}</span>

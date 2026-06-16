@@ -259,8 +259,8 @@ export async function POST(req: Request) {
             });
         }
 
-        if (paymentMethod === "mpesa" || paymentMethod === "mpesa_till") {
-            console.log("Initiating Pay Hero STK Push for M-Pesa");
+        if (paymentMethod === "mpesa_till") {
+            console.log("Initiating Pay Hero STK Push for M-Pesa Till");
 
             if (!deliveryInfo.phone) {
                 return NextResponse.json({ success: false, message: "Phone number is required for M-Pesa payments" }, { status: 400 });
@@ -268,15 +268,22 @@ export async function POST(req: Request) {
 
             try {
                 const finalPayHeroAmount = Math.round(amountToCharge);
-                const tillNumber = paymentMethod === "mpesa_till" ? "3510645" : deliveryInfo.tillNumber;
+                const tillNumber = "3510645";
+                console.log("PayHero Debug:", {
+                    username: process.env.PAYHERO_API_USERNAME ? "SET" : "MISSING",
+                    password: process.env.PAYHERO_API_PASSWORD ? "SET" : "MISSING",
+                    channelId: process.env.PAYHERO_CHANNEL_ID || "MISSING",
+                    amount: finalPayHeroAmount,
+                    phone: deliveryInfo.phone,
+                    orderId: order.id,
+                    tillNumber
+                });
                 await initiatePayHeroStkPush(finalPayHeroAmount, deliveryInfo.phone, order.id, tillNumber);
                 return NextResponse.json({
                     success: true,
                     orderId: order.id,
                     type: "mpesa",
-                    message: paymentMethod === "mpesa_till"
-                        ? "Please complete payment on your phone using till number 3510645."
-                        : "Please check your phone and enter your M-Pesa PIN.",
+                    message: "Please check your phone and enter your M-Pesa PIN to complete payment on till 3510645.",
                     url: `/success?order_id=${order.id}&payment=mpesa_pending`
                 });
             } catch (error) {
