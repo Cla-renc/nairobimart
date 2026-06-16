@@ -9,8 +9,7 @@ export interface PayHeroStkResponse {
 export const initiatePayHeroStkPush = async (
     amount: number,
     phoneNumber: string,
-    orderId: string,
-    tillNumber?: string
+    orderId: string
 ): Promise<PayHeroStkResponse> => {
     const baseUrl = process.env.NEXT_PUBLIC_URL || "http://localhost:3000";
     const callbackUrl = `${baseUrl}/api/webhook/payhero`;

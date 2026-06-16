@@ -269,17 +269,15 @@ export async function POST(req: Request) {
 
             try {
                 const finalPayHeroAmount = Math.round(amountToCharge);
-                const tillNumber = "3510645";
                 console.log("PayHero Debug:", {
                     username: process.env.PAYHERO_API_USERNAME ? "SET" : "MISSING",
                     password: process.env.PAYHERO_API_PASSWORD ? "SET" : "MISSING",
                     channelId: process.env.PAYHERO_CHANNEL_ID || "MISSING",
                     amount: finalPayHeroAmount,
                     phone: deliveryInfo.phone,
-                    orderId: order.id,
-                    tillNumber
+                    orderId: order.id
                 });
-                await initiatePayHeroStkPush(finalPayHeroAmount, deliveryInfo.phone, order.id, tillNumber);
+                await initiatePayHeroStkPush(finalPayHeroAmount, deliveryInfo.phone, order.id);
                 return NextResponse.json({
                     success: true,
                     orderId: order.id,
