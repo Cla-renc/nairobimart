@@ -61,6 +61,8 @@ export async function POST(request: NextRequest) {
                 });
 
                 console.log(`✅ Order ${orderId} marked as paid via Stripe`);
+                const { processSuccessfulPayment } = await import("@/lib/postPayment");
+                await processSuccessfulPayment(orderId);
                 break;
             }
 

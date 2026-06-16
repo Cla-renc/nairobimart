@@ -26,6 +26,8 @@ export async function POST(request: NextRequest) {
                 });
 
                 await processPurchaseRewards(orderId);
+                const { processSuccessfulPayment } = await import("@/lib/postPayment");
+                await processSuccessfulPayment(orderId);
 
                 console.log(`✅ Order ${orderId} marked as paid via PesaPal`);
                 return NextResponse.json({ success: true });

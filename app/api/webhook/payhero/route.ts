@@ -64,10 +64,11 @@ export async function POST(req: Request) {
                 }
             });
 
-            // If user is logged in, process loyalty rewards
             if (order.userId) {
                 await processPurchaseRewards(order.id);
             }
+            const { processSuccessfulPayment } = await import("@/lib/postPayment");
+            await processSuccessfulPayment(order.id);
         } else {
             console.log(`Payment failed or cancelled for order ${orderId}. Code: ${code}`);
             

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getMotorspeedQuote } from "@/lib/motorspeed";
+import { getDhlQuote } from "@/lib/dhl";
 
 export async function POST(req: Request) {
     try {
@@ -10,7 +10,7 @@ export async function POST(req: Request) {
             return NextResponse.json({ success: false, message: "Missing required location data" }, { status: 400 });
         }
 
-        const quote = await getMotorspeedQuote({ country, county, city, weightKg });
+        const quote = await getDhlQuote({ country, county, city, weightKg });
 
         if (!quote.success) {
             return NextResponse.json({ success: false, message: quote.message || "Failed to calculate rate" }, { status: 500 });

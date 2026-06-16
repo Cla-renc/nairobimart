@@ -43,10 +43,15 @@ export const initiatePayHeroStkPush = async (
         till_number?: string;
     };
 
+    const channelIdNumber = Number(channelId);
+    if (Number.isNaN(channelIdNumber)) {
+        throw new Error("Pay Hero channel ID is invalid.");
+    }
+
     const payload: PayHeroPaymentPayload = {
         amount,
         phone_number: formattedPhone,
-        channel_id: parseInt(channelId, 10),
+        channel_id: channelIdNumber,
         provider: "m-pesa",
         external_reference: orderId,
         callback_url: callbackUrl,
@@ -57,6 +62,16 @@ export const initiatePayHeroStkPush = async (
     }
 
     try {
+        console.log("Pay Hero Request:", {
+            amount: payload.amount,
+            phone_number: payload.phone_number,
+            channel_id: payload.channel_id,
+            provider: payload.provider,
+            external_reference: payload.external_reference,
+            till_number: payload.till_number,
+            callback_url: payload.callback_url,
+        });
+
         const response = await fetch("https://backend.payhero.co.ke/api/v2/payments", {
             method: "POST",
             headers: {
@@ -66,23 +81,35 @@ export const initiatePayHeroStkPush = async (
             body: JSON.stringify(payload)
         });
 
-        const data = await response.json();
+        const responseText = await response.text();
+        let data: any;
+
+        try {
+            data = responseText ? JSON.parse(responseText) : null;
+        } catch (parseError) {
+            data = responseText;
+        }
 
         if (!response.ok) {
-            console.error("Pay Hero API Error:", data);
-            throw new Error(`Pay Hero API error: ${JSON.stringify(data)}`);
+            console.error("Pay Hero API Error:", {
+                status: response.status,
+                statusText: response.statusText,
+                body: data,
+            });
+            const errorBody = typeof data === "string" ? data : JSON.stringify(data);
+            throw new Error(`Pay Hero API error (${response.status}): ${errorBody}`);
         }
 
         console.log("Pay Hero STK Push Initiated:", data);
 
         return {
             success: true,
-            message: data.message || "STK Push initiated successfully",
-            status: data.status,
-            reference: data.reference,
+            message: data?.message || "STK Push initiated successfully",
+            status: data?.status,
+            reference: data?.reference,
         };
     } catch (error) {
-        console.error("Pay Hero Request Error:", error);
-        throw error;
+        console.error("Pay Hero Request Error:", error instanceof Error ? error.message : error);
+        throw new Error(error instanceof Error ? error.message : "Pay Hero request failed.");
     }
 };

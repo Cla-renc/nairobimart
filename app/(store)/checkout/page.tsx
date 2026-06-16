@@ -308,7 +308,7 @@ export default function CheckoutPage() {
 
                                             {deliveryMethod === "door" && (
                                                 <div className="mt-4 pt-4 border-t space-y-2">
-                                                    <Label>Motorspeed Courier Delivery</Label>
+                                                    <Label>DHL Express Delivery</Label>
                                                     {isCalculatingCourier ? (
                                                         <p className="text-sm text-muted-foreground flex items-center"><Loader2 className="mr-2 h-4 w-4 animate-spin"/> Calculating dynamic rate for {deliveryInfo.city}...</p>
                                                     ) : courierFee !== null ? (
@@ -667,7 +667,7 @@ export default function CheckoutPage() {
                                                 <span className="text-right">
                                                     {deliveryMethod === "pickup" 
                                                         ? `Pick-up Station (${deliveryOptions.stations.find(s => s.id === selectedStationId)?.name})` 
-                                                        : `Motorspeed Door-to-Door Delivery`}
+                                                        : `DHL Express Door-to-Door Delivery`}
                                                 </span>
                                             </div>
                                             <div className="flex justify-between">

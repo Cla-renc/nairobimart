@@ -30,8 +30,8 @@ export async function POST(req: Request) {
         let shippingFee = 500;
         
         if (deliveryMethod === "door") {
-            const { getMotorspeedQuote } = await import("@/lib/motorspeed");
-            const quote = await getMotorspeedQuote({
+            const { getDhlQuote } = await import("@/lib/dhl");
+            const quote = await getDhlQuote({
                 country: deliveryInfo.country,
                 county: deliveryInfo.county,
                 city: deliveryInfo.city,
@@ -248,6 +248,8 @@ export async function POST(req: Request) {
             });
 
             await processPurchaseRewards(order.id);
+            const { processSuccessfulPayment } = await import("@/lib/postPayment");
+            await processSuccessfulPayment(order.id);
 
             return NextResponse.json({
                 success: true,
