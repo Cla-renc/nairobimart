@@ -50,7 +50,6 @@ export const initiatePayHeroStkPush = async (
         provider: string;
         external_reference: string;
         callback_url: string;
-        till_number?: string;
     };
 
     const channelIdNumber = Number(channelId);
@@ -67,10 +66,6 @@ export const initiatePayHeroStkPush = async (
         callback_url: callbackUrl,
     };
 
-    if (tillNumber) {
-        payload.till_number = tillNumber;
-    }
-
     try {
         console.log("Pay Hero Request:", {
             amount: payload.amount,
@@ -78,7 +73,6 @@ export const initiatePayHeroStkPush = async (
             channel_id: payload.channel_id,
             provider: payload.provider,
             external_reference: payload.external_reference,
-            till_number: payload.till_number,
             callback_url: payload.callback_url,
         });
 
