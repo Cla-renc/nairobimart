@@ -82,11 +82,11 @@ export const initiatePayHeroStkPush = async (
         });
 
         const responseText = await response.text();
-        let data: any;
+        let data: unknown;
 
         try {
             data = responseText ? JSON.parse(responseText) : null;
-        } catch (parseError) {
+        } catch {
             data = responseText;
         }
 
@@ -102,11 +102,12 @@ export const initiatePayHeroStkPush = async (
 
         console.log("Pay Hero STK Push Initiated:", data);
 
+        const responseData = data as Record<string, unknown>;
         return {
             success: true,
-            message: data?.message || "STK Push initiated successfully",
-            status: data?.status,
-            reference: data?.reference,
+            message: (responseData?.message as string) || "STK Push initiated successfully",
+            status: (responseData?.status as string) || undefined,
+            reference: (responseData?.reference as string) || undefined,
         };
     } catch (error) {
         console.error("Pay Hero Request Error:", error instanceof Error ? error.message : error);
