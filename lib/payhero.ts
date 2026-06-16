@@ -15,12 +15,24 @@ export const initiatePayHeroStkPush = async (
     const baseUrl = process.env.NEXT_PUBLIC_URL || "http://localhost:3000";
     const callbackUrl = `${baseUrl}/api/webhook/payhero`;
 
+    const authToken = process.env.PAYHERO_AUTH_TOKEN;
     const username = process.env.PAYHERO_API_USERNAME;
     const password = process.env.PAYHERO_API_PASSWORD;
     const channelId = process.env.PAYHERO_CHANNEL_ID;
 
-    if (!username || !password || !channelId) {
-        throw new Error("Pay Hero credentials are not configured.");
+    if (!channelId) {
+        throw new Error("Pay Hero channel ID is not configured.");
+    }
+
+    let authHeader: string;
+    if (authToken) {
+        authHeader = authToken.startsWith("Basic ") ? authToken : `Basic ${authToken}`;
+        console.log("Pay Hero auth method: auth token");
+    } else if (username && password) {
+        authHeader = `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`;
+        console.log("Pay Hero auth method: username/password");
+    } else {
+        throw new Error("Pay Hero credentials are not configured. Set PAYHERO_AUTH_TOKEN or PAYHERO_API_USERNAME and PAYHERO_API_PASSWORD.");
     }
 
     // Format phone number to start with 0 (e.g. 0712345678 or 01...)
@@ -30,8 +42,6 @@ export const initiatePayHeroStkPush = async (
     } else if (formattedPhone.startsWith('254')) {
         formattedPhone = '0' + formattedPhone.substring(3);
     }
-
-    const auth = Buffer.from(`${username}:${password}`).toString('base64');
 
     type PayHeroPaymentPayload = {
         amount: number;
@@ -76,7 +86,7 @@ export const initiatePayHeroStkPush = async (
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                "Authorization": `Basic ${auth}`
+                "Authorization": authHeader
             },
             body: JSON.stringify(payload)
         });
