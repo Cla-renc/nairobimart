@@ -155,7 +155,7 @@ export default function CheckoutPage() {
     }, [deliveryMethod, deliveryInfo.county, deliveryInfo.city, deliveryInfo.country]);
 
     useEffect(() => {
-        if (deliveryInfo.country !== "Kenya" && paymentMethod === "mpesa") {
+        if (deliveryInfo.country !== "Kenya" && paymentMethod === "mpesa_till") {
             setPaymentMethod("pesapal");
         }
     }, [deliveryInfo.country, paymentMethod]);

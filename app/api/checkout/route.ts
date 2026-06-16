@@ -24,6 +24,7 @@ export async function POST(req: Request) {
         console.log("Delivery Method:", deliveryMethod);
         console.log("Items Count:", items.length);
         console.log("Total Price:", totalPrice);
+        console.log("Available payment methods: wallet, mpesa_till, pesapal");
         console.log("=== END REQUEST ===");
 
         // Verify shipping fee dynamically or from database to prevent tampering
@@ -333,7 +334,7 @@ export async function POST(req: Request) {
             });
         }
 
-        return NextResponse.json({ success: false, message: "Unsupported payment method" }, { status: 400 });
+        return NextResponse.json({ success: false, message: `Unsupported payment method: ${paymentMethod}. Supported: wallet, mpesa_till, pesapal` }, { status: 400 });
     } catch (error) {
         console.error("Checkout Error:", error);
         const errorMessage = error instanceof Error ? error.message : "Internal server error";
