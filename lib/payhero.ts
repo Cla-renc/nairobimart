@@ -75,7 +75,7 @@ export const initiatePayHeroStkPush = async (
             callback_url: payload.callback_url,
         });
 
-        const response = await fetch("https://backend.payhero.co.ke/api/v2/payments", {
+        const response = await fetch("https://backend.payhero.co.ke/api/v2/payments/initiate-stk-push", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
