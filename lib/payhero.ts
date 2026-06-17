@@ -11,7 +11,12 @@ export const initiatePayHeroStkPush = async (
     phoneNumber: string,
     orderId: string
 ): Promise<PayHeroStkResponse> => {
-    const baseUrl = process.env.NEXT_PUBLIC_URL || "http://localhost:3000";
+    let baseUrl = process.env.NEXT_PUBLIC_URL;
+    if (!baseUrl && process.env.VERCEL_URL) {
+        baseUrl = `https://${process.env.VERCEL_URL}`;
+    } else if (!baseUrl) {
+        baseUrl = "https://nairobimart-gwna.vercel.app"; // Fallback to production domain
+    }
     const callbackUrl = `${baseUrl}/api/webhook/payhero`;
 
     const authToken = process.env.PAYHERO_AUTH_TOKEN;
@@ -36,10 +41,10 @@ export const initiatePayHeroStkPush = async (
 
     // PayHero API often expects 07... format and does the 254 conversion internally
     let formattedPhone = phoneNumber.replace(/[^0-9]/g, "");
-    if (formattedPhone.startsWith("0")) {
-        formattedPhone = "254" + formattedPhone.slice(1);
+    if (formattedPhone.startsWith("254")) {
+        formattedPhone = "0" + formattedPhone.slice(3);
     } else if (formattedPhone.startsWith("7") || formattedPhone.startsWith("1")) {
-        formattedPhone = "254" + formattedPhone;
+        formattedPhone = "0" + formattedPhone;
     }
 
     type PayHeroPaymentPayload = {
