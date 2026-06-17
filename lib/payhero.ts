@@ -24,14 +24,14 @@ export const initiatePayHeroStkPush = async (
     }
 
     let authHeader: string;
-    if (authToken) {
-        authHeader = authToken.startsWith("Basic ") ? authToken : `Basic ${authToken}`;
-        console.log("Pay Hero auth method: auth token");
-    } else if (username && password) {
+    if (username && password) {
         authHeader = `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`;
         console.log("Pay Hero auth method: username/password");
+    } else if (authToken) {
+        authHeader = authToken.startsWith("Basic ") ? authToken : `Basic ${authToken}`;
+        console.log("Pay Hero auth method: auth token fallback");
     } else {
-        throw new Error("Pay Hero credentials are not configured. Set PAYHERO_AUTH_TOKEN or PAYHERO_API_USERNAME and PAYHERO_API_PASSWORD.");
+        throw new Error("Pay Hero credentials are not configured. Set PAYHERO_API_USERNAME and PAYHERO_API_PASSWORD.");
     }
 
     // Format phone number to start with 254 (e.g. 254712345678 or 2541...)
