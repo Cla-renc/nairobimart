@@ -36,10 +36,10 @@ export const initiatePayHeroStkPush = async (
 
     // PayHero API often expects 07... format and does the 254 conversion internally
     let formattedPhone = phoneNumber.replace(/[^0-9]/g, "");
-    if (formattedPhone.startsWith("254")) {
-        formattedPhone = "0" + formattedPhone.slice(3);
+    if (formattedPhone.startsWith("0")) {
+        formattedPhone = "254" + formattedPhone.slice(1);
     } else if (formattedPhone.startsWith("7") || formattedPhone.startsWith("1")) {
-        formattedPhone = "0" + formattedPhone;
+        formattedPhone = "254" + formattedPhone;
     }
 
     type PayHeroPaymentPayload = {
@@ -75,7 +75,7 @@ export const initiatePayHeroStkPush = async (
             callback_url: payload.callback_url,
         });
 
-        const response = await fetch("https://backend.payhero.co.ke/api/v2/payments/initiate-stk-push", {
+        const response = await fetch("https://backend.payhero.co.ke/api/v2/payments", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
