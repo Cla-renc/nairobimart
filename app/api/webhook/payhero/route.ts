@@ -31,8 +31,14 @@ export async function POST(req: Request) {
             return NextResponse.json({ success: false, message: "Missing Order ID" }, { status: 400 });
         }
 
-        const order = await prisma.order.findUnique({
-            where: { id: orderId }
+        const isValidObjectId = /^[0-9a-fA-F]{24}$/.test(orderId);
+        const order = await prisma.order.findFirst({
+            where: {
+                OR: [
+                    ...(isValidObjectId ? [{ id: orderId }] : []),
+                    { orderNumber: orderId }
+                ]
+            }
         });
 
         if (!order) {

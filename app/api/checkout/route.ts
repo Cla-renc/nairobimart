@@ -275,9 +275,9 @@ export async function POST(req: Request) {
                     channelId: process.env.PAYHERO_CHANNEL_ID || "MISSING",
                     amount: finalPayHeroAmount,
                     phone: deliveryInfo.phone,
-                    orderId: order.id
+                    orderId: order.orderNumber
                 });
-                await initiatePayHeroStkPush(finalPayHeroAmount, deliveryInfo.phone, order.id);
+                await initiatePayHeroStkPush(finalPayHeroAmount, deliveryInfo.phone, order.orderNumber);
                 return NextResponse.json({
                     success: true,
                     orderId: order.id,
