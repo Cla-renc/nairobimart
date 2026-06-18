@@ -274,7 +274,7 @@ export async function POST(req: Request) {
                     password: process.env.PAYHERO_API_PASSWORD ? "SET" : "MISSING",
                     channelId: process.env.PAYHERO_CHANNEL_ID || "MISSING",
                     callbackUrl: process.env.PAYHERO_CALLBACK_URL || `${process.env.NEXT_PUBLIC_URL}/api/webhook/payhero`,
-                    credentialId: process.env.PAYHERO_CREDENTIAL_ID || process.env.PAYHERO_ACCOUNT_ID || "MISSING",
+                    credentialId: process.env.PAYHERO_CREDENTIAL_ID || "MISSING",
                     amount: finalPayHeroAmount,
                     phone: deliveryInfo.phone,
                     orderId: order.orderNumber
