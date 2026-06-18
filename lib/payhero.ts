@@ -9,14 +9,17 @@ export interface PayHeroStkResponse {
 export const initiatePayHeroStkPush = async (
     amount: number,
     phoneNumber: string,
-    orderId: string
+    orderId: string,
+    customerName?: string
 ): Promise<PayHeroStkResponse> => {
-    const callbackUrl = "https://nairobimart-gwna.vercel.app/api/webhook/payhero";
+    const callbackUrl = process.env.PAYHERO_CALLBACK_URL ||
+        `${process.env.NEXT_PUBLIC_URL || "https://nairobimart-gwna.vercel.app"}/api/webhook/payhero`;
 
     const authToken = process.env.PAYHERO_AUTH_TOKEN;
     const username = process.env.PAYHERO_API_USERNAME;
     const password = process.env.PAYHERO_API_PASSWORD;
     const channelId = process.env.PAYHERO_CHANNEL_ID;
+    const credentialId = process.env.PAYHERO_CREDENTIAL_ID || process.env.PAYHERO_ACCOUNT_ID;
 
     if (!channelId) {
         throw new Error("Pay Hero channel ID is not configured.");
@@ -48,6 +51,8 @@ export const initiatePayHeroStkPush = async (
         provider: string;
         external_reference: string;
         callback_url: string;
+        customer_name?: string;
+        credential_id?: string;
     };
 
     const channelIdNumber = Number(channelId);
@@ -62,6 +67,8 @@ export const initiatePayHeroStkPush = async (
         provider: "m-pesa",
         external_reference: orderId,
         callback_url: callbackUrl,
+        customer_name: customerName,
+        credential_id: credentialId,
     };
 
     try {

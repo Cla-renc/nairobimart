@@ -273,11 +273,13 @@ export async function POST(req: Request) {
                     username: process.env.PAYHERO_API_USERNAME ? "SET" : "MISSING",
                     password: process.env.PAYHERO_API_PASSWORD ? "SET" : "MISSING",
                     channelId: process.env.PAYHERO_CHANNEL_ID || "MISSING",
+                    callbackUrl: process.env.PAYHERO_CALLBACK_URL || `${process.env.NEXT_PUBLIC_URL}/api/webhook/payhero`,
+                    credentialId: process.env.PAYHERO_CREDENTIAL_ID || process.env.PAYHERO_ACCOUNT_ID || "MISSING",
                     amount: finalPayHeroAmount,
                     phone: deliveryInfo.phone,
                     orderId: order.orderNumber
                 });
-                await initiatePayHeroStkPush(finalPayHeroAmount, deliveryInfo.phone, order.orderNumber);
+                await initiatePayHeroStkPush(finalPayHeroAmount, deliveryInfo.phone, order.orderNumber, `${deliveryInfo.firstName} ${deliveryInfo.lastName}`);
                 return NextResponse.json({
                     success: true,
                     orderId: order.id,
