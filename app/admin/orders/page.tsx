@@ -225,7 +225,7 @@ export default function AdminOrdersPage() {
                                                         {order.paymentStatus}
                                                     </Badge>
                                                     <span className="text-[10px] text-muted-foreground mt-1 flex items-center">
-                                                        {order.paymentMethod === "mpesa" ? <Smartphone className="h-3 w-3 mr-1" /> : <CreditCard className="h-3 w-3 mr-1" />}
+                                                        {order.paymentMethod === "mpesa_till" ? <Smartphone className="h-3 w-3 mr-1" /> : <CreditCard className="h-3 w-3 mr-1" />}
                                                         {order.paymentMethod}
                                                     </span>
                                                 </div>

@@ -2,9 +2,9 @@ import urllib.request
 import json
 import base64
 
-username = "Upl4CgskeVTi2Bpgv7ln"
-password = "yCVT5mSdkWLolwsXu7cWpHVCktunlUF7QoQ5HCwT"
-channel_id = 9371
+username = "kRxhllmGz3ZcIufO7ocN"
+password = "IMUAeJWklZXb10RzSCN9baPXh91dt3OcgttGBkvo"
+channel_id = 9897
 
 auth_str = f"{username}:{password}"
 auth_b64 = base64.b64encode(auth_str.encode("utf-8")).decode("utf-8")
@@ -13,7 +13,7 @@ url = "https://backend.payhero.co.ke/api/v2/payments"
 
 payload = {
     "amount": 10,
-    "phone_number": "254759193674",
+    "phone_number": "0759193674",
     "channel_id": channel_id,
     "provider": "m-pesa",
     "external_reference": "TEST-123",

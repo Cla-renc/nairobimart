@@ -66,7 +66,7 @@ function SuccessContent() {
                         <Badge className="bg-blue-100 text-blue-700 border-none text-sm px-4 py-1 font-bold">
                             <CreditCard className="h-4 w-4 mr-2" /> Paid via Card (Visa/Mastercard)
                         </Badge>
-                    ) : paymentMethod === "mpesa" ? (
+                    ) : paymentMethod === "mpesa_till" ? (
                         <Badge className="bg-green-100 text-green-700 border-none text-sm px-4 py-1 font-bold">
                             <Smartphone className="h-4 w-4 mr-2" /> Paid via M-Pesa
                         </Badge>

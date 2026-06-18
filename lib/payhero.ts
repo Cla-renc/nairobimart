@@ -11,13 +11,7 @@ export const initiatePayHeroStkPush = async (
     phoneNumber: string,
     orderId: string
 ): Promise<PayHeroStkResponse> => {
-    let baseUrl = process.env.NEXT_PUBLIC_URL;
-    if (!baseUrl && process.env.VERCEL_URL) {
-        baseUrl = `https://${process.env.VERCEL_URL}`;
-    } else if (!baseUrl) {
-        baseUrl = "https://nairobimart-gwna.vercel.app"; // Fallback to production domain
-    }
-    const callbackUrl = `${baseUrl}/api/webhook/payhero`;
+    const callbackUrl = "https://nairobimart-gwna.vercel.app/api/webhook/payhero";
 
     const authToken = process.env.PAYHERO_AUTH_TOKEN;
     const username = process.env.PAYHERO_API_USERNAME;

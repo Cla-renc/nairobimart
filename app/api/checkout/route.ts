@@ -281,9 +281,9 @@ export async function POST(req: Request) {
                 return NextResponse.json({
                     success: true,
                     orderId: order.id,
-                    type: "mpesa",
+                    type: "mpesa_till",
                     message: "Please check your phone and enter your M-Pesa PIN to complete payment on till 3510645.",
-                    url: `/success?order_id=${order.id}&payment=mpesa_pending`
+                    url: `/success?order_id=${order.id}&payment=mpesa_till`
                 });
             } catch (error) {
                 console.error("Pay Hero STK Push Error:", error);
