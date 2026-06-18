@@ -876,7 +876,7 @@ export default function CheckoutPage() {
 
                             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
                                 <p className="text-xs text-blue-900">
-                                    <strong>Tip:</strong> If you don't see the prompt, check that your phone is not in airplane mode and has enough signal.
+                                    <strong>Tip:</strong> If you don&apos;t see the prompt, check that your phone is not in airplane mode and has enough signal.
                                 </p>
                             </div>
                         </CardContent>
