@@ -19,7 +19,6 @@ export const initiatePayHeroStkPush = async (
     const username = process.env.PAYHERO_API_USERNAME;
     const password = process.env.PAYHERO_API_PASSWORD;
     const channelId = process.env.PAYHERO_CHANNEL_ID;
-    const credentialId = process.env.PAYHERO_CREDENTIAL_ID;
 
     if (!channelId) {
         throw new Error("Pay Hero channel ID is not configured.");
@@ -52,7 +51,6 @@ export const initiatePayHeroStkPush = async (
         external_reference: string;
         callback_url: string;
         customer_name?: string;
-        credential_id?: string;
     };
 
     const channelIdNumber = Number(channelId);
@@ -67,8 +65,7 @@ export const initiatePayHeroStkPush = async (
         provider: "m-pesa",
         external_reference: orderId,
         callback_url: callbackUrl,
-        customer_name: customerName,
-        credential_id: credentialId,
+        ...(customerName ? { customer_name: customerName } : {}),
     };
 
     try {
