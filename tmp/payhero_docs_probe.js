@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-var-requires, @typescript-eslint/no-require-imports */
 const https = require('https');
 const url = 'https://docs.payhero.co.ke/';
 

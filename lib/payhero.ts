@@ -25,15 +25,18 @@ export const initiatePayHeroStkPush = async (
     }
 
     let authHeader: string;
+    let authMethod = "";
     if (authToken) {
         authHeader = authToken.startsWith("Basic ") ? authToken : `Basic ${authToken}`;
-        console.log("Pay Hero auth method: auth token");
+        authMethod = "auth token";
     } else if (username && password) {
         authHeader = `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`;
-        console.log("Pay Hero auth method: username/password");
+        authMethod = "username/password";
     } else {
         throw new Error("Pay Hero credentials are not configured. Set PAYHERO_API_USERNAME and PAYHERO_API_PASSWORD, or PAYHERO_AUTH_TOKEN.");
     }
+    const accountId = process.env.PAYHERO_ACCOUNT_ID;
+    console.log("Pay Hero auth method:", authMethod, "accountId:", accountId ? accountId : "MISSING");
 
     // PayHero API often expects 07... format and does the 254 conversion internally
     let formattedPhone = phoneNumber.replace(/[^0-9]/g, "");
@@ -84,9 +87,11 @@ export const initiatePayHeroStkPush = async (
             "Authorization": authHeader,
         };
 
-        if (process.env.PAYHERO_ACCOUNT_ID) {
-            headers['X-AUTH-ACCOUNT-ID'] = String(process.env.PAYHERO_ACCOUNT_ID);
+        if (accountId) {
+            headers['X-AUTH-ACCOUNT-ID'] = String(accountId);
         }
+
+        console.log('Pay Hero request headers:', headers);
 
         const response = await fetch("https://backend.payhero.co.ke/api/v2/payments", {
             method: "POST",
