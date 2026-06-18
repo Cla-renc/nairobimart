@@ -79,12 +79,14 @@ export const initiatePayHeroStkPush = async (
             customer_name: payload.customer_name,
         });
 
+        const accountHeader = process.env.PAYHERO_ACCOUNT_ID ? { 'X-AUTH-ACCOUNT-ID': String(process.env.PAYHERO_ACCOUNT_ID) } : {};
+
         const response = await fetch("https://backend.payhero.co.ke/api/v2/payments", {
             method: "POST",
-            headers: {
+            headers: Object.assign({
                 "Content-Type": "application/json",
                 "Authorization": authHeader
-            },
+            }, accountHeader),
             body: JSON.stringify(payload)
         });
 
@@ -98,14 +100,26 @@ export const initiatePayHeroStkPush = async (
         }
 
         if (!response.ok) {
+            // Try to capture response headers and raw text for deeper diagnostics
+            let respHeaders: Record<string, string> | undefined = undefined;
+            try {
+                respHeaders = response.headers ? Object.fromEntries(response.headers.entries()) : undefined;
+            } catch (e) {
+                respHeaders = undefined;
+            }
+
             console.error("Pay Hero API Error:", {
                 status: response.status,
                 statusText: response.statusText,
-                body: data,
+                headers: respHeaders,
+                rawBody: responseText,
+                parsedBody: data,
+                sentPayload: payload,
                 sentChannelId: payload.channel_id,
                 sentPhone: payload.phone_number,
                 sentExternalRef: payload.external_reference,
             });
+
             const errorBody = typeof data === "string" ? data : JSON.stringify(data);
             throw new Error(`Pay Hero API error (${response.status}): ${errorBody}`);
         }
