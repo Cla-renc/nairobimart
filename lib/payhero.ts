@@ -77,7 +77,6 @@ export const initiatePayHeroStkPush = async (
             external_reference: payload.external_reference,
             callback_url: payload.callback_url,
             customer_name: payload.customer_name,
-            credential_id: payload.credential_id,
         });
 
         const response = await fetch("https://backend.payhero.co.ke/api/v2/payments", {
