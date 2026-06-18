@@ -34,12 +34,17 @@ console.log('payload', payload);
 
 (async () => {
   try {
+    const headers = {
+      'Content-Type': 'application/json',
+      Authorization: auth,
+    };
+    if (env.PAYHERO_ACCOUNT_ID) {
+      headers['X-AUTH-ACCOUNT-ID'] = env.PAYHERO_ACCOUNT_ID;
+      console.log('Using X-AUTH-ACCOUNT-ID:', env.PAYHERO_ACCOUNT_ID);
+    }
     const response = await fetch('https://backend.payhero.co.ke/api/v2/payments', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: auth,
-      },
+      headers,
       body: JSON.stringify(payload),
     });
     const text = await response.text();
