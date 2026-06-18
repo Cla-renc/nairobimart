@@ -19,21 +19,21 @@ export const initiatePayHeroStkPush = async (
     const username = process.env.PAYHERO_API_USERNAME;
     const password = process.env.PAYHERO_API_PASSWORD;
     const channelId = process.env.PAYHERO_CHANNEL_ID;
-    const credentialId = process.env.PAYHERO_CREDENTIAL_ID || process.env.PAYHERO_ACCOUNT_ID;
+    const credentialId = process.env.PAYHERO_CREDENTIAL_ID;
 
     if (!channelId) {
         throw new Error("Pay Hero channel ID is not configured.");
     }
 
     let authHeader: string;
-    if (username && password) {
+    if (authToken) {
+        authHeader = authToken.startsWith("Basic ") ? authToken : `Basic ${authToken}`;
+        console.log("Pay Hero auth method: auth token");
+    } else if (username && password) {
         authHeader = `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`;
         console.log("Pay Hero auth method: username/password");
-    } else if (authToken) {
-        authHeader = authToken.startsWith("Basic ") ? authToken : `Basic ${authToken}`;
-        console.log("Pay Hero auth method: auth token fallback");
     } else {
-        throw new Error("Pay Hero credentials are not configured. Set PAYHERO_API_USERNAME and PAYHERO_API_PASSWORD.");
+        throw new Error("Pay Hero credentials are not configured. Set PAYHERO_API_USERNAME and PAYHERO_API_PASSWORD, or PAYHERO_AUTH_TOKEN.");
     }
 
     // PayHero API often expects 07... format and does the 254 conversion internally
@@ -79,6 +79,8 @@ export const initiatePayHeroStkPush = async (
             provider: payload.provider,
             external_reference: payload.external_reference,
             callback_url: payload.callback_url,
+            customer_name: payload.customer_name,
+            credential_id: payload.credential_id,
         });
 
         const response = await fetch("https://backend.payhero.co.ke/api/v2/payments", {
@@ -104,6 +106,9 @@ export const initiatePayHeroStkPush = async (
                 status: response.status,
                 statusText: response.statusText,
                 body: data,
+                sentChannelId: payload.channel_id,
+                sentPhone: payload.phone_number,
+                sentExternalRef: payload.external_reference,
             });
             const errorBody = typeof data === "string" ? data : JSON.stringify(data);
             throw new Error(`Pay Hero API error (${response.status}): ${errorBody}`);
