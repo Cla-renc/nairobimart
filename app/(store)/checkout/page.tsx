@@ -77,6 +77,9 @@ export default function CheckoutPage() {
     const [couponCode, setCouponCode] = useState("");
     const [couponDiscount, setCouponDiscount] = useState(0);
     const [couponMessage, setCouponMessage] = useState<string | null>(null);
+    const [showStkInitiated, setShowStkInitiated] = useState(false);
+    const [stkOrderId, setStkOrderId] = useState<string | null>(null);
+    const [stkPollingSeconds, setStkPollingSeconds] = useState(0);
 
     const { items, getTotalPrice, clearCart } = useCartStore();
     const router = useRouter();
@@ -235,6 +238,12 @@ export default function CheckoutPage() {
                 if (data.type === "pesapal" && data.url) {
                     console.log("Redirecting to PesaPal URL:", data.url);
                     window.location.href = data.url;
+                } else if (paymentMethod === "mpesa_till") {
+                    // For M-Pesa STK push, show waiting message and poll for payment
+                    console.log("STK push initiated. Waiting for payment confirmation...");
+                    setStkOrderId(data.orderId);
+                    setShowStkInitiated(true);
+                    setStkPollingSeconds(0);
                 } else {
                     console.log("Redirecting to order success page");
                     clearCart();
@@ -254,6 +263,44 @@ export default function CheckoutPage() {
             setIsProcessing(false);
         }
     };
+
+    // Poll for payment status when STK is initiated
+    useEffect(() => {
+        if (!showStkInitiated || !stkOrderId) return;
+
+        const pollInterval = setInterval(async () => {
+            try {
+                const response = await fetch(`/api/orders/${stkOrderId}/payment-status`);
+                const data = await response.json();
+
+                if (data.isPaid) {
+                    // Payment confirmed, redirect to success page
+                    clearInterval(pollInterval);
+                    setShowStkInitiated(false);
+                    setStkOrderId(null);
+                    clearCart();
+                    router.push(`/order-success?id=${stkOrderId}&payment=mpesa_till`);
+                }
+            } catch (error) {
+                console.error("Error polling payment status:", error);
+            }
+
+            setStkPollingSeconds(prev => prev + 1);
+        }, 2000); // Poll every 2 seconds
+
+        // Timeout after 5 minutes if no payment received
+        const timeout = setTimeout(() => {
+            clearInterval(pollInterval);
+            setShowStkInitiated(false);
+            setStkOrderId(null);
+            setCheckoutError("Payment timeout. Please contact support if payment was deducted from your account.");
+        }, 5 * 60 * 1000);
+
+        return () => {
+            clearInterval(pollInterval);
+            clearTimeout(timeout);
+        };
+    }, [showStkInitiated, stkOrderId, clearCart, router]);
 
     return (
         <div className="container px-4 py-12 max-w-6xl">
@@ -796,6 +843,59 @@ export default function CheckoutPage() {
                     </div>
                 </div>
             </div>
+
+            {/* STK Push Initiated Modal */}
+            {showStkInitiated && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <Card className="w-full max-w-md">
+                        <CardHeader className="text-center">
+                            <div className="flex justify-center mb-4">
+                                <Smartphone className="h-12 w-12 text-accent animate-pulse" />
+                            </div>
+                            <CardTitle>STK Push Initiated</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="text-center space-y-2">
+                                <p className="text-sm font-medium">
+                                    A payment prompt has been sent to your phone.
+                                </p>
+                                <p className="text-sm text-muted-foreground">
+                                    Enter your M-Pesa PIN to confirm the payment of <strong>KES {finalTotal.toLocaleString()}</strong>
+                                </p>
+                            </div>
+                            
+                            <div className="bg-muted p-4 rounded-lg text-center">
+                                <p className="text-xs text-muted-foreground mb-2">Waiting for payment confirmation...</p>
+                                <div className="flex justify-center items-center space-x-1">
+                                    <div className="h-2 w-2 bg-accent rounded-full animate-bounce" style={{ animationDelay: "0s" }}></div>
+                                    <div className="h-2 w-2 bg-accent rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></div>
+                                    <div className="h-2 w-2 bg-accent rounded-full animate-bounce" style={{ animationDelay: "0.4s" }}></div>
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-2">({stkPollingSeconds}s elapsed)</p>
+                            </div>
+
+                            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                                <p className="text-xs text-blue-900">
+                                    <strong>Tip:</strong> If you don't see the prompt, check that your phone is not in airplane mode and has enough signal.
+                                </p>
+                            </div>
+                        </CardContent>
+                        <CardFooter>
+                            <Button 
+                                variant="outline" 
+                                className="w-full"
+                                onClick={() => {
+                                    setShowStkInitiated(false);
+                                    setStkOrderId(null);
+                                    setCheckoutError("Payment cancelled. You can return to checkout to try again.");
+                                }}
+                            >
+                                Cancel & Go Back
+                            </Button>
+                        </CardFooter>
+                    </Card>
+                </div>
+            )}
         </div>
     );
 }

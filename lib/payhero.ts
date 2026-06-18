@@ -54,6 +54,7 @@ export const initiatePayHeroStkPush = async (
         external_reference: string;
         callback_url: string;
         customer_name?: string;
+        merchant_name?: string;
     };
 
     const channelIdNumber = Number(channelId);
@@ -68,6 +69,7 @@ export const initiatePayHeroStkPush = async (
         provider: "m-pesa",
         external_reference: orderId,
         callback_url: callbackUrl,
+        merchant_name: "NairobiMart",
         ...(customerName ? { customer_name: customerName } : {}),
     };
 
@@ -79,6 +81,7 @@ export const initiatePayHeroStkPush = async (
             provider: payload.provider,
             external_reference: payload.external_reference,
             callback_url: payload.callback_url,
+            merchant_name: payload.merchant_name,
             customer_name: payload.customer_name,
         });
 
