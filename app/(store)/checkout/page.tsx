@@ -118,8 +118,11 @@ export default function CheckoutPage() {
             console.warn('begin_checkout track failed', e);
         }
 
-        // Default to pesapal (Visa) if no payment method has been chosen yet
-        setPaymentMethod((prev) => prev || "pesapal");
+        // Default to M-Pesa for Kenya, Pesapal (Visa) for other countries
+        setPaymentMethod((prev) => {
+            if (prev) return prev; // Keep existing selection
+            return deliveryInfo.country === "Kenya" ? "mpesa_till" : "pesapal";
+        });
 
         fetch("/api/delivery-options")
             .then(res => res.json())
@@ -130,7 +133,7 @@ export default function CheckoutPage() {
                 }
             })
             .catch(err => console.error("Failed to load delivery options", err));
-    }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [deliveryInfo.country]); // Add deliveryInfo.country as dependency
 
     // Dynamic Courier Fee Calculation
     useEffect(() => {

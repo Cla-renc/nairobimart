@@ -168,6 +168,7 @@ model Order {
   pesapalTransactionId String?
   stripePaymentId    String?
   shippingName       String
+  shippingEmail      String      // Email address for payment confirmation and order updates
   shippingPhone      String
   shippingAddress    String
   shippingCity       String

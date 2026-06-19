@@ -145,6 +145,7 @@ export async function POST(req: Request) {
                 depositAmount,
                 balanceRemaining,
                 shippingName: `${deliveryInfo.firstName} ${deliveryInfo.lastName}`,
+                shippingEmail: deliveryInfo.email, // Store email for payment confirmation
                 shippingPhone: deliveryInfo.phone,
                 shippingAddress: deliveryInfo.address,
                 shippingCity: deliveryInfo.city,
@@ -196,19 +197,7 @@ export async function POST(req: Request) {
             }
         }
 
-        // 4. Send Order Confirmation Email
-        if (deliveryInfo.email) {
-            try {
-                const { sendOrderConfirmationEmail } = await import("@/lib/email");
-                // Don't await if you don't want it to slow down checkout, but awaiting is fine
-                sendOrderConfirmationEmail(deliveryInfo.email, orderNumber, totalAfterDiscount);
-                console.log(`Order confirmation email triggered for ${deliveryInfo.email}`);
-            } catch (emailError) {
-                console.error("Failed to send confirmation email:", emailError);
-            }
-        }
-
-        // 5. Initiate Payment
+        // 4. Initiate Payment (email will be sent after payment is confirmed)
         console.log("Processing payment for method:", paymentMethod);
 
         if (paymentMethod === "wallet") {
@@ -251,6 +240,17 @@ export async function POST(req: Request) {
             await processPurchaseRewards(order.id);
             const { processSuccessfulPayment } = await import("@/lib/postPayment");
             await processSuccessfulPayment(order.id);
+
+            // Send confirmation email for wallet payment (already paid)
+            if (deliveryInfo.email) {
+                try {
+                    const { sendOrderConfirmationEmail } = await import("@/lib/email");
+                    await sendOrderConfirmationEmail(deliveryInfo.email, orderNumber, totalAfterDiscount);
+                    console.log(`Order confirmation email sent for wallet payment: ${deliveryInfo.email}`);
+                } catch (emailError) {
+                    console.error("Failed to send confirmation email:", emailError);
+                }
+            }
 
             return NextResponse.json({
                 success: true,

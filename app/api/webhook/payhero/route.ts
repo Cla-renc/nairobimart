@@ -55,7 +55,7 @@ export async function POST(req: Request) {
             console.log(`Payment successful for order ${orderId}. Receipt: ${receipt}`);
 
             // Update order and installment status
-            await prisma.order.update({
+            const updatedOrder = await prisma.order.update({
                 where: { id: order.id },
                 data: {
                     paymentStatus: "paid",
@@ -75,6 +75,18 @@ export async function POST(req: Request) {
             }
             const { processSuccessfulPayment } = await import("@/lib/postPayment");
             await processSuccessfulPayment(order.id);
+
+            // Send confirmation email ONLY after payment is confirmed
+            if (updatedOrder.shippingEmail) {
+                try {
+                    const { sendOrderConfirmationEmail } = await import("@/lib/email");
+                    await sendOrderConfirmationEmail(updatedOrder.shippingEmail, updatedOrder.orderNumber, updatedOrder.total);
+                    console.log(`✅ Order confirmation email sent after M-Pesa payment for: ${updatedOrder.shippingEmail}`);
+                } catch (emailError) {
+                    console.error("❌ Failed to send confirmation email after M-Pesa payment:", emailError);
+                    // Don't fail the webhook if email fails - payment is already confirmed
+                }
+            }
         } else {
             console.log(`Payment failed or cancelled for order ${orderId}. Code: ${code}`);
             
