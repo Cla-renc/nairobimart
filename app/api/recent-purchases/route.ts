@@ -30,7 +30,7 @@ export async function GET() {
             // Get the first item's product name
             const productName = order.items?.[0]?.product?.name || 'an item';
             // Format time ago (e.g., "5 minutes ago")
-            const timeAgo = formatDistanceToNow(new Date(order.createdAt), { addSuffix: true });
+            const timeAgo = order.createdAt ? formatDistanceToNow(new Date(order.createdAt), { addSuffix: true }) : 'recently';
 
             return {
                 name: firstName,

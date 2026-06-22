@@ -67,7 +67,7 @@ export default async function AdminDashboard() {
         });
 
         // Profit = Product Margins - Any Discounts applied at checkout
-        totalProfit += (orderBaseRevenue - orderCost) - order.discount;
+        totalProfit += (orderBaseRevenue - orderCost) - (order.discount || 0);
     });
 
     // 5. Build dynamic chart data array (last 7 days mapping)
@@ -191,12 +191,12 @@ export default async function AdminDashboard() {
                                                     {order.shippingName || "Unknown"}
                                                 </p>
                                                 <p className="text-[11px] text-muted-foreground mt-1">
-                                                    {formatDistanceToNow(new Date(order.createdAt), { addSuffix: true })}
+                                                    {order.createdAt ? formatDistanceToNow(new Date(order.createdAt), { addSuffix: true }) : "Unknown time"}
                                                 </p>
                                             </div>
                                         </div>
                                         <div className="text-right">
-                                            <p className="text-sm font-bold leading-none">KES {order.total.toLocaleString()}</p>
+                                            <p className="text-sm font-bold leading-none">KES {(order.total || 0).toLocaleString()}</p>
                                             <Badge className={cn(
                                                 "mt-1 py-0 px-1.5 text-[10px] uppercase font-bold border-none",
                                                 order.status === "delivered" ? "bg-green-100 text-green-700" :
