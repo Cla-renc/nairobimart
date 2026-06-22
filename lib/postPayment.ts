@@ -20,12 +20,12 @@ export async function processSuccessfulPayment(orderId: string) {
             
             const shipmentResult = await createDhlShipment({
                 orderNumber: order.orderNumber,
-                customerName: order.shippingName,
+                customerName: order.shippingName || "Customer",
                 customerEmail: order.user?.email || undefined,
-                customerPhone: order.shippingPhone,
-                customerAddress: order.shippingAddress,
-                customerCity: order.shippingCity,
-                customerCountry: order.shippingCountry,
+                customerPhone: order.shippingPhone || "0000000000",
+                customerAddress: order.shippingAddress || "Address Not Provided",
+                customerCity: order.shippingCity || "Nairobi",
+                customerCountry: order.shippingCountry || "Kenya",
                 weightKg: 1, // Defaulting to 1kg, in a full app we'd sum order.items weight
                 description: `Order ${order.orderNumber} from NairobiMart`
             });
