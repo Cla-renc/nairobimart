@@ -21,6 +21,7 @@ import { useCartStore } from "@/store/cartStore";
 import ProductCard from "@/components/store/ProductCard";
 import { Separator } from "@/components/ui/separator";
 import WriteReviewButton from "@/components/store/WriteReviewButton";
+import { useCurrency } from "@/hooks/useCurrency";
 
 interface ProductImage {
     url: string;
@@ -82,6 +83,7 @@ export default function ProductDetailClient({
     const [selectedVariant, setSelectedVariant] = useState(product.variants?.[0]?.value || "");
     const [quantity, setQuantity] = useState(1);
     const [liveViewers, setLiveViewers] = useState(0);
+    const { formatPrice } = useCurrency();
     const addItem = useCartStore((state) => state.addItem);
 
     useEffect(() => {
@@ -178,10 +180,10 @@ export default function ProductDetailClient({
                     </div>
 
                     <div className="flex items-baseline space-x-3 flex-wrap gap-y-2">
-                        <span className="text-4xl font-bold text-primary">KES {product.price.toLocaleString()}</span>
+                        <span className="text-4xl font-bold text-primary">{formatPrice(product.price)}</span>
                         {product.comparePrice && (
                             <>
-                                <span className="text-xl text-muted-foreground line-through">KES {product.comparePrice.toLocaleString()}</span>
+                                <span className="text-xl text-muted-foreground line-through">{formatPrice(product.comparePrice)}</span>
                                 <Badge className="bg-red-500 text-white border-none font-bold italic">SAVE {savings}%</Badge>
                             </>
                         )}

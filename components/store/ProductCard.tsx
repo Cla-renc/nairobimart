@@ -10,6 +10,7 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useCartStore } from "@/store/cartStore";
+import { useCurrency } from "@/hooks/useCurrency";
 
 interface ProductCardProps {
     product: {
@@ -27,6 +28,7 @@ interface ProductCardProps {
 }
 
 const ProductCard = ({ product }: ProductCardProps) => {
+    const { formatPrice } = useCurrency();
     const addItem = useCartStore((state) => state.addItem);
 
     const { data: session } = useSession();
@@ -165,11 +167,11 @@ const ProductCard = ({ product }: ProductCardProps) => {
                     </div>
                     <div className="flex items-center mt-2 space-x-2">
                         <span className="text-lg font-bold text-primary">
-                            KES {product.price.toLocaleString()}
+                            {formatPrice(product.price)}
                         </span>
                         {product.comparePrice && (
                             <span className="text-sm text-muted-foreground line-through">
-                                KES {product.comparePrice.toLocaleString()}
+                                {formatPrice(product.comparePrice)}
                             </span>
                         )}
                     </div>

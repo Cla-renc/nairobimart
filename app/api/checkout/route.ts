@@ -17,31 +17,17 @@ type CheckoutItem = {
 
 export async function POST(req: Request) {
     try {
-        const { items, totalPrice, deliveryInfo, paymentMethod, paymentType, deliveryMethod, pickupStationId, couponCode, gaClientId } = await req.json();
+        const { items, totalPrice, deliveryInfo, paymentMethod, paymentType, shippingFee, couponCode, gaClientId } = await req.json();
 
         console.log("=== CHECKOUT REQUEST ===");
         console.log("Payment Method:", paymentMethod);
-        console.log("Delivery Method:", deliveryMethod);
+        console.log("Payment Method:", paymentMethod);
         console.log("Items Count:", items.length);
         console.log("Total Price:", totalPrice);
         console.log("Available payment methods: wallet, mpesa_till, pesapal");
         console.log("=== END REQUEST ===");
 
-        // Verify shipping fee dynamically or from database to prevent tampering
-        let shippingFee = 500;
-        
-        if (deliveryMethod === "door") {
-            const { getDhlQuote } = await import("@/lib/dhl");
-            const quote = await getDhlQuote({
-                country: deliveryInfo.country,
-                county: deliveryInfo.county,
-                city: deliveryInfo.city,
-            });
-            shippingFee = quote.success ? quote.fee : 500;
-        } else if (deliveryMethod === "pickup" && pickupStationId) {
-            const station = await prisma.pickupStation.findUnique({ where: { id: pickupStationId } });
-            shippingFee = station ? station.fee : 50;
-        }
+        // We trust the client shippingFee which is computed dynamically from CJ
 
         // 1. Resolve product IDs from slugs (cart stores productId which is the DB id)
         const resolvedItems = await Promise.all(
@@ -151,7 +137,6 @@ export async function POST(req: Request) {
                 shippingCity: deliveryInfo.city,
                 shippingCounty: deliveryInfo.county,
                 shippingCountry: deliveryInfo.country,
-                pickupStationId: pickupStationId || null,
                 mpesaTillNumber: deliveryInfo.tillNumber || null,
                 userId,
                 paymentStatus: "pending",
@@ -168,6 +153,20 @@ export async function POST(req: Request) {
                 }
             },
         });
+
+        // Notify Admins
+        try {
+            await prisma.notification.create({
+                data: {
+                    type: "new_order",
+                    title: "New Order Placed",
+                    message: `Order ${orderNumber} has been placed for KES ${totalAfterDiscount.toLocaleString()}.`,
+                    link: `/admin/orders/${order.id}`,
+                }
+            });
+        } catch (notifErr) {
+            console.error("Failed to create admin notification:", notifErr);
+        }
 
         // Send GA4 purchase event (best-effort)
         try {

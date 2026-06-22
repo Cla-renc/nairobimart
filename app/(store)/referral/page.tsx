@@ -37,7 +37,7 @@ export default async function ReferralPage() {
     );
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") || "";
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") || "https://nairobimart-gwna.vercel.app";
   const referralLink = user.referralCode
     ? `${baseUrl}/register?ref=${encodeURIComponent(user.referralCode)}`
     : "/register";

@@ -1,11 +1,11 @@
 import prisma from "@/lib/prisma";
-import { createDhlShipment } from "@/lib/dhl";
+import { createCJOrder } from "@/lib/cjdropshipping";
 
 export async function processSuccessfulPayment(orderId: string) {
     try {
         const order = await prisma.order.findUnique({
             where: { id: orderId },
-            include: { user: true }
+            include: { user: true, items: { include: { product: true } } }
         });
 
         if (!order) {
@@ -13,46 +13,80 @@ export async function processSuccessfulPayment(orderId: string) {
             return;
         }
 
-        // We only generate a DHL waybill for "door" deliveries 
-        // (pickupStationId is null and they paid a shipping fee, or we can check the absence of pickupStation)
-        if (!order.pickupStationId && !order.trackingNumber) {
-            console.log(`Generating DHL shipment for order: ${order.orderNumber}`);
+        if (!order.cjOrderId) {
+            console.log(`Automatically generating CJ Order for: ${order.orderNumber}`);
             
-            const shipmentResult = await createDhlShipment({
-                orderNumber: order.orderNumber,
-                customerName: order.shippingName || "Customer",
-                customerEmail: order.user?.email || undefined,
-                customerPhone: order.shippingPhone || "0000000000",
-                customerAddress: order.shippingAddress || "Address Not Provided",
-                customerCity: order.shippingCity || "Nairobi",
-                customerCountry: order.shippingCountry || "Kenya",
-                weightKg: 1, // Defaulting to 1kg, in a full app we'd sum order.items weight
-                description: `Order ${order.orderNumber} from NairobiMart`
-            });
-
-            if (shipmentResult.success && shipmentResult.trackingNumber) {
-                await prisma.order.update({
-                    where: { id: orderId },
-                    data: {
-                        trackingNumber: shipmentResult.trackingNumber,
-                        trackingUrl: shipmentResult.trackingUrl,
-                        notes: `DHL Waybill Generated. Tracking: ${shipmentResult.trackingNumber}`
-                    }
-                });
-                console.log(`Successfully generated DHL Waybill. Tracking: ${shipmentResult.trackingNumber}`);
-            } else {
-                console.error(`Failed to generate DHL shipment: ${shipmentResult.message}`);
-                await prisma.order.update({
-                    where: { id: orderId },
-                    data: {
-                        notes: `DHL Shipment generation failed: ${shipmentResult.message}`
-                    }
-                });
+            // Map the items to CJ Order format
+            const cjItems = order.items.map(item => ({
+                product: { cjProductId: item.product.cjProductId || "" },
+                variant: item.variantId ? { cjVariantId: item.variantId } : undefined,
+                quantity: item.quantity
+            })).filter(item => item.product.cjProductId); // Only include items that have a CJ ID
+            
+            if (cjItems.length === 0) {
+                console.log(`Order ${order.orderNumber} contains no CJ Dropshipping items. Skipping CJ auto-submit.`);
+                return;
             }
-        } else if (order.trackingNumber) {
-            console.log(`Order ${order.orderNumber} already has tracking number ${order.trackingNumber}`);
+
+            const cjOrderData = {
+                orderNumber: order.orderNumber,
+                shippingCity: order.shippingCity || "",
+                shippingProvince: order.shippingCounty || "",
+                shippingAddress: order.shippingAddress || "",
+                shippingName: order.shippingName || "Customer",
+                shippingPhone: order.shippingPhone || "",
+                items: cjItems
+            };
+
+            const result = await createCJOrder(cjOrderData);
+
+            if (result.success && result.cjOrderId) {
+                await prisma.order.update({
+                    where: { id: orderId },
+                    data: {
+                        cjOrderId: result.cjOrderId,
+                        notes: `CJ Order Auto-Submitted. CJ Order ID: ${result.cjOrderId}`
+                    }
+                });
+                
+                try {
+                    await prisma.notification.create({
+                        data: {
+                            type: "cj_order",
+                            title: "CJ Dropshipping Order Submitted",
+                            message: `Order ${order.orderNumber} was successfully submitted to CJ Dropshipping. CJ Order ID: ${result.cjOrderId}`,
+                            link: `/admin/orders/${order.id}`,
+                        }
+                    });
+                } catch (notifErr) {
+                    console.error("Failed to create CJ notification:", notifErr);
+                }
+                
+                console.log(`Successfully generated CJ Order: ${result.cjOrderId}`);
+            } else {
+                console.error(`Failed to auto-generate CJ shipment: ${result.error}`);
+                await prisma.order.update({
+                    where: { id: orderId },
+                    data: {
+                        notes: `CJ Auto-Submit failed: ${result.error}`
+                    }
+                });
+                
+                try {
+                    await prisma.notification.create({
+                        data: {
+                            type: "cj_error",
+                            title: "CJ Dropshipping Submit Failed",
+                            message: `Order ${order.orderNumber} failed to submit to CJ Dropshipping. Error: ${result.error}`,
+                            link: `/admin/orders/${order.id}`,
+                        }
+                    });
+                } catch (notifErr) {
+                    console.error("Failed to create CJ error notification:", notifErr);
+                }
+            }
         } else {
-            console.log(`Order ${order.orderNumber} is a local pickup. No DHL shipment required.`);
+            console.log(`Order ${order.orderNumber} already has CJ Order ID ${order.cjOrderId}`);
         }
 
     } catch (error) {

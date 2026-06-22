@@ -14,10 +14,12 @@ import {
 } from "@/components/ui/sheet";
 import { useCartStore } from "@/store/cartStore";
 import { useState, useEffect } from "react";
+import { useCurrency } from "@/hooks/useCurrency";
 
 const CartDrawer = ({ children }: { children: React.ReactElement }) => {
     const [isMounted, setIsMounted] = useState(false);
     const { items, updateQuantity, removeItem, getTotalPrice, getTotalItems } = useCartStore();
+    const { formatPrice } = useCurrency();
     const totalPrice = getTotalPrice();
     const totalItems = getTotalItems();
 
@@ -107,7 +109,7 @@ const CartDrawer = ({ children }: { children: React.ReactElement }) => {
                                             {item.variantId && (
                                                 <p className="text-xs text-muted-foreground mt-0.5">Variant: {item.variantId}</p>
                                             )}
-                                            <p className="font-bold text-primary mt-1">KES {item.price.toLocaleString()}</p>
+                                            <p className="font-bold text-primary mt-1">{formatPrice(item.price)}</p>
                                         </div>
                                         <div className="flex items-center justify-between mt-2">
                                             <div className="flex items-center border rounded-full px-2 py-1 space-x-3">
@@ -144,11 +146,11 @@ const CartDrawer = ({ children }: { children: React.ReactElement }) => {
                         <div className="w-full space-y-2">
                             <div className="flex justify-between text-base">
                                 <span className="text-muted-foreground">Subtotal</span>
-                                <span className="font-medium">KES {totalPrice.toLocaleString()}</span>
+                                <span className="font-medium">{formatPrice(totalPrice)}</span>
                             </div>
                             <div className="flex justify-between text-lg font-bold">
                                 <span className="text-primary">Total</span>
-                                <span className="text-primary">KES {totalPrice.toLocaleString()}</span>
+                                <span className="text-primary">{formatPrice(totalPrice)}</span>
                             </div>
                             <p className="text-[11px] text-center text-muted-foreground pt-2">
                                 Shipping and taxes calculated at checkout.

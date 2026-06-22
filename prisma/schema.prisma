@@ -176,8 +176,6 @@ model Order {
   shippingCountry    String?     @default("Kenya")
   deliveryZoneId     String?     @db.ObjectId
   deliveryZone       DeliveryZone? @relation(fields: [deliveryZoneId], references: [id])
-  pickupStationId    String?     @db.ObjectId
-  pickupStation      PickupStation? @relation(fields: [pickupStationId], references: [id])
   mpesaTillNumber    String?
   cjOrderId          String?
   trackingNumber     String?
@@ -220,18 +218,6 @@ model DeliveryZone {
   orders    Order[]
 }
 
-model PickupStation {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  name      String   
-  address   String
-  city      String
-  fee       Float    
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  
-  orders    Order[]
-}
 
 model OrderItem {
   id          String  @id @default(auto()) @map("_id") @db.ObjectId

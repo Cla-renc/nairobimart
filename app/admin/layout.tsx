@@ -45,6 +45,7 @@ const adminNavItems = [
     { name: "Settings", href: "/admin/settings", icon: Settings },
 ];
 
+import AdminNotifications from "@/components/admin/AdminNotifications";
 import { Toaster } from "@/components/ui/toaster";
 
 export default function AdminLayout({
@@ -123,10 +124,7 @@ export default function AdminLayout({
                     </div>
 
                     <div className="flex items-center space-x-4">
-                        <Button variant="ghost" size="icon" className="relative group">
-                            <Bell className="h-5 w-5" />
-                            <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-accent border-2 border-white" />
-                        </Button>
+                        <AdminNotifications />
                         <div className="flex items-center space-x-3 border-l pl-4">
                             <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center text-white text-[10px] font-bold">
                                 AD

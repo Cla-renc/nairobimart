@@ -23,6 +23,7 @@ import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { useCurrency } from "@/hooks/useCurrency";
 
 const steps = ["Delivery", "Payment", "Review"];
 
@@ -43,10 +44,6 @@ export default function CheckoutPage() {
     const [paymentMethod, setPaymentMethod] = useState("");
     const [paymentType, setPaymentType] = useState<"FULL" | "LAYBY" | "COMMITMENT">("FULL");
 
-    const [deliveryMethod, setDeliveryMethod] = useState<"door" | "pickup">("door");
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const [deliveryOptions, setDeliveryOptions] = useState<{ zones: any[], stations: any[] }>({ zones: [], stations: [] });
-    const [selectedStationId, setSelectedStationId] = useState<string>("");
     const [courierFee, setCourierFee] = useState<number | null>(null);
     const [isCalculatingCourier, setIsCalculatingCourier] = useState(false);
     const [estimatedDays, setEstimatedDays] = useState<string | null>(null);
@@ -81,21 +78,13 @@ export default function CheckoutPage() {
     const [stkOrderId, setStkOrderId] = useState<string | null>(null);
     const [stkPollingSeconds, setStkPollingSeconds] = useState(0);
 
+    const { currency, formatPrice } = useCurrency();
     const { items, getTotalPrice, clearCart } = useCartStore();
     const router = useRouter();
     const totalPrice = getTotalPrice();
     const visibleTotalPrice = isMounted ? totalPrice : 0;
     
-    const shippingFee = (() => {
-        if (deliveryMethod === "door") {
-            return courierFee ?? 500;
-        }
-        if (deliveryMethod === "pickup" && selectedStationId) {
-            const station = deliveryOptions.stations.find(s => s.id === selectedStationId);
-            return station ? station.fee : 50;
-        }
-        return 500;
-    })();
+    const shippingFee = courierFee ?? 500;
 
     const isMpesaAvailable = deliveryInfo.country === "Kenya";
 
@@ -123,29 +112,18 @@ export default function CheckoutPage() {
             if (prev) return prev; // Keep existing selection
             return deliveryInfo.country === "Kenya" ? "mpesa_till" : "pesapal";
         });
-
-        fetch("/api/delivery-options")
-            .then(res => res.json())
-            .then(data => {
-                if (data.success) {
-                    setDeliveryOptions({ zones: data.zones, stations: data.stations });
-                    if (data.stations.length > 0) setSelectedStationId(data.stations[0].id);
-                }
-            })
-            .catch(err => console.error("Failed to load delivery options", err));
     }, [deliveryInfo.country]); // Add deliveryInfo.country as dependency
 
-    // Dynamic Courier Fee Calculation
+    // Dynamic Courier Fee Calculation via CJ
     useEffect(() => {
-        if (deliveryMethod === "door" && deliveryInfo.county && deliveryInfo.city && deliveryInfo.country) {
+        if (deliveryInfo.country && items.length > 0) {
             setIsCalculatingCourier(true);
-            fetch("/api/delivery-options/quote", {
+            fetch("/api/checkout/freight", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
                     country: deliveryInfo.country,
-                    county: deliveryInfo.county,
-                    city: deliveryInfo.city,
+                    items: items.map(i => ({ id: i.id, variantId: i.variantId, quantity: i.quantity }))
                 })
             })
             .then(res => res.json())
@@ -158,7 +136,7 @@ export default function CheckoutPage() {
             .catch(err => console.error("Failed to fetch courier rate", err))
             .finally(() => setIsCalculatingCourier(false));
         }
-    }, [deliveryMethod, deliveryInfo.county, deliveryInfo.city, deliveryInfo.country]);
+    }, [deliveryInfo.country, items]);
 
     useEffect(() => {
         if (deliveryInfo.country !== "Kenya" && paymentMethod === "mpesa_till") {
@@ -226,8 +204,6 @@ export default function CheckoutPage() {
                     deliveryInfo,
                     paymentMethod,
                     paymentType,
-                    deliveryMethod,
-                    pickupStationId: deliveryMethod === "pickup" ? selectedStationId : null,
                     shippingFee, // send calculated fee to verify
                     couponCode: couponCode.trim(),
                     gaClientId: getGaClientId(),
@@ -338,62 +314,23 @@ export default function CheckoutPage() {
                                         <MapPin className="mr-2 h-6 w-6 text-accent" /> Delivery Information
                                     </h2>
 
-                                    {deliveryInfo.country === "Kenya" && (
-                                        <div className="bg-white p-4 rounded-xl border border-input mb-6">
-                                            <Label className="text-base font-bold mb-3 block">Choose Delivery Method</Label>
-                                            <RadioGroup
-                                                value={deliveryMethod}
-                                                onValueChange={(val: "door" | "pickup") => setDeliveryMethod(val)}
-                                                className="grid grid-cols-1 md:grid-cols-2 gap-4"
-                                            >
-                                                <div className={`flex items-center space-x-3 border rounded-lg p-3 cursor-pointer transition-colors ${deliveryMethod === "door" ? "border-primary bg-primary/5" : "hover:border-accent"}`}>
-                                                    <RadioGroupItem value="door" id="door" />
-                                                    <Label htmlFor="door" className="cursor-pointer font-bold flex-1">Door Delivery</Label>
-                                                </div>
-                                                <div className={`flex items-center space-x-3 border rounded-lg p-3 cursor-pointer transition-colors ${deliveryMethod === "pickup" ? "border-primary bg-primary/5" : "hover:border-accent"}`}>
-                                                    <RadioGroupItem value="pickup" id="pickup" />
-                                                    <Label htmlFor="pickup" className="cursor-pointer font-bold flex-1">Pick-up Station</Label>
-                                                </div>
-                                            </RadioGroup>
-
-                                            {deliveryMethod === "door" && (
-                                                <div className="mt-4 pt-4 border-t space-y-2">
-                                                    <Label>DHL Express Delivery</Label>
-                                                    {isCalculatingCourier ? (
-                                                        <p className="text-sm text-muted-foreground flex items-center"><Loader2 className="mr-2 h-4 w-4 animate-spin"/> Calculating dynamic rate for {deliveryInfo.city}...</p>
-                                                    ) : courierFee !== null ? (
-                                                        <div className="bg-green-50 p-3 rounded-lg border border-green-200">
-                                                            <p className="text-sm font-bold text-green-800 flex justify-between">
-                                                                <span>Door-to-Door Fee:</span>
-                                                                <span>KES {courierFee}</span>
-                                                            </p>
-                                                            {estimatedDays && <p className="text-xs text-green-600 mt-1">Estimated delivery: {estimatedDays}</p>}
-                                                        </div>
-                                                    ) : (
-                                                        <p className="text-sm text-muted-foreground">Please fill in your Country, County, and City below to calculate shipping.</p>
-                                                    )}
-                                                </div>
-                                            )}
-
-                                            {deliveryMethod === "pickup" && deliveryOptions.stations.length > 0 && (
-                                                <div className="mt-4 pt-4 border-t space-y-2">
-                                                    <Label htmlFor="station">Select a Pick-up Station</Label>
-                                                    <select
-                                                        id="station"
-                                                        value={selectedStationId}
-                                                        onChange={(e) => setSelectedStationId(e.target.value)}
-                                                        className="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground"
-                                                    >
-                                                        {deliveryOptions.stations.map(station => (
-                                                            <option key={station.id} value={station.id}>
-                                                                {station.name} - {station.city} (KES {station.fee})
-                                                            </option>
-                                                        ))}
-                                                    </select>
-                                                </div>
+                                        <div className="bg-white p-4 rounded-xl border border-input mb-6 space-y-4">
+                                            <div className="flex items-center justify-between">
+                                                <Label className="text-base font-bold">Standard International Shipping</Label>
+                                                {isCalculatingCourier ? (
+                                                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                                                ) : courierFee !== null ? (
+                                                    <span className="font-bold text-green-600">{formatPrice(courierFee)}</span>
+                                                ) : (
+                                                    <span className="text-sm text-muted-foreground">Calculated dynamically</span>
+                                                )}
+                                            </div>
+                                            {estimatedDays && (
+                                                <p className="text-xs text-muted-foreground flex items-center">
+                                                    <Truck className="h-3 w-3 mr-1" /> Estimated delivery: {estimatedDays}
+                                                </p>
                                             )}
                                         </div>
-                                    )}
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div className="space-y-2 md:col-span-2">
                                             <Label htmlFor="country">Country</Label>
@@ -765,7 +702,7 @@ export default function CheckoutPage() {
                                         <div className="flex-1">
                                             <h4 className="text-sm font-semibold line-clamp-1">{item.name}</h4>
                                             <p className="text-xs text-muted-foreground">Qty: {item.quantity}</p>
-                                            <p className="text-sm font-bold mt-1">KES {(item.price * item.quantity).toLocaleString()}</p>
+                                            <p className="text-sm font-bold mt-1">{formatPrice(item.price * item.quantity)}</p>
                                         </div>
                                     </div>
                                 ))}
@@ -776,31 +713,31 @@ export default function CheckoutPage() {
                             <div className="space-y-2">
                                 <div className="flex justify-between text-sm">
                                     <span>Subtotal</span>
-                                    <span className="font-medium">KES {visibleTotalPrice.toLocaleString()}</span>
+                                    <span className="font-medium">{formatPrice(visibleTotalPrice)}</span>
                                 </div>
                                 <div className="flex justify-between text-sm">
                                     <span>Shipping Fee</span>
-                                    <span className="font-medium">KES {shippingFee.toLocaleString()}</span>
+                                    <span className="font-medium">{formatPrice(shippingFee)}</span>
                                 </div>
                                 {couponDiscount > 0 && (
                                     <div className="flex justify-between text-sm text-green-700">
                                         <span>Coupon Discount</span>
-                                        <span className="font-medium">- KES {couponDiscount.toLocaleString()}</span>
+                                        <span className="font-medium">- {formatPrice(couponDiscount)}</span>
                                     </div>
                                 )}
                                 <div className="flex justify-between text-lg font-bold pt-2 border-t">
                                     <span>Total</span>
-                                    <span className="text-accent">KES {finalTotal.toLocaleString()}</span>
+                                    <span className="text-accent">{formatPrice(finalTotal)}</span>
                                 </div>
                                 {paymentType === "LAYBY" && (
                                     <>
                                         <div className="flex justify-between text-sm pt-2">
                                             <span>Required Deposit (30%)</span>
-                                            <span className="font-bold text-orange-600">KES {laybyDeposit.toLocaleString()}</span>
+                                            <span className="font-bold text-orange-600">{formatPrice(laybyDeposit)}</span>
                                         </div>
                                         <div className="flex justify-between text-sm">
                                             <span>Balance Due</span>
-                                            <span className="font-medium">KES {laybyBalance.toLocaleString()}</span>
+                                            <span className="font-medium">{formatPrice(laybyBalance)}</span>
                                         </div>
                                     </>
                                 )}
@@ -808,11 +745,11 @@ export default function CheckoutPage() {
                                     <>
                                         <div className="flex justify-between text-sm pt-2">
                                             <span>Commitment Fee (Due Now)</span>
-                                            <span className="font-bold text-orange-600">KES {commitmentDeposit.toLocaleString()}</span>
+                                            <span className="font-bold text-orange-600">{formatPrice(commitmentDeposit)}</span>
                                         </div>
                                         <div className="flex justify-between text-sm">
                                             <span>Balance Due on Delivery</span>
-                                            <span className="font-medium">KES {commitmentBalance.toLocaleString()}</span>
+                                            <span className="font-medium">{formatPrice(commitmentBalance)}</span>
                                         </div>
                                     </>
                                 )}
@@ -863,7 +800,7 @@ export default function CheckoutPage() {
                                     A payment prompt has been sent to your phone.
                                 </p>
                                 <p className="text-sm text-muted-foreground">
-                                    Enter your M-Pesa PIN to confirm the payment of <strong>KES {finalTotal.toLocaleString()}</strong>
+                                    Enter your M-Pesa PIN to confirm the payment of <strong>{formatPrice(finalTotal)}</strong>
                                 </p>
                             </div>
                             

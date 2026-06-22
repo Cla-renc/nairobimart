@@ -173,3 +173,45 @@ export const createCJOrder = async (orderData: CJOrderData) => {
         return { success: false, error: "Exception creating order" };
     }
 };
+
+export const fetchCJFreight = async (endCountryCode: string, items: { vid: string, quantity: number }[]) => {
+    console.log(`Calculating CJ Freight for ${endCountryCode}...`);
+    const token = await getCJAccessToken();
+    if (!token) return { success: false, error: "No API token could be generated" };
+
+    try {
+        const response = await fetch(`https://developers.cjdropshipping.com/api2.0/v1/logistic/freightCalculate`, {
+            method: 'POST',
+            headers: {
+                'CJ-Access-Token': token,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                startCountryCode: "CN", // Assume shipping from China
+                endCountryCode,
+                products: items
+            })
+        });
+
+        const result = await response.json();
+        if (result.code !== 200 || !result.data || result.data.length === 0) {
+            console.error("CJ Freight Error:", result.message);
+            return { success: false, error: result.message || "No shipping rates found" };
+        }
+
+        // Return the cheapest or standard shipping option from the array
+        const cheapestOption = result.data.reduce((prev: any, current: any) => 
+            (prev.logisticPrice < current.logisticPrice) ? prev : current
+        );
+
+        return {
+            success: true,
+            feeUsd: cheapestOption.logisticPrice,
+            estimatedDays: cheapestOption.logisticTime,
+            methodName: cheapestOption.logisticName
+        };
+    } catch (error) {
+        console.error("Error calculating CJ freight:", error);
+        return { success: false, error: "Exception calculating freight" };
+    }
+};

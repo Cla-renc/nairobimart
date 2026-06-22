@@ -8,9 +8,5 @@ export default async function LogisticsPage() {
         orderBy: { name: "asc" }
     });
 
-    const stations = await prisma.pickupStation.findMany({
-        orderBy: { name: "asc" }
-    });
-
-    return <LogisticsClient initialZones={zones} initialStations={stations} />;
+    return <LogisticsClient initialZones={zones} />;
 }
