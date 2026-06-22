@@ -79,10 +79,8 @@ export default function WriteReviewButton({ productId, productName }: { productI
 
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
-            <DialogTrigger asChild>
-                <Button className="bg-primary hover:bg-primary/95 text-white font-black px-10 h-14 w-full rounded-full uppercase tracking-widest text-xs shadow-lg shadow-primary/20">
-                    Write a Review
-                </Button>
+            <DialogTrigger render={<Button className="bg-primary hover:bg-primary/95 text-white font-black px-10 h-14 w-full rounded-full uppercase tracking-widest text-xs shadow-lg shadow-primary/20" />}>
+                Write a Review
             </DialogTrigger>
             <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
