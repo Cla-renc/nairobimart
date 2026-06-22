@@ -620,11 +620,7 @@ export default function CheckoutPage() {
                                             </div>
                                             <div className="flex justify-between">
                                                 <span className="font-bold">Method:</span>
-                                                <span className="text-right">
-                                                    {deliveryMethod === "pickup" 
-                                                        ? `Pick-up Station (${deliveryOptions.stations.find(s => s.id === selectedStationId)?.name})` 
-                                                        : `DHL Express Door-to-Door Delivery`}
-                                                </span>
+                                                <span className="text-right">Standard International Shipping</span>
                                             </div>
                                             <div className="flex justify-between">
                                                 <span className="font-bold">Payment Plan:</span>
