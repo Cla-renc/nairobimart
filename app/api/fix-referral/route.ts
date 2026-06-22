@@ -18,41 +18,27 @@ export async function GET() {
             return NextResponse.json({ error: "Could not find admin user with code " + adminCode });
         }
 
-        // Find users who have no referredById (excluding the admin themselves)
+        // DEBUG: Get the 5 most recent users regardless of referredById
         const recentUsers = await prisma.user.findMany({
             where: {
-                referredById: null,
                 id: { not: adminUser.id }
             },
             orderBy: {
                 createdAt: 'desc'
             },
-            take: 5 // get the 5 most recently registered users
+            take: 5
         });
 
-        if (recentUsers.length === 0) {
-             return NextResponse.json({ message: "No unlinked users found at all in the database." });
-        }
-
-        // If there's exactly one, let's link it. 
-        // Or if there's multiple, let's link the absolute newest one just to be helpful, 
-        // since this is a manual fix for the last person who registered.
-        const targetUser = recentUsers[0];
-        await prisma.user.update({
-            where: { id: targetUser.id },
-            data: { referredById: adminUser.id }
-        });
-        
-        // Add 100 points to admin
-        await prisma.user.update({
-            where: { id: adminUser.id },
-            data: { loyaltyPoints: { increment: 100 } }
-        });
-        
+        // Let's just return what the DB sees so the user can share the screenshot
         return NextResponse.json({ 
-            success: true, 
-            message: `Successfully linked ${targetUser.email} (registered on ${targetUser.createdAt}) to admin! Admin awarded 100 points.`,
-            otherUnlinkedFound: recentUsers.length - 1
+            debug: "Here are the 5 most recent users. Please share this output:",
+            users: recentUsers.map(u => ({
+                email: u.email,
+                createdAt: u.createdAt,
+                referredById: u.referredById || "NULL",
+                referralCode: u.referralCode
+            })),
+            adminFound: adminUser.email
         });
     } catch (e) {
         return NextResponse.json({ error: String(e) });
