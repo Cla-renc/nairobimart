@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
-// v3 - debug all users
+// v4 - actual fix
 
 export async function GET() {
     try {
@@ -19,27 +19,46 @@ export async function GET() {
             return NextResponse.json({ error: "Could not find admin user with code " + adminCode });
         }
 
-        // DEBUG: Get the 5 most recent users regardless of referredById
-        const recentUsers = await prisma.user.findMany({
+        // Find the most recently registered user (not the admin) who hasn't been linked yet
+        const targetUser = await prisma.user.findFirst({
             where: {
-                id: { not: adminUser.id }
+                id: { not: adminUser.id },
+                referredById: null
             },
             orderBy: {
                 createdAt: 'desc'
-            },
-            take: 5
+            }
         });
 
-        // Let's just return what the DB sees so the user can share the screenshot
+        if (!targetUser) {
+            return NextResponse.json({ message: "All users are already linked to a referrer. Nothing to fix." });
+        }
+
+        // Link the newest unlinked user to admin
+        await prisma.user.update({
+            where: { id: targetUser.id },
+            data: { referredById: adminUser.id }
+        });
+        
+        // Award 100 loyalty points to admin
+        await prisma.user.update({
+            where: { id: adminUser.id },
+            data: { loyaltyPoints: { increment: 100 } }
+        });
+
+        // Count total referrals now
+        const totalReferrals = await prisma.user.count({
+            where: { referredById: adminUser.id }
+        });
+        
         return NextResponse.json({ 
-            debug: "Here are the 5 most recent users. Please share this output:",
-            users: recentUsers.map(u => ({
-                email: u.email,
-                createdAt: u.createdAt,
-                referredById: u.referredById || "NULL",
-                referralCode: u.referralCode
-            })),
-            adminFound: adminUser.email
+            success: true, 
+            message: `Successfully linked ${targetUser.email} to ${adminUser.email}! 100 loyalty points awarded.`,
+            totalReferralsNow: totalReferrals,
+            linkedUser: {
+                email: targetUser.email,
+                registeredAt: targetUser.createdAt
+            }
         });
     } catch (e) {
         return NextResponse.json({ error: String(e) });
