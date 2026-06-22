@@ -68,7 +68,7 @@ export default function AdminNotifications() {
 
     return (
         <Sheet>
-            <SheetTrigger asChild>
+            <SheetTrigger render={
                 <Button variant="ghost" size="icon" className="relative group">
                     <Bell className="h-5 w-5" />
                     {unreadCount > 0 && (
@@ -77,7 +77,7 @@ export default function AdminNotifications() {
                         </span>
                     )}
                 </Button>
-            </SheetTrigger>
+            } />
             <SheetContent side="right" className="w-full sm:w-[400px] flex flex-col p-0">
                 <SheetHeader className="p-4 border-b">
                     <div className="flex items-center justify-between">
