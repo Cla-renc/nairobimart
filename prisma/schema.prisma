@@ -167,13 +167,13 @@ model Order {
   mpesaTransactionId String?
   pesapalTransactionId String?
   stripePaymentId    String?
-  shippingName       String
-  shippingEmail      String      // Email address for payment confirmation and order updates
-  shippingPhone      String
-  shippingAddress    String
-  shippingCity       String
-  shippingCounty     String
-  shippingCountry    String      @default("Kenya")
+  shippingName       String?
+  shippingEmail      String?      // Email address for payment confirmation and order updates
+  shippingPhone      String?
+  shippingAddress    String?
+  shippingCity       String?
+  shippingCounty     String?
+  shippingCountry    String?     @default("Kenya")
   deliveryZoneId     String?     @db.ObjectId
   deliveryZone       DeliveryZone? @relation(fields: [deliveryZoneId], references: [id])
   pickupStationId    String?     @db.ObjectId
