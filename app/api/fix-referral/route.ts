@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
+// v3 - debug all users
 
 export async function GET() {
     try {
