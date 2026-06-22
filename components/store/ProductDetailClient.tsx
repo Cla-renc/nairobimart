@@ -20,6 +20,7 @@ import { ChevronDown } from "lucide-react";
 import { useCartStore } from "@/store/cartStore";
 import ProductCard from "@/components/store/ProductCard";
 import { Separator } from "@/components/ui/separator";
+import WriteReviewButton from "@/components/store/WriteReviewButton";
 
 interface ProductImage {
     url: string;
@@ -470,7 +471,7 @@ export default function ProductDetailClient({
 
                                 <div className="pt-6 space-y-4">
                                     <p className="text-sm text-muted-foreground font-medium italic">Have you used this product?</p>
-                                    <Button className="bg-primary hover:bg-primary/95 text-white font-black px-10 h-14 w-full rounded-full uppercase tracking-widest text-xs shadow-lg shadow-primary/20">Write a Review</Button>
+                                    <WriteReviewButton productId={product.id} productName={product.name} />
                                 </div>
                             </div>
                             
