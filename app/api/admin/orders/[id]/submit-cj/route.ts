@@ -32,10 +32,10 @@ export async function POST(
         // 2. Prepare Data for CJ API
         const cjOrderData = {
             orderNumber: order.orderNumber,
-            shippingName: order.shippingName,
-            shippingPhone: order.shippingPhone,
-            shippingAddress: order.shippingAddress,
-            shippingCity: order.shippingCity,
+            shippingName: order.shippingName || "Customer",
+            shippingPhone: order.shippingPhone || "0000000000",
+            shippingAddress: order.shippingAddress || "Address Not Provided",
+            shippingCity: order.shippingCity || "Nairobi",
             shippingProvince: order.shippingCounty || "Kenya",
             items: order.items.map((item) => {
                 if (!item.product.cjProductId) {
