@@ -33,8 +33,13 @@ export async function POST(req: Request) {
         let referrer = null;
         let referredById: string | undefined;
         if (referralCode) {
-            referrer = await prisma.user.findUnique({
-                where: { referralCode: referralCode.toUpperCase().trim() },
+            referrer = await prisma.user.findFirst({
+                where: { 
+                    referralCode: {
+                        equals: referralCode.trim(),
+                        mode: 'insensitive'
+                    }
+                },
             });
             if (referrer) {
                 referredById = referrer.id;
