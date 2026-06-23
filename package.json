@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && next build",
+    "postinstall": "npx prisma generate",
+    "build": "next build",
     "start": "next start",
     "lint": "next lint",
     "test": "playwright test",
@@ -58,6 +59,7 @@
     "zod": "^4.3.6",
     "zustand": "^5.0.11",
     "fuse.js": "^6.6.2",
+    "prisma": "^5.22.0",
     "@sentry/nextjs": "^8.36.0",
     "pusher": "^5.2.0",
     "pusher-js": "^8.3.0",
@@ -75,7 +77,6 @@
     "eslint": "^8",
     "eslint-config-next": "14.2.35",
     "postcss": "^8",
-    "prisma": "^5.22.0",
     "tailwindcss": "^3.4.1",
     "tailwindcss-animate": "^1.0.7",
     "typescript": "^5.9.3"
