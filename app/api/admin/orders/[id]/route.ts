@@ -58,9 +58,11 @@ export async function PATCH(
             data: updateData,
         });
 
-        // Send SMS if status changed
+        // Send SMS & WhatsApp if status changed
         if (status && status !== currentOrder.status) {
             let message = "";
+            let triggerWhatsApp = false;
+
             if (status === "shipped") {
                 const waybill = trackingNumber || currentOrder.trackingNumber || "N/A";
                 const url = trackingUrl || currentOrder.trackingUrl;
@@ -68,12 +70,38 @@ export async function PATCH(
                 message = `Hi ${order.shippingName}, your NairobiMart order ${order.orderNumber} has been dispatched. Waybill/Tracking Number: ${waybill}.`;
                 if (url) message += ` Track your package here: ${url}`;
                 else message += ` Expected arrival: 1-3 days.`;
+
+                triggerWhatsApp = true;
             } else if (status === "delivered") {
                 message = `Hi ${order.shippingName}, your NairobiMart order ${order.orderNumber} has been successfully delivered. Thank you for shopping with us!`;
             }
 
             if (message && order.shippingPhone) {
-                await sendSMS(order.shippingPhone, message);
+                await sendSMS(order.shippingPhone, message).catch(console.error);
+            }
+
+            // WhatsApp Integration
+            if (triggerWhatsApp) {
+                try {
+                    const botUrl = process.env.WHATSAPP_BOT_URL || 'http://localhost:3000';
+                    const phone = order.shippingPhone;
+                    
+                    if (phone) {
+                        await fetch(`${botUrl}/api/send-dispatch`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                phone,
+                                customerName: order.shippingName || "Customer",
+                                orderNumber: order.orderNumber,
+                                trackingUrl: trackingUrl || currentOrder.trackingUrl || ""
+                            })
+                        });
+                        console.log(`WhatsApp dispatch notification sent for ${order.orderNumber}`);
+                    }
+                } catch (botError) {
+                    console.error("WhatsApp trigger failed in order update:", botError);
+                }
             }
         }
 

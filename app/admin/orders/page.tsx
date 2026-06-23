@@ -66,7 +66,7 @@ export default function AdminOrdersPage() {
             const response = await fetch(`/api/admin/orders?search=${searchTerm}`);
             if (!response.ok) throw new Error("Failed to fetch orders");
             const data = await response.json();
-            setOrders(data);
+            setOrders(data.map((order: any) => ({ ...order, _highlight: false })));
         } catch (error) {
             console.error("Error fetching orders:", error);
             toast({
@@ -82,6 +82,65 @@ export default function AdminOrdersPage() {
     useEffect(() => {
         fetchOrders();
     }, [fetchOrders]);
+
+    // Live M-Pesa Ledger via Pusher
+    useEffect(() => {
+        let isMounted = true;
+
+        const setupPusher = async () => {
+            const { getPusherClient } = await import("@/lib/pusher");
+            const pusher = getPusherClient();
+            if (!pusher) return;
+
+            const channel = pusher.subscribe("admin-orders");
+            
+            channel.bind("order-paid", (data: { orderId: string, orderNumber: string, status: string }) => {
+                if (!isMounted) return;
+                
+                toast({
+                    title: "🔔 Payment Received!",
+                    description: `Order ${data.orderNumber} was just paid.`,
+                    variant: "default",
+                    className: "bg-green-600 text-white border-none"
+                });
+
+                setOrders((prev) => 
+                    prev.map((order) => {
+                        if (order.id === data.orderId) {
+                            return {
+                                ...order,
+                                paymentStatus: data.status,
+                                status: "processing", // Auto-moves to processing
+                                _highlight: true // We'll use this to trigger CSS flash
+                            };
+                        }
+                        return order;
+                    })
+                );
+
+                // Remove highlight after 3 seconds
+                setTimeout(() => {
+                    if (isMounted) {
+                        setOrders((prev) =>
+                            prev.map((order) => order.id === data.orderId ? { ...order, _highlight: false } : order)
+                        );
+                    }
+                }, 3000);
+            });
+        };
+
+        setupPusher();
+
+        return () => {
+            isMounted = false;
+            const initPusher = async () => {
+                const { getPusherClient } = await import("@/lib/pusher");
+                const pusher = getPusherClient();
+                if (pusher) pusher.unsubscribe("admin-orders");
+            };
+            initPusher();
+        };
+    }, []);
 
     const updateOrderStatus = async (orderId: string, status: string) => {
         try {
@@ -199,8 +258,14 @@ export default function AdminOrdersPage() {
                                         </TableCell>
                                     </TableRow>
                                 ) : (
-                                    orders.map((order) => (
-                                        <TableRow key={order.id}>
+                                    orders.map((order: any) => (
+                                        <TableRow 
+                                            key={order.id} 
+                                            className={cn(
+                                                "transition-colors duration-1000",
+                                                order._highlight ? "bg-green-100 dark:bg-green-900/30" : ""
+                                            )}
+                                        >
                                             <TableCell className="font-bold text-accent">{order.orderNumber}</TableCell>
                                             <TableCell>
                                                 <div className="flex flex-col">

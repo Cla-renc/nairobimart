@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { Plus, Edit, Trash2 } from "lucide-react";
+import { useState, useMemo } from "react";
+import { Plus, Edit, Trash2, MapPin, Truck, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,6 +22,9 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import Map, { Marker, NavigationControl, Popup } from "react-map-gl";
+import "mapbox-gl/dist/mapbox-gl.css";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
 interface Zone {
     id: string;
@@ -30,15 +33,42 @@ interface Zone {
     isActive: boolean;
 }
 
-export default function LogisticsClient({ initialZones }: { initialZones: Zone[] }) {
+interface Order {
+    id: string;
+    orderNumber: string;
+    status: string;
+    shippingAddress: string | null;
+    shippingCity: string | null;
+    total: number;
+    user?: { name: string | null; phone: string | null } | null;
+}
+
+export default function LogisticsClient({ initialZones, activeOrders = [] }: { initialZones: Zone[], activeOrders?: Order[] }) {
     const [zones, setZones] = useState(initialZones);
+    const [orders, setOrders] = useState(activeOrders);
     const [isLoading, setIsLoading] = useState(false);
     const { toast } = useToast();
+
+    // Map State
+    const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+    const [isDispatchSheetOpen, setIsDispatchSheetOpen] = useState(false);
+    const [dispatchingId, setDispatchingId] = useState<string | null>(null);
 
     // Zone Modal State
     const [isZoneModalOpen, setIsZoneModalOpen] = useState(false);
     const [editingZone, setEditingZone] = useState<Zone | null>(null);
     const [zoneFormData, setZoneFormData] = useState({ name: "", fee: "", isActive: true });
+
+    // Generate pseudo-random coordinates around Nairobi for the demo
+    const mapMarkers = useMemo(() => {
+        return orders.map((order, i) => {
+            // Nairobi center: -1.2921, 36.8219
+            // Add slight jitter for demo purposes since we don't have real geocoding yet
+            const lat = -1.2921 + (Math.sin(i * 10) * 0.05);
+            const lng = 36.8219 + (Math.cos(i * 10) * 0.05);
+            return { ...order, lat, lng };
+        });
+    }, [orders]);
 
     const openZoneModal = (zone: Zone | null = null) => {
         if (zone) {
@@ -93,16 +123,114 @@ export default function LogisticsClient({ initialZones }: { initialZones: Zone[]
         }
     };
 
+    const requestDispatch = async (orderId: string) => {
+        try {
+            setDispatchingId(orderId);
+            const res = await fetch(`/api/admin/logistics/dispatch`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ orderId }),
+            });
+
+            if (!res.ok) throw new Error("Dispatch failed");
+
+            const data = await res.json();
+            
+            toast({ 
+                title: "Rider Dispatched Successfully!", 
+                description: `Tracking Link: ${data.trackingUrl}`,
+                variant: "default",
+                className: "bg-green-600 text-white"
+            });
+            
+            // Remove from map
+            setOrders(orders.filter(o => o.id !== orderId));
+            setIsDispatchSheetOpen(false);
+
+        } catch (error) {
+            toast({ title: "Dispatch Request Failed", variant: "destructive" });
+        } finally {
+            setDispatchingId(null);
+        }
+    };
+
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 h-full flex flex-col">
             <div className="flex justify-between items-center">
-                <h1 className="text-3xl font-bold text-primary">Logistics</h1>
+                <h1 className="text-3xl font-bold text-primary">Logistics Command Center</h1>
             </div>
 
-            <Tabs defaultValue="zones">
+            <Tabs defaultValue="map" className="flex-1 flex flex-col">
                 <TabsList className="mb-4">
+                    <TabsTrigger value="map">Live Route Map</TabsTrigger>
                     <TabsTrigger value="zones">Delivery Zones</TabsTrigger>
                 </TabsList>
+
+                {/* Live Map Tab */}
+                <TabsContent value="map" className="flex-1 min-h-[600px] relative rounded-lg overflow-hidden border">
+                    {process.env.NEXT_PUBLIC_MAPBOX_TOKEN ? (
+                        <Map
+                            mapboxAccessToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN}
+                            initialViewState={{
+                                longitude: 36.8219,
+                                latitude: -1.2921,
+                                zoom: 11
+                            }}
+                            mapStyle="mapbox://styles/mapbox/dark-v11"
+                        >
+                            <NavigationControl position="top-left" />
+                            
+                            {mapMarkers.map(marker => (
+                                <Marker 
+                                    key={marker.id} 
+                                    longitude={marker.lng} 
+                                    latitude={marker.lat}
+                                    onClick={e => {
+                                        e.originalEvent.stopPropagation();
+                                        setSelectedOrder(marker);
+                                    }}
+                                >
+                                    <div className="bg-primary text-white p-2 rounded-full cursor-pointer shadow-lg hover:scale-110 transition-transform">
+                                        <Truck size={16} />
+                                    </div>
+                                </Marker>
+                            ))}
+
+                            {selectedOrder && (
+                                <Popup
+                                    longitude={mapMarkers.find(m => m.id === selectedOrder.id)?.lng || 36.8219}
+                                    latitude={mapMarkers.find(m => m.id === selectedOrder.id)?.lat || -1.2921}
+                                    onClose={() => setSelectedOrder(null)}
+                                    className="rounded-xl overflow-hidden"
+                                >
+                                    <div className="p-2 space-y-2 text-sm text-black">
+                                        <p className="font-bold border-b pb-1">Order {selectedOrder.orderNumber}</p>
+                                        <p>{selectedOrder.shippingAddress || "Nairobi"} - {selectedOrder.shippingCity}</p>
+                                        <p className="font-medium text-primary">KES {selectedOrder.total}</p>
+                                        <Button 
+                                            size="sm" 
+                                            className="w-full mt-2"
+                                            onClick={() => {
+                                                setIsDispatchSheetOpen(true);
+                                                setSelectedOrder(selectedOrder);
+                                            }}
+                                        >
+                                            Request Rider
+                                        </Button>
+                                    </div>
+                                </Popup>
+                            )}
+                        </Map>
+                    ) : (
+                        <div className="absolute inset-0 bg-muted flex items-center justify-center flex-col text-center p-6">
+                            <MapPin className="h-12 w-12 text-muted-foreground mb-4" />
+                            <h3 className="text-xl font-bold">Mapbox Token Required</h3>
+                            <p className="text-muted-foreground mt-2 max-w-md">
+                                A NEXT_PUBLIC_MAPBOX_TOKEN is required in your environment variables to render the live routing map. Once added, you will see a clustered heatmap of your {orders.length} pending orders.
+                            </p>
+                        </div>
+                    )}
+                </TabsContent>
 
                 {/* Delivery Zones Tab */}
                 <TabsContent value="zones" className="bg-white p-6 rounded-lg shadow-sm border border-input">
@@ -173,6 +301,57 @@ export default function LogisticsClient({ initialZones }: { initialZones: Zone[]
                     </div>
                 </DialogContent>
             </Dialog>
+
+            {/* Dispatch Rider Sheet */}
+            <Sheet open={isDispatchSheetOpen} onOpenChange={setIsDispatchSheetOpen}>
+                <SheetContent className="sm:max-w-md border-l-0 shadow-2xl">
+                    <SheetHeader>
+                        <SheetTitle className="flex items-center text-2xl font-black text-primary">
+                            <Truck className="mr-3 h-6 w-6" />
+                            Dispatch Rider
+                        </SheetTitle>
+                    </SheetHeader>
+                    {selectedOrder && (
+                        <div className="py-6 space-y-6">
+                            <div className="bg-muted p-4 rounded-xl border">
+                                <p className="text-sm text-muted-foreground mb-1">Order Ref</p>
+                                <p className="font-bold text-lg">{selectedOrder.orderNumber}</p>
+                            </div>
+
+                            <div className="space-y-3">
+                                <h4 className="font-bold">Customer Details</h4>
+                                <div className="grid grid-cols-2 gap-4 text-sm">
+                                    <div>
+                                        <p className="text-muted-foreground">Name</p>
+                                        <p className="font-medium">{selectedOrder.user?.name || "Guest"}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-muted-foreground">Phone</p>
+                                        <p className="font-medium">{selectedOrder.user?.phone || "N/A"}</p>
+                                    </div>
+                                    <div className="col-span-2">
+                                        <p className="text-muted-foreground">Delivery Address</p>
+                                        <p className="font-medium">{selectedOrder.shippingAddress || "N/A"} - {selectedOrder.shippingCity}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="border-t pt-6 space-y-4">
+                                <Button 
+                                    className="w-full h-12 text-lg font-bold" 
+                                    onClick={() => requestDispatch(selectedOrder.id)}
+                                    disabled={dispatchingId === selectedOrder.id}
+                                >
+                                    {dispatchingId === selectedOrder.id ? "Connecting to Logistics API..." : "Confirm & Send Rider (Sendy)"}
+                                </Button>
+                                <p className="text-xs text-center text-muted-foreground">
+                                    This will alert the nearest rider and automatically send a WhatsApp tracking link to the customer.
+                                </p>
+                            </div>
+                        </div>
+                    )}
+                </SheetContent>
+            </Sheet>
         </div>
     );
 }

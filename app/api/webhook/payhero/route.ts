@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { processPurchaseRewards } from "@/lib/loyalty";
+import { pusherServer } from "@/lib/pusher";
 
 export async function POST(req: Request) {
     try {
@@ -69,6 +70,17 @@ export async function POST(req: Request) {
                     paymentStatus: "completed",
                 }
             });
+
+            // TRIGGER REAL-TIME PUSHER EVENT
+            try {
+                await pusherServer.trigger("admin-orders", "order-paid", {
+                    orderId: order.id,
+                    orderNumber: order.orderNumber,
+                    status: "paid"
+                });
+            } catch (pusherErr) {
+                console.error("Pusher trigger failed:", pusherErr);
+            }
 
             if (order.userId) {
                 await processPurchaseRewards(order.id);

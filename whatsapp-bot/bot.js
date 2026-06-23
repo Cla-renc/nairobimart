@@ -10,15 +10,45 @@ const path = require('path');
 require('dotenv').config({ path: path.resolve(__dirname, '../.env.local') });
 
 
-// HTTP server to satisfy Render's port binding requirement for Web Services
-const server = http.createServer((req, res) => {
-    res.writeHead(200, { 'Content-Type': 'text/plain' });
-    res.end('WhatsApp Bot is running!');
+// HTTP server to satisfy Render's port binding requirement and handle API requests
+const express = require('express');
+const app = express();
+app.use(express.json());
+
+app.get('/', (req, res) => {
+    res.send('WhatsApp Bot is running!');
+});
+
+// We will inject the sock instance here once it's created
+let whatsappSocket = null;
+
+app.post('/api/send-dispatch', async (req, res) => {
+    try {
+        const { phone, customerName, orderNumber, trackingUrl } = req.body;
+        
+        if (!phone || !whatsappSocket) {
+            return res.status(400).json({ error: "Missing phone or socket not ready" });
+        }
+
+        // Format phone number to JID
+        let jid = phone.replace(/[^0-9]/g, '');
+        if (jid.startsWith('0')) jid = '254' + jid.slice(1);
+        jid = jid + '@s.whatsapp.net';
+
+        const message = `🚚 *NairobiMart Dispatch Alert*\n\nHello ${customerName},\n\nYour order *${orderNumber}* has just been dispatched to a rider!\n\nTrack your delivery here: ${trackingUrl}\n\nThank you for shopping with us! ✨`;
+
+        await whatsappSocket.sendMessage(jid, { text: message });
+        
+        res.json({ success: true, message: "Dispatch notification sent" });
+    } catch (error) {
+        console.error("Error sending dispatch notification:", error);
+        res.status(500).json({ error: "Failed to send notification" });
+    }
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-    console.log(`HTTP Server listening on port ${PORT}`);
+app.listen(PORT, () => {
+    console.log(`Express HTTP Server listening on port ${PORT}`);
 });
 
 const prisma = new PrismaClient();
@@ -122,6 +152,8 @@ async function startBot() {
             return { conversation: 'hello' }; // Dummy return to prevent crash on missing message
         }
     });
+
+    whatsappSocket = sock; // Expose socket to Express for dispatch notifications
 
     // Debugging info for Render
     console.log(`[DEBUG] BOT_PHONE_NUMBER from env:`, process.env.BOT_PHONE_NUMBER);

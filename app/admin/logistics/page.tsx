@@ -8,5 +8,13 @@ export default async function LogisticsPage() {
         orderBy: { name: "asc" }
     });
 
-    return <LogisticsClient initialZones={zones} />;
+    const activeOrders = await prisma.order.findMany({
+        where: {
+            status: { in: ['pending', 'processing'] }
+        },
+        include: { user: { select: { name: true, phone: true } } },
+        orderBy: { createdAt: 'desc' }
+    });
+
+    return <LogisticsClient initialZones={zones} activeOrders={activeOrders} />;
 }

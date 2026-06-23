@@ -12,7 +12,8 @@ import {
     ExternalLink,
     Filter,
     ArrowUpDown,
-    Loader2
+    Loader2,
+    RefreshCcw
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,6 +36,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import Image from "next/image";
+import { useToast } from "@/hooks/use-toast";
 
 interface Product {
     id: string;
@@ -52,9 +54,11 @@ export default function AdminProductsPage() {
     const [searchTerm, setSearchTerm] = useState("");
     const [products, setProducts] = useState<Product[]>([]);
     const [loading, setLoading] = useState(true);
+    const [syncing, setSyncing] = useState(false);
     const [page, setPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
     const [totalProducts, setTotalProducts] = useState(0);
+    const { toast } = useToast();
 
     const fetchProducts = useCallback(async () => {
         try {
@@ -75,6 +79,29 @@ export default function AdminProductsPage() {
         fetchProducts();
     }, [fetchProducts]);
 
+    const handleSyncCJ = async () => {
+        try {
+            setSyncing(true);
+            const res = await fetch("/api/admin/inventory-sync", { method: "POST" });
+            const data = await res.json();
+
+            if (data.success) {
+                toast({
+                    title: "Sync Complete",
+                    description: `Synced ${data.stats?.updated || 0} items. ${data.stats?.priceChanged || 0} price changes, ${data.stats?.flaggedOOS || 0} out of stock.`,
+                    className: "bg-green-600 text-white"
+                });
+                fetchProducts();
+            } else {
+                toast({ title: "Sync Failed", description: data.error || data.message, variant: "destructive" });
+            }
+        } catch (error) {
+            toast({ title: "Error", description: "Failed to run CJ Inventory Sync.", variant: "destructive" });
+        } finally {
+            setSyncing(false);
+        }
+    };
+
     return (
         <div className="space-y-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -82,11 +109,22 @@ export default function AdminProductsPage() {
                     <h1 className="text-3xl font-extrabold text-primary">Products</h1>
                     <p className="text-muted-foreground">Manage your storefront inventory and CJDropshipping sync.</p>
                 </div>
-                <Button asChild className="bg-accent text-accent-foreground hover:bg-accent/90 font-bold">
-                    <Link href="/admin/products/new">
-                        <Plus className="mr-2 h-4 w-4" /> Add New Product
-                    </Link>
-                </Button>
+                <div className="flex space-x-2">
+                    <Button 
+                        variant="outline" 
+                        onClick={handleSyncCJ} 
+                        disabled={syncing}
+                        className="font-bold border-primary text-primary"
+                    >
+                        {syncing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCcw className="mr-2 h-4 w-4" />}
+                        {syncing ? "Syncing CJ..." : "Sync CJ Inventory"}
+                    </Button>
+                    <Button asChild className="bg-accent text-accent-foreground hover:bg-accent/90 font-bold">
+                        <Link href="/admin/products/new">
+                            <Plus className="mr-2 h-4 w-4" /> Add New Product
+                        </Link>
+                    </Button>
+                </div>
             </div>
 
             <Card className="border-none shadow-sm">
