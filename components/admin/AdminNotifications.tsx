@@ -68,16 +68,18 @@ export default function AdminNotifications() {
 
     return (
         <Sheet>
-            <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="relative group">
-                    <Bell className="h-6 w-6" />
-                    {unreadCount > 0 && (
-                        <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-[10px] font-bold text-white border-2 border-white">
-                            {unreadCount > 9 ? "9+" : unreadCount}
-                        </span>
-                    )}
-                </Button>
-            </SheetTrigger>
+            <SheetTrigger
+                render={
+                    <Button variant="ghost" size="icon" className="relative group">
+                        <Bell className="h-6 w-6" />
+                        {unreadCount > 0 && (
+                            <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-[10px] font-bold text-white border-2 border-white">
+                                {unreadCount > 9 ? "9+" : unreadCount}
+                            </span>
+                        )}
+                    </Button>
+                }
+            />
             <SheetContent side="right" className="w-full sm:w-[400px] flex flex-col p-0">
                 <SheetHeader className="p-4 border-b">
                     <div className="flex items-center justify-between">
