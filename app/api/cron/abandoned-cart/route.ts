@@ -71,9 +71,9 @@ export async function GET(req: Request) {
         let usersUpdated = 0;
 
         for (const data of Object.values(cartsByUser)) {
-            const coupon = await createRecoveryCoupon(data.user.id, 7, 7);
+            const coupon = await createRecoveryCoupon(data.user.id, 5, 7);
             couponsCreated++;
-            const message = `Hey ${data.user.name || 'there'}, you left ${data.items.length} item(s) in your cart! Use ${coupon.code} for 7% off and complete your purchase at NairobiMart.`;
+            const message = `Hey ${data.user.name || 'there'}, you left ${data.items.length} item(s) in your cart! Use ${coupon.code} for 5% off and complete your purchase at NairobiMart.`;
 
             let sent = false;
             if (data.user.phone) {
@@ -84,7 +84,7 @@ export async function GET(req: Request) {
                 await sendMarketingEmail(
                     data.user.email,
                     "You left items in your NairobiMart cart",
-                    `<p>Hi ${data.user.name || "there"},</p><p>You left ${data.items.length} item(s) in your cart.</p><p>Use <strong>${coupon.code}</strong> for 7% off your next order. Offer expires in 7 days.</p>`
+                    `<p>Hi ${data.user.name || "there"},</p><p>You left ${data.items.length} item(s) in your cart.</p><p>Use <strong>${coupon.code}</strong> for 5% off your next order. Offer expires in 7 days.</p>`
                 );
                 emailsSent++;
                 sent = true;

@@ -106,12 +106,24 @@ export async function createCampaignCoupon(
     return coupon;
 }
 
-export async function createRecoveryCoupon(userId: string, value = 7, expiresInDays = 7) {
-    const coupon = await createCampaignCoupon("CART", value, "percentage", expiresInDays, 500, 1);
+export async function createRecoveryCoupon(userId: string, value = 5, expiresInDays = 7) {
+    const coupon = await createCampaignCoupon("COMEBACK", value, "percentage", expiresInDays, 500, 1);
     await prisma.user.update({
         where: { id: userId },
         data: { lastAbandonedCartNotificationAt: new Date() },
     });
+    return coupon;
+}
+
+export async function createWelcomeCoupon(userId: string, value = 10, expiresInDays = 30) {
+    // Generates a WELCOME-XXXX coupon for 10% off
+    const coupon = await createCampaignCoupon("WELCOME", value, "percentage", expiresInDays, 0, 1);
+    return coupon;
+}
+
+export async function createVIPMilestoneCoupon(userId: string, value = 15, expiresInDays = 30) {
+    // Generates a VIP-XXXX coupon for 15% off
+    const coupon = await createCampaignCoupon("VIP", value, "percentage", expiresInDays, 0, 1);
     return coupon;
 }
 

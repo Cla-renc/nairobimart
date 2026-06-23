@@ -74,6 +74,22 @@ export async function POST(req: Request) {
             });
         }
 
+        // Generate Welcome Coupon
+        try {
+            const { createWelcomeCoupon } = await import("@/lib/coupons");
+            const { sendMarketingEmail } = await import("@/lib/email");
+
+            const welcomeCoupon = await createWelcomeCoupon(user.id, 10, 30);
+            await sendMarketingEmail(
+                user.email,
+                "Welcome to NairobiMart! Here is 10% off your first order",
+                `<h1>Welcome to NairobiMart, ${user.name}!</h1><p>We are thrilled to have you.</p><p>Use coupon code <strong>${welcomeCoupon.code}</strong> to get 10% off your first purchase.</p><p>This code expires in 30 days.</p>`
+            );
+        } catch (couponError) {
+            console.error("Failed to generate welcome coupon:", couponError);
+            // Non-fatal, allow registration to succeed
+        }
+
         console.log("Registration Successful for:", { id: user.id, email: user.email, name: user.name });
 
         return NextResponse.json(

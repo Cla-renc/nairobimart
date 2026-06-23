@@ -110,6 +110,28 @@ export async function processPurchaseRewards(orderId: string) {
   const newTotalSpent = previousTotal + order.total;
   const tier = getLoyaltyTier(newTotalSpent);
 
+  // VIP Milestone Logic (crosses 50k threshold)
+  if (previousTotal < 50000 && newTotalSpent >= 50000) {
+    try {
+      const { createVIPMilestoneCoupon } = await import("./coupons");
+      const { sendMarketingEmail } = await import("./email");
+
+      const vipCoupon = await createVIPMilestoneCoupon(order.user.id, 15, 30);
+      if (order.user.email) {
+        await sendMarketingEmail(
+          order.user.email,
+          "Congratulations! You've reached VIP Status 🌟",
+          `<h1>You are a VIP, ${order.user.name || "friend"}!</h1>
+           <p>Thank you for spending over KES 50,000 at NairobiMart. We truly appreciate your loyalty.</p>
+           <p>As a token of our gratitude, here is an exclusive 15% off coupon just for you: <strong>${vipCoupon.code}</strong></p>
+           <p>This code expires in 30 days.</p>`
+        );
+      }
+    } catch (err) {
+      console.error("Failed to process VIP milestone coupon:", err);
+    }
+  }
+
   return prisma.user.update({
     where: { id: order.userId },
     data: {
