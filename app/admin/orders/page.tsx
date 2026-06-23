@@ -83,62 +83,78 @@ export default function AdminOrdersPage() {
         fetchOrders();
     }, [fetchOrders]);
 
-    // Live M-Pesa Ledger via Pusher
+    // Live Dashboard via MongoDB Change Streams (SSE)
     useEffect(() => {
         let isMounted = true;
+        const eventSource = new EventSource('/api/admin/orders/stream');
 
-        const setupPusher = async () => {
-            const { getPusherClient } = await import("@/lib/pusher");
-            const pusher = getPusherClient();
-            if (!pusher) return;
-
-            const channel = pusher.subscribe("admin-orders");
-            
-            channel.bind("order-paid", (data: { orderId: string, orderNumber: string, status: string }) => {
-                if (!isMounted) return;
+        eventSource.onmessage = (event) => {
+            if (!isMounted) return;
+            try {
+                const data = JSON.parse(event.data);
                 
-                toast({
-                    title: "🔔 Payment Received!",
-                    description: `Order ${data.orderNumber} was just paid.`,
-                    variant: "default",
-                    className: "bg-green-600 text-white border-none"
-                });
+                if (data.type === 'connected') {
+                    console.log('Connected to MongoDB Change Stream SSE');
+                    return;
+                }
 
-                setOrders((prev) => 
-                    prev.map((order) => {
-                        if (order.id === data.orderId) {
-                            return {
-                                ...order,
-                                paymentStatus: data.status,
-                                status: "processing", // Auto-moves to processing
-                                _highlight: true // We'll use this to trigger CSS flash
-                            };
-                        }
-                        return order;
-                    })
-                );
+                if (data.type === 'change' && (data.operation === 'update' || data.operation === 'insert')) {
+                    // Extract info (handles both insert full doc or update description)
+                    const docId = data.documentKey._id;
+                    const updatedFields = data.updateDescription?.updatedFields;
+                    const fullDoc = data.fullDocument;
+                    
+                    const newStatus = updatedFields?.status || fullDoc?.status;
+                    const newPaymentStatus = updatedFields?.paymentStatus || fullDoc?.paymentStatus;
+                    const isPaymentUpdate = newPaymentStatus === 'paid' && updatedFields?.paymentStatus;
 
-                // Remove highlight after 3 seconds
-                setTimeout(() => {
-                    if (isMounted) {
-                        setOrders((prev) =>
-                            prev.map((order) => order.id === data.orderId ? { ...order, _highlight: false } : order)
-                        );
+                    if (isPaymentUpdate) {
+                        toast({
+                            title: "🔔 Payment Received!",
+                            description: `An order was just paid.`,
+                            variant: "default",
+                            className: "bg-green-600 text-white border-none"
+                        });
                     }
-                }, 3000);
-            });
+
+                    // Re-fetch to ensure data consistency or update locally
+                    // For safety, let's just trigger a re-fetch and add a highlight flag to the specific order
+                    setOrders((prev) => 
+                        prev.map((order) => {
+                            if (order.id === docId) {
+                                return {
+                                    ...order,
+                                    ...(newStatus && { status: newStatus }),
+                                    ...(newPaymentStatus && { paymentStatus: newPaymentStatus }),
+                                    _highlight: true
+                                };
+                            }
+                            return order;
+                        })
+                    );
+
+                    // Remove highlight after 3 seconds
+                    setTimeout(() => {
+                        if (isMounted) {
+                            setOrders((prev) =>
+                                prev.map((order) => order.id === docId ? { ...order, _highlight: false } : order)
+                            );
+                        }
+                    }, 3000);
+                }
+            } catch (err) {
+                console.error("Error parsing SSE data", err);
+            }
         };
 
-        setupPusher();
+        eventSource.onerror = (error) => {
+            console.error("SSE Error:", error);
+            // Optionally handle reconnect logic or silently fail
+        };
 
         return () => {
             isMounted = false;
-            const initPusher = async () => {
-                const { getPusherClient } = await import("@/lib/pusher");
-                const pusher = getPusherClient();
-                if (pusher) pusher.unsubscribe("admin-orders");
-            };
-            initPusher();
+            eventSource.close();
         };
     }, []);
 

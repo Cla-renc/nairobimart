@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, Suspense, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import ProductGrid from "@/components/store/ProductGrid";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,7 @@ interface Product {
     comparePrice?: number;
     category: string;
     image: string;
+    attributes?: Record<string, string>;
     rating?: number;
     isFeatured?: boolean;
 }
@@ -44,10 +45,31 @@ function ProductsContent() {
 
     const [priceRange, setPriceRange] = useState<number[]>([0, 50000]);
     const [selectedCategoriesState, setSelectedCategoriesState] = useState<string[]>([]);
+    const [selectedAttributesState, setSelectedAttributesState] = useState<Record<string, string[]>>({});
     const [hasInteracted, setHasInteracted] = useState(false);
     const [sortBy, setSortBy] = useState("newest");
     const [currentPage, setCurrentPage] = useState(1);
     const productsPerPage = 8;
+
+    // Dynamically extract all available unique attributes across all products
+    const dynamicFilters = useMemo(() => {
+        const filters: Record<string, Set<string>> = {};
+        allProducts.forEach(product => {
+            if (product.attributes && typeof product.attributes === 'object') {
+                Object.entries(product.attributes).forEach(([key, value]) => {
+                    if (value && typeof value === 'string') {
+                        if (!filters[key]) filters[key] = new Set();
+                        filters[key].add(value);
+                    }
+                });
+            }
+        });
+        
+        return Object.entries(filters).map(([key, valueSet]) => ({
+            name: key,
+            options: Array.from(valueSet).sort()
+        })).filter(f => f.options.length > 1);
+    }, [allProducts]);
 
     // Fetch products and categories from API
     useEffect(() => {
@@ -109,6 +131,7 @@ function ProductsContent() {
     const clearFilters = () => {
         setHasInteracted(true);
         setSelectedCategoriesState([]);
+        setSelectedAttributesState({});
         setPriceRange([0, 50000]);
         setCurrentPage(1);
     };
@@ -131,7 +154,14 @@ function ProductsContent() {
         // Featured Filter
         const matchesFeatured = filterParam !== "featured" || product.isFeatured;
 
-        return matchesCategory && matchesPrice && matchesSearch && matchesSale && matchesFeatured;
+        // Dynamic Attributes Filter
+        const matchesAttributes = Object.entries(selectedAttributesState).every(([key, selectedValues]) => {
+            if (!selectedValues || selectedValues.length === 0) return true;
+            if (!product.attributes || typeof product.attributes[key] !== 'string') return false;
+            return selectedValues.includes(product.attributes[key]);
+        });
+
+        return matchesCategory && matchesPrice && matchesSearch && matchesSale && matchesFeatured && matchesAttributes;
     });
 
     // Sorting logic
@@ -231,6 +261,37 @@ function ProductsContent() {
                                         <span className="bg-muted px-2 py-1 rounded">KES {priceRange[1].toLocaleString()}</span>
                                     </div>
                                 </div>
+
+                                {/* Dynamic Attribute Filters */}
+                                {dynamicFilters.map(filter => (
+                                    <div key={filter.name} className="space-y-3 pt-4 border-t border-gray-50">
+                                        <h4 className="font-semibold text-xs uppercase tracking-widest text-muted-foreground">{filter.name}</h4>
+                                        <div className="space-y-2">
+                                            {filter.options.map(option => (
+                                                <div key={option} className="flex items-center space-x-2">
+                                                    <Checkbox
+                                                        id={`filter-${filter.name}-${option}`}
+                                                        checked={selectedAttributesState[filter.name]?.includes(option) || false}
+                                                        onCheckedChange={() => {
+                                                            setHasInteracted(true);
+                                                            setSelectedAttributesState(prev => {
+                                                                const current = prev[filter.name] || [];
+                                                                const next = current.includes(option)
+                                                                    ? current.filter(o => o !== option)
+                                                                    : [...current, option];
+                                                                return { ...prev, [filter.name]: next };
+                                                            });
+                                                            setCurrentPage(1);
+                                                        }}
+                                                    />
+                                                    <Label htmlFor={`filter-${filter.name}-${option}`} className="text-sm font-medium leading-none cursor-pointer hover:text-accent transition-colors">
+                                                        {option}
+                                                    </Label>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ))}
 
                                 <Button
                                     variant="ghost"

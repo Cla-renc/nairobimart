@@ -35,6 +35,7 @@ export async function GET(request: NextRequest) {
             comparePrice: p.comparePrice,
             image: p.images?.[0]?.url || "/images/placeholder.jpg",
             category: p.category?.name || "Uncategorized",
+            attributes: p.attributes || {},
             rating: 4.5, // Default rating as we don't have reviews yet
             isFeatured: p.isFeatured || false,
             isSale: !!p.comparePrice

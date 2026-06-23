@@ -59,7 +59,8 @@ export async function POST(req: Request) {
             category,
             status,
             cjProductId,
-            images
+            images,
+            attributes
         } = body;
 
         // Generate category slug
@@ -95,6 +96,7 @@ export async function POST(req: Request) {
                 categoryId: dbCategory.id,
                 isActive: status === "Active",
                 cjProductId: cjProductId || null,
+                attributes: attributes || null,
                 images: images?.length ? {
                     create: images.map((url: string) => ({ url }))
                 } : undefined,
