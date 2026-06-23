@@ -46,7 +46,7 @@ export async function GET(request: Request) {
           const payload = {
             type: "change",
             operation: change.operationType,
-            documentKey: change.documentKey,
+            documentKey: (change as any).documentKey,
             updateDescription: change.operationType === "update" ? (change as any).updateDescription : null,
             fullDocument: change.operationType === "insert" ? (change as any).fullDocument : null
           };
