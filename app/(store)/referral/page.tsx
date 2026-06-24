@@ -24,6 +24,7 @@ export default async function ReferralPage() {
     where: { email: session.user.email },
     select: {
       referralCode: true,
+      loyaltyPoints: true,
       referredUsers: { select: { id: true } },
     },
   });
@@ -78,6 +79,8 @@ export default async function ReferralPage() {
           referralCode={user.referralCode ?? "N/A"}
           referralLink={referralLink}
           referredCount={user.referredUsers?.length ?? 0}
+          referralPoints={user.loyaltyPoints ?? 0}
+          pointsPerReferral={100}
         />
       </div>
     </div>
