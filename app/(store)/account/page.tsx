@@ -63,6 +63,16 @@ export default async function AccountPage() {
         },
     });
 
+    // Compute referral-earned points (from recorded PointsEntry items)
+    let referralPointsSum = 0;
+    if (dbUser?.id) {
+        const agg = await prisma.pointsEntry.aggregate({
+            where: { userId: dbUser.id, reason: "referral" },
+            _sum: { points: true },
+        });
+        referralPointsSum = agg._sum.points ?? 0;
+    }
+
     const orders = await prisma.order.findMany({
         where: { userId: user.id },
         orderBy: { createdAt: 'desc' },
@@ -163,6 +173,7 @@ export default async function AccountPage() {
                                             <div>
                                                 <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Loyalty Points</p>
                                                 <p className="text-2xl font-extrabold text-accent">{dbUser?.loyaltyPoints || 0}</p>
+                                                <p className="text-xs text-muted-foreground mt-1">From referrals: {referralPointsSum}</p>
                                             </div>
                                             <DailyCheckInButton hasCheckedIn={hasCheckedIn} />
                                         </div>

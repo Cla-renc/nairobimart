@@ -42,14 +42,14 @@ export default function DailyCheckInButton({ hasCheckedIn }: { hasCheckedIn: boo
 
     if (hasCheckedIn) {
         return (
-            <Button disabled variant="outline" className="w-full font-bold text-green-600 border-green-200 bg-green-50">
+            <Button disabled variant="outline" className="w-full font-bold text-green-600 border-green-200 bg-green-50 text-sm whitespace-normal">
                 <CheckCircle2 className="mr-2 h-4 w-4" /> Checked In Today
             </Button>
         );
     }
 
     return (
-        <Button onClick={handleCheckIn} disabled={isLoading} className="w-full bg-accent text-accent-foreground hover:bg-accent/90 font-bold group">
+        <Button onClick={handleCheckIn} disabled={isLoading} className="w-full bg-accent text-accent-foreground hover:bg-accent/90 font-bold group text-sm whitespace-normal leading-snug">
             {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Star className="mr-2 h-4 w-4 group-hover:scale-110 transition-transform text-yellow-300 fill-yellow-300" />}
             Claim Daily 10 Points
         </Button>

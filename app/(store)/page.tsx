@@ -120,8 +120,15 @@ export default async function HomePage() {
     }));
 
     // Fetch flash sale products
+    const now = new Date();
     const flashSaleProductsDb = await prisma.product.findMany({
-        where: { isFlashSale: true, isActive: true },
+        where: {
+            isFlashSale: true,
+            isActive: true,
+            flashSaleEndsAt: {
+                gt: now,
+            },
+        },
         take: 4,
         include: {
             images: true,
