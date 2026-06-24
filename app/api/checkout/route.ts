@@ -131,7 +131,7 @@ export async function POST(req: Request) {
                 depositAmount,
                 balanceRemaining,
                 shippingName: `${deliveryInfo.firstName} ${deliveryInfo.lastName}`,
-                shippingEmail: deliveryInfo.email, // Store email for payment confirmation
+                shippingEmail: deliveryInfo.email,
                 shippingPhone: deliveryInfo.phone,
                 shippingAddress: deliveryInfo.address,
                 shippingCity: deliveryInfo.city,
@@ -142,7 +142,7 @@ export async function POST(req: Request) {
                 paymentStatus: "pending",
                 status: "pending",
                 items: {
-                    create: resolvedItems.filter((i) => i.productId), // skip any bad refs
+                    create: resolvedItems.filter((i) => i.productId),
                 },
                 installments: {
                     create: [{

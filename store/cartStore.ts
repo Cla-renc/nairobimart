@@ -26,20 +26,22 @@ export const useCartStore = create<CartStore>()(
         (set, get) => ({
             items: [],
             addItem: (item) => {
+                const stableId = `${item.productId}-${item.variantId ?? 'default'}`;
+                const cartItem = { ...item, id: stableId };
                 const existingItem = get().items.find(
-                    (i) => i.productId === item.productId && i.variantId === item.variantId
+                    (i) => i.productId === cartItem.productId && i.variantId === cartItem.variantId
                 );
 
                 if (existingItem) {
                     set({
                         items: get().items.map((i) =>
-                            i.productId === item.productId && i.variantId === item.variantId
-                                ? { ...i, quantity: i.quantity + item.quantity }
+                            i.productId === cartItem.productId && i.variantId === cartItem.variantId
+                                ? { ...i, quantity: i.quantity + cartItem.quantity }
                                 : i
                         ),
                     });
                 } else {
-                    set({ items: [...get().items, item] });
+                    set({ items: [...get().items, cartItem] });
                 }
             },
             removeItem: (id) => {

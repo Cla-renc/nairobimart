@@ -80,7 +80,7 @@ export default function ProductDetailClient({
     reviews?: Review[]
 }) {
     const [selectedImage, setSelectedImage] = useState(0);
-    const [selectedVariant, setSelectedVariant] = useState(product.variants?.[0]?.value || "");
+    const [selectedVariantId, setSelectedVariantId] = useState(product.variants?.[0]?.id || "");
     const [quantity, setQuantity] = useState(1);
     const [liveViewers, setLiveViewers] = useState(0);
     const { formatPrice } = useCurrency();
@@ -107,9 +107,9 @@ export default function ProductDetailClient({
 
     const handleAddToCart = () => {
         addItem({
-            id: `${product.id}-${selectedVariant || 'default'}`,
+            id: `${product.id}-${selectedVariantId || 'default'}`,
             productId: product.id,
-            variantId: selectedVariant,
+            variantId: selectedVariantId || undefined,
             name: product.name,
             price: product.price,
             image: images[0],
@@ -215,13 +215,13 @@ export default function ProductDetailClient({
                                 {product.variants.map((variant) => (
                                     <button
                                         key={variant.id}
-                                        onClick={() => setSelectedVariant(variant.value)}
-                                        className={`px-5 py-2.5 rounded-full border-2 text-sm font-bold transition-all ${selectedVariant === variant.value
+                                        onClick={() => setSelectedVariantId(variant.id)}
+                                        className={`px-5 py-2.5 rounded-full border-2 text-sm font-bold transition-all ${selectedVariantId === variant.id
                                             ? "border-accent bg-accent/5 text-accent shadow-md"
                                             : "border-muted bg-white text-muted-foreground hover:border-accent/50"
                                             }`}
                                     >
-                                        {selectedVariant === variant.value && <Check className="inline-block mr-2 h-4 w-4" />}
+                                        {selectedVariantId === variant.id && <Check className="inline-block mr-2 h-4 w-4" />}
                                         {variant.value}
                                     </button>
                                 ))}

@@ -73,6 +73,7 @@ model User {
   pointsHistory PointsEntry[]
   accounts      Account[]
   walletTransactions WalletTransaction[]
+  contactMessages     ContactMessage[]
   recentlyViewed     RecentlyViewed[]
 }
 

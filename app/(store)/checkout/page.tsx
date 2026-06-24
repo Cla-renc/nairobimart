@@ -78,7 +78,7 @@ export default function CheckoutPage() {
     const [stkOrderId, setStkOrderId] = useState<string | null>(null);
     const [stkPollingSeconds, setStkPollingSeconds] = useState(0);
 
-    const { currency, formatPrice } = useCurrency();
+    const { formatPrice } = useCurrency();
     const { items, getTotalPrice, clearCart } = useCartStore();
     const router = useRouter();
     const totalPrice = getTotalPrice();
@@ -112,7 +112,7 @@ export default function CheckoutPage() {
             if (prev) return prev; // Keep existing selection
             return deliveryInfo.country === "Kenya" ? "mpesa_till" : "pesapal";
         });
-    }, [deliveryInfo.country]); // Add deliveryInfo.country as dependency
+    }, [deliveryInfo.country, items, totalPrice]);
 
     // Dynamic Courier Fee Calculation via CJ
     useEffect(() => {

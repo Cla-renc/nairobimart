@@ -30,11 +30,11 @@ export async function POST(request: NextRequest) {
                 await processSuccessfulPayment(orderId);
 
                 // Send confirmation email ONLY after payment is confirmed
-                if (updatedOrder.shippingEmail) {
+                if ((updatedOrder as any).shippingEmail) {
                     try {
                         const { sendOrderConfirmationEmail } = await import("@/lib/email");
-                        await sendOrderConfirmationEmail(updatedOrder.shippingEmail, updatedOrder.orderNumber, updatedOrder.total);
-                        console.log(`✅ Order confirmation email sent after PesaPal payment for: ${updatedOrder.shippingEmail}`);
+                        await sendOrderConfirmationEmail((updatedOrder as any).shippingEmail, updatedOrder.orderNumber, updatedOrder.total);
+                        console.log(`✅ Order confirmation email sent after PesaPal payment for: ${(updatedOrder as any).shippingEmail}`);
                     } catch (emailError) {
                         console.error("❌ Failed to send confirmation email after PesaPal payment:", emailError);
                         // Don't fail the webhook if email fails - payment is already confirmed

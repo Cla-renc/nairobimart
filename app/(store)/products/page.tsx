@@ -42,6 +42,7 @@ function ProductsContent() {
     const [allProducts, setAllProducts] = useState<Product[]>([]);
     const [categories, setCategories] = useState<{name: string, slug: string}[]>([]);
     const [loading, setLoading] = useState(true);
+    const [totalItems, setTotalItems] = useState(0);
 
     const [priceRange, setPriceRange] = useState<number[]>([0, 50000]);
     const [selectedCategoriesState, setSelectedCategoriesState] = useState<string[]>([]);
@@ -51,50 +52,75 @@ function ProductsContent() {
     const [currentPage, setCurrentPage] = useState(1);
     const productsPerPage = 8;
 
-    // Dynamically extract all available unique attributes across all products
-    const dynamicFilters = useMemo(() => {
-        const filters: Record<string, Set<string>> = {};
-        allProducts.forEach(product => {
-            if (product.attributes && typeof product.attributes === 'object') {
-                Object.entries(product.attributes).forEach(([key, value]) => {
-                    if (value && typeof value === 'string') {
-                        if (!filters[key]) filters[key] = new Set();
-                        filters[key].add(value);
-                    }
-                });
-            }
-        });
-        
-        return Object.entries(filters).map(([key, valueSet]) => ({
-            name: key,
-            options: Array.from(valueSet).sort()
-        })).filter(f => f.options.length > 1);
-    }, [allProducts]);
+    // Facets fetched from server (attribute -> [{value, count}])
+    const [facets, setFacets] = useState<{ name: string; options: { value: string; count: number }[] }[]>([]);
 
-    // Fetch products and categories from API
     useEffect(() => {
-        const loadData = async () => {
+        const loadFacets = async () => {
             try {
-                setLoading(true);
-                // Fetch Products
-                const prodRes = await fetch('/api/products');
-                const prodData = await prodRes.json();
-                setAllProducts(Array.isArray(prodData) ? prodData : []);
+                const params = new URLSearchParams();
+                if (searchParam) params.set('search', searchParam);
+                if (filterParam) params.set('filter', filterParam);
+                if (priceRange[0] > 0) params.set('minPrice', String(priceRange[0]));
+                if (priceRange[1] < 50000) params.set('maxPrice', String(priceRange[1]));
+                if (!hasInteracted && initialCategory && selectedCategoriesState.length === 0) params.set('category', initialCategory);
 
-                // Fetch Categories names
+                const res = await fetch(`/api/product-facets?${params.toString()}`);
+                const data = await res.json();
+                setFacets(Array.isArray(data.facets) ? data.facets : []);
+            } catch (err) {
+                console.error('Failed to load facets:', err);
+                setFacets([]);
+            }
+        };
+        loadFacets();
+    }, [searchParam, filterParam, priceRange, selectedCategoriesState, hasInteracted, initialCategory]);
+
+    // Fetch categories once
+    useEffect(() => {
+        const loadCategories = async () => {
+            try {
                 const catRes = await fetch('/api/categories');
                 const catData = await catRes.json();
                 if (Array.isArray(catData)) {
                     setCategories(catData.map((c: { name: string, slug: string }) => ({ name: c.name, slug: c.slug })));
                 }
             } catch (err) {
-                console.error("Failed to load store data:", err);
+                console.error('Failed to load categories:', err);
+            }
+        };
+        loadCategories();
+    }, []);
+
+    // Fetch products page from server whenever filters change
+    useEffect(() => {
+        const loadProducts = async () => {
+            try {
+                setLoading(true);
+                const params = new URLSearchParams();
+                params.set('page', String(currentPage));
+                params.set('perPage', String(productsPerPage));
+                if (searchParam) params.set('search', searchParam);
+                if (filterParam) params.set('filter', filterParam);
+                if (sortBy) params.set('sort', sortBy);
+                if (priceRange[0] > 0) params.set('minPrice', String(priceRange[0]));
+                if (priceRange[1] < 50000) params.set('maxPrice', String(priceRange[1]));
+                if (!hasInteracted && initialCategory && selectedCategoriesState.length === 0) params.set('category', initialCategory);
+
+                const res = await fetch(`/api/products?${params.toString()}`);
+                const data = await res.json();
+                setAllProducts(Array.isArray(data.products) ? data.products : []);
+                setTotalItems(typeof data.total === 'number' ? data.total : 0);
+            } catch (err) {
+                console.error('Failed to load products page:', err);
+                setAllProducts([]);
+                setTotalItems(0);
             } finally {
                 setLoading(false);
             }
         };
-        loadData();
-    }, []);
+        loadProducts();
+    }, [currentPage, productsPerPage, searchParam, filterParam, selectedCategoriesState, selectedAttributesState, priceRange, sortBy, hasInteracted, initialCategory]);
 
     // Synchronously derive active categories from URL if user hasn't interacted yet
     // This completely eliminates useEffect race conditions
@@ -172,10 +198,8 @@ function ProductsContent() {
         return 0; // default newest
     });
 
-    const totalPages = Math.ceil(sortedProducts.length / productsPerPage);
-    const indexOfLastProduct = currentPage * productsPerPage;
-    const indexOfFirstProduct = indexOfLastProduct - productsPerPage;
-    const currentProducts = sortedProducts.slice(indexOfFirstProduct, indexOfLastProduct);
+    const totalPages = Math.max(1, Math.ceil(totalItems / productsPerPage));
+    const currentProducts = allProducts;
 
     // Helper to generate page numbers with ellipses
     const getPageNumbers = () => {
@@ -262,30 +286,30 @@ function ProductsContent() {
                                     </div>
                                 </div>
 
-                                {/* Dynamic Attribute Filters */}
-                                {dynamicFilters.map(filter => (
+                                {/* Dynamic Attribute Filters (facets from server) */}
+                                {facets.map(filter => (
                                     <div key={filter.name} className="space-y-3 pt-4 border-t border-gray-50">
                                         <h4 className="font-semibold text-xs uppercase tracking-widest text-muted-foreground">{filter.name}</h4>
                                         <div className="space-y-2">
                                             {filter.options.map(option => (
-                                                <div key={option} className="flex items-center space-x-2">
+                                                <div key={option.value} className="flex items-center space-x-2">
                                                     <Checkbox
-                                                        id={`filter-${filter.name}-${option}`}
-                                                        checked={selectedAttributesState[filter.name]?.includes(option) || false}
+                                                        id={`filter-${filter.name}-${option.value}`}
+                                                        checked={selectedAttributesState[filter.name]?.includes(option.value) || false}
                                                         onCheckedChange={() => {
                                                             setHasInteracted(true);
                                                             setSelectedAttributesState(prev => {
                                                                 const current = prev[filter.name] || [];
-                                                                const next = current.includes(option)
-                                                                    ? current.filter(o => o !== option)
-                                                                    : [...current, option];
+                                                                const next = current.includes(option.value)
+                                                                    ? current.filter(o => o !== option.value)
+                                                                    : [...current, option.value];
                                                                 return { ...prev, [filter.name]: next };
                                                             });
                                                             setCurrentPage(1);
                                                         }}
                                                     />
-                                                    <Label htmlFor={`filter-${filter.name}-${option}`} className="text-sm font-medium leading-none cursor-pointer hover:text-accent transition-colors">
-                                                        {option}
+                                                    <Label htmlFor={`filter-${filter.name}-${option.value}`} className="text-sm font-medium leading-none cursor-pointer hover:text-accent transition-colors">
+                                                        {option.value} <span className="text-[11px] text-muted-foreground ml-2">({option.count})</span>
                                                     </Label>
                                                 </div>
                                             ))}
@@ -312,7 +336,7 @@ function ProductsContent() {
                             <h1 className="text-3xl font-black text-primary tracking-tighter uppercase leading-none">
                                 {activeCategories.length === 1 ? activeCategories[0] : "All"} <span className="text-accent">Products</span>
                             </h1>
-                            <p className="text-muted-foreground mt-2 text-sm font-medium">Found {sortedProducts.length} items from global fulfillment centers</p>
+                            <p className="text-muted-foreground mt-2 text-sm font-medium">Found {totalItems} items from global fulfillment centers</p>
                         </div>
 
                         <div className="flex items-center space-x-3">

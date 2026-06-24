@@ -60,4 +60,37 @@ export const sendMarketingEmail = async (
     }
 };
 
+export const sendContactTicketCreatedEmail = async (
+    email: string,
+    name: string,
+    ticketCode: string,
+    subject: string
+) => {
+    return sendMarketingEmail(
+        email,
+        `NairobiMart Support Ticket Created: ${ticketCode}`,
+        `Hello ${name},<br/><br/>Thank you for contacting NairobiMart. Your request has been received and assigned ticket code <strong>${ticketCode}</strong>.<br/><br/>
+        Subject: <strong>${subject}</strong><br/><br/>
+        You can track the progress of your support request by returning to the contact page and entering your ticket code.<br/><br/>
+        We will notify you again once a support agent responds to your message.`
+    );
+};
+
+export const sendContactTicketResponseEmail = async (
+    email: string,
+    name: string,
+    ticketCode: string,
+    subject: string,
+    response: string
+) => {
+    return sendMarketingEmail(
+        email,
+        `NairobiMart Support Response: ${ticketCode}`,
+        `Hello ${name},<br/><br/>Your support request <strong>${ticketCode}</strong> has been updated.<br/><br/>
+        Subject: <strong>${subject}</strong><br/><br/>
+        <strong>Response from our team:</strong><br/>${response.replace(/\n/g, "<br/>")}<br/><br/>
+        You can track this ticket any time on our contact page using the same ticket code.`
+    );
+};
+
 export default resend;

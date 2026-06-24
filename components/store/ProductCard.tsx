@@ -39,7 +39,7 @@ const ProductCard = ({ product }: ProductCardProps) => {
     const handleAddToCart = (e: MouseEvent<HTMLButtonElement>) => {
         e.preventDefault();
         addItem({
-            id: Math.random().toString(36).substr(2, 9),
+            id: product.id,
             productId: product.id,
             name: product.name,
             price: product.price,

@@ -2,6 +2,7 @@ import HeroBanner from "@/components/store/HeroBanner";
 import ProductCard from "@/components/store/ProductCard";
 import FlashSaleCountdown from "@/components/store/FlashSaleCountdown";
 import RecommendedProducts from "@/components/store/RecommendedProducts";
+import RecentPurchasesTicker from "@/components/store/RecentPurchasesTicker";
 
 export const dynamic = "force-dynamic";
 import { Button } from "@/components/ui/button";
@@ -143,9 +144,71 @@ export default async function HomePage() {
         flashSaleEndsAt: p.flashSaleEndsAt?.toISOString()
     }));
 
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    const ordersDelivered = await prisma.order.count({
+        where: {
+            status: "delivered",
+            createdAt: { gte: sevenDaysAgo }
+        }
+    });
+
+    const freeDeliverySetting = await prisma.siteSettings.findUnique({
+        where: { key: "free_shipping_min" },
+        select: { value: true }
+    });
+
+    const freeDeliveryThreshold = freeDeliverySetting ? Number(freeDeliverySetting.value) : 5000;
+    const liveFlashDeals = flashSaleProducts.length;
+
+    // Count recent purchases in the last hour for a live headline
+    const oneHourAgo = new Date();
+    oneHourAgo.setHours(oneHourAgo.getHours() - 1);
+
+    const recentPurchasesLastHour = await prisma.order.count({
+        where: {
+            createdAt: { gte: oneHourAgo },
+            status: { notIn: ["cancelled", "refunded"] }
+        }
+    });
+
     return (
         <div className="flex flex-col min-h-screen">
-            <HeroBanner banners={banners} />
+            <div className="relative">
+                <HeroBanner banners={banners} recentPurchasesLastHour={recentPurchasesLastHour} />
+                <div className="absolute inset-x-0 bottom-0 z-10 -mb-10 px-4 sm:px-6 lg:px-8">
+                    <RecentPurchasesTicker />
+                </div>
+            </div>
+
+            <section className="bg-slate-950 text-white py-10">
+                <div className="container px-4">
+                    <div className="grid gap-4 lg:grid-cols-3">
+                        <div className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-xl shadow-slate-950/20">
+                            <p className="text-xs uppercase tracking-[0.24em] text-white/60">Local trust</p>
+                            <h3 className="mt-4 text-3xl font-extrabold">{ordersDelivered.toLocaleString()}+ orders</h3>
+                            <p className="mt-2 text-sm text-white/75">delivered this week to Nairobi and beyond.</p>
+                        </div>
+                        <div className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-xl shadow-slate-950/20">
+                            <p className="text-xs uppercase tracking-[0.24em] text-white/60">Fast delivery</p>
+                            <h3 className="mt-4 text-3xl font-extrabold">Free over KES {freeDeliveryThreshold.toLocaleString()}</h3>
+                            <p className="mt-2 text-sm text-white/75">Enjoy free delivery when you shop smart with NairobiMart.</p>
+                        </div>
+                        <div className="rounded-3xl border border-white/10 bg-white/5 p-6 shadow-xl shadow-slate-950/20">
+                            <p className="text-xs uppercase tracking-[0.24em] text-white/60">Flash sale</p>
+                            <h3 className="mt-4 text-3xl font-extrabold">{liveFlashDeals > 0 ? `${liveFlashDeals} live deals` : "New deals daily"}</h3>
+                            <p className="mt-2 text-sm text-white/75">{liveFlashDeals > 0 ? "Shop now before these offers end." : "Check back for the latest limited-time offers."}</p>
+                        </div>
+                    </div>
+                    <div className="mt-8 flex flex-wrap items-center gap-3 justify-center text-sm text-white/90">
+                        <span className="rounded-full border border-white/15 bg-white/5 px-4 py-2">Verified vendors</span>
+                        <span className="rounded-full border border-white/15 bg-white/5 px-4 py-2">Secure checkout</span>
+                        <span className="rounded-full border border-white/15 bg-white/5 px-4 py-2">Pay on delivery</span>
+                        <span className="rounded-full border border-white/15 bg-white/5 px-4 py-2">30-day returns</span>
+                    </div>
+                </div>
+            </section>
 
             {/* Categories Section */}
             <section className="py-12 bg-muted/30">

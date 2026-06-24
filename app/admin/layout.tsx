@@ -16,7 +16,8 @@ import {
     Settings,
     LogOut,
     Search,
-    Menu
+    Menu,
+    MessageSquare
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -37,6 +38,7 @@ const adminNavItems = [
     { name: "Orders", href: "/admin/orders", icon: ShoppingBag },
     { name: "Logistics", href: "/admin/logistics", icon: Truck },
     { name: "Customers", href: "/admin/customers", icon: Users },
+    { name: "Contact Tickets", href: "/admin/contact-messages", icon: MessageSquare },
     { name: "Categories", href: "/admin/categories", icon: Grid },
     { name: "Coupons", href: "/admin/coupons", icon: Tag },
     { name: "Reviews", href: "/admin/reviews", icon: Star },

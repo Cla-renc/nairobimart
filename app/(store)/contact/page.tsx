@@ -12,7 +12,9 @@ import {
     Send,
     Loader2,
     CheckCircle2,
-    Clock
+    Clock,
+    Search as SearchIcon,
+    AlertCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,6 +28,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 
 const contactSchema = z.object({
     name: z.string().min(2, "Name is required"),
@@ -39,6 +42,18 @@ type ContactValues = z.infer<typeof contactSchema>;
 export default function ContactPage() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isSuccess, setIsSuccess] = useState(false);
+    const [ticketCode, setTicketCode] = useState<string | null>(null);
+    const [trackCode, setTrackCode] = useState("");
+    const [trackLoading, setTrackLoading] = useState(false);
+    const [trackResult, setTrackResult] = useState<{
+        ticketCode: string;
+        status: string;
+        response?: string;
+        subject: string;
+        createdAt: string;
+        updatedAt: string;
+    } | null>(null);
+    const [trackError, setTrackError] = useState<string | null>(null);
 
     const form = useForm<ContactValues>({
         resolver: zodResolver(contactSchema),
@@ -52,12 +67,56 @@ export default function ContactPage() {
 
     const onSubmit = async (data: ContactValues) => {
         setIsSubmitting(true);
-        console.log("Contact form submitted:", data);
-        // Simulate API call
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-        setIsSubmitting(false);
-        setIsSuccess(true);
-        form.reset();
+        setTrackError(null);
+        setTrackResult(null);
+        setTicketCode(null);
+
+        try {
+            const res = await fetch("/api/contact-messages", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data),
+            });
+            const result = await res.json();
+
+            if (!res.ok || !result.success) {
+                throw new Error(result.message || "Failed to submit your message.");
+            }
+
+            setTicketCode(result.ticketCode);
+            setIsSuccess(true);
+            form.reset();
+        } catch (error) {
+            setTrackError(error instanceof Error ? error.message : "Unable to send message.");
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleTrack = async () => {
+        if (!trackCode.trim()) {
+            setTrackError("Enter your ticket code first.");
+            return;
+        }
+
+        setTrackLoading(true);
+        setTrackError(null);
+        setTrackResult(null);
+
+        try {
+            const res = await fetch(`/api/contact-messages?ticketCode=${encodeURIComponent(trackCode.trim())}`);
+            const result = await res.json();
+
+            if (!res.ok || !result.success) {
+                throw new Error(result.message || "Unable to find ticket.");
+            }
+
+            setTrackResult(result.ticket);
+        } catch (error) {
+            setTrackError(error instanceof Error ? error.message : "Unable to track ticket.");
+        } finally {
+            setTrackLoading(false);
+        }
     };
 
     return (
@@ -158,6 +217,15 @@ export default function ContactPage() {
                                                 Thank you for reaching out. A member of our team will get back to you shortly.
                                             </p>
                                         </div>
+                                        {ticketCode ? (
+                                            <div className="rounded-3xl border border-green-200 bg-green-50 p-4 text-left">
+                                                <p className="text-sm text-muted-foreground">Your ticket code</p>
+                                                <p className="font-mono text-lg">{ticketCode}</p>
+                                                <p className="text-sm mt-2">
+                                                    Use this code to track your support message on this page.
+                                                </p>
+                                            </div>
+                                        ) : null}
                                         <Button
                                             variant="outline"
                                             onClick={() => setIsSuccess(false)}
@@ -247,6 +315,69 @@ export default function ContactPage() {
                                         </form>
                                     </Form>
                                 )}
+                            </CardContent>
+                        </Card>
+
+                        <Card className="border-none shadow-lg">
+                            <CardContent className="p-8 md:p-12">
+                                <div className="space-y-6">
+                                    <div>
+                                        <h2 className="text-2xl font-bold">Track your support ticket</h2>
+                                        <p className="text-muted-foreground mt-2">
+                                            Enter the ticket code from your confirmation email to see the current status and any reply from our support team.
+                                        </p>
+                                    </div>
+                                    <div className="grid gap-4">
+                                        <div className="grid gap-2">
+                                            <label htmlFor="ticketCode" className="text-sm font-medium text-primary">
+                                                Ticket Code
+                                            </label>
+                                            <div className="flex gap-3">
+                                                <Input
+                                                    id="ticketCode"
+                                                    value={trackCode}
+                                                    onChange={(e) => setTrackCode(e.target.value)}
+                                                    placeholder="NM-XXXX1234"
+                                                    className="flex-1"
+                                                />
+                                                <Button onClick={handleTrack} disabled={trackLoading}>
+                                                    {trackLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <SearchIcon className="mr-2 h-4 w-4" />}
+                                                    Track
+                                                </Button>
+                                            </div>
+                                            {trackError ? (
+                                                <p className="text-sm text-destructive flex items-center gap-2">
+                                                    <AlertCircle className="h-4 w-4" /> {trackError}
+                                                </p>
+                                            ) : null}
+                                        </div>
+                                        {trackResult ? (
+                                            <div className="rounded-3xl border border-muted p-6 bg-white space-y-4">
+                                                <div className="flex items-center justify-between gap-4">
+                                                    <div>
+                                                        <p className="text-sm text-muted-foreground">Ticket</p>
+                                                        <p className="font-semibold">{trackResult.ticketCode}</p>
+                                                    </div>
+                                                    <Badge className="uppercase text-[11px] font-bold">
+                                                        {trackResult.status}
+                                                    </Badge>
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm text-muted-foreground">Subject</p>
+                                                    <p className="font-medium">{trackResult.subject}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm text-muted-foreground">Last updated</p>
+                                                    <p>{new Date(trackResult.updatedAt).toLocaleString()}</p>
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm text-muted-foreground">Support response</p>
+                                                    <p className="whitespace-pre-wrap">{trackResult.response || "No response yet. Our team is reviewing your ticket."}</p>
+                                                </div>
+                                            </div>
+                                        ) : null}
+                                    </div>
+                                </div>
                             </CardContent>
                         </Card>
                     </div>

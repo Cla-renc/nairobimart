@@ -89,11 +89,11 @@ export async function POST(req: Request) {
             await processSuccessfulPayment(order.id);
 
             // Send confirmation email ONLY after payment is confirmed
-            if (updatedOrder.shippingEmail) {
+            if ((updatedOrder as any).shippingEmail) {
                 try {
                     const { sendOrderConfirmationEmail } = await import("@/lib/email");
-                    await sendOrderConfirmationEmail(updatedOrder.shippingEmail, updatedOrder.orderNumber, updatedOrder.total);
-                    console.log(`✅ Order confirmation email sent after M-Pesa payment for: ${updatedOrder.shippingEmail}`);
+                    await sendOrderConfirmationEmail((updatedOrder as any).shippingEmail, updatedOrder.orderNumber, updatedOrder.total);
+                    console.log(`✅ Order confirmation email sent after M-Pesa payment for: ${(updatedOrder as any).shippingEmail}`);
                 } catch (emailError) {
                     console.error("❌ Failed to send confirmation email after M-Pesa payment:", emailError);
                     // Don't fail the webhook if email fails - payment is already confirmed

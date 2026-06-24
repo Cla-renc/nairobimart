@@ -33,7 +33,7 @@ export default function WishlistItem({ item }: WishlistItemProps) {
 
     const handleAddToCart = () => {
         addItem({
-            id: Math.random().toString(36).substr(2, 9),
+            id: item.product.id,
             productId: item.product.id,
             name: item.product.name,
             price: item.product.price,
