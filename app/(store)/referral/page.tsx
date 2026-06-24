@@ -79,7 +79,10 @@ export default async function ReferralPage() {
           referralCode={user.referralCode ?? "N/A"}
           referralLink={referralLink}
           referredCount={user.referredUsers?.length ?? 0}
-          referralPoints={user.loyaltyPoints ?? 0}
+          // Compute referral-specific points as referrals * pointsPerReferral to ensure
+          // the dashboard reflects earned referral rewards even if overall loyaltyPoints
+          // includes other activities or redemptions.
+          referralPoints={(user.referredUsers?.length ?? 0) * 100}
           pointsPerReferral={100}
         />
       </div>

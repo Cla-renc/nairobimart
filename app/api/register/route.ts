@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import prisma from "@/lib/prisma";
+import { addLoyaltyPoints } from "@/lib/loyalty";
 
 const generateReferralCode = () => {
     return `REF-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
@@ -69,12 +70,16 @@ export async function POST(req: Request) {
         });
 
         if (referrer) {
-            await prisma.user.update({
-                where: { id: referrer.id },
-                data: {
-                    loyaltyPoints: { increment: 100 },
-                },
-            });
+            try {
+                await addLoyaltyPoints(referrer.id, 100, "referral", undefined, `Referred ${normalizedEmail}`);
+            } catch (e) {
+                console.error("Failed to award referral points:", e);
+                // Fallback to direct increment if helper fails for any reason
+                await prisma.user.update({
+                    where: { id: referrer.id },
+                    data: { loyaltyPoints: { increment: 100 } },
+                });
+            }
         }
 
         // Generate Welcome Coupon
