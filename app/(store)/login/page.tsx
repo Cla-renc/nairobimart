@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { signIn } from "next-auth/react";
+import { getSession, signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -65,8 +65,9 @@ export default function LoginPage() {
     const onSubmit = async (data: LoginValues) => {
         setIsLoading(true);
         try {
+            const email = data.email.trim().toLowerCase();
             const result = await signIn("credentials", {
-                email: data.email,
+                email,
                 password: data.password,
                 redirect: false,
             });
@@ -82,8 +83,9 @@ export default function LoginPage() {
                     title: "Login Successful",
                     description: "Welcome back to NairobiMart!",
                 });
+                await getSession();
                 await router.push("/");
-                router.refresh(); // Force server components (Navbar, Layout) to re-render with new session
+                router.refresh();
             }
         } catch (error) {
             console.error(error);

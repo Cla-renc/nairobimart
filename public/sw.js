@@ -1,4 +1,4 @@
-const CACHE_NAME = 'nairobimart-static-v1';
+const CACHE_NAME = 'nairobimart-static-v2';
 const OFFLINE_URL = '/';
 
 const ASSETS_TO_CACHE = [
@@ -30,12 +30,29 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
 
+  const requestUrl = new URL(event.request.url);
+  if (requestUrl.origin !== self.location.origin) return;
+  if (requestUrl.pathname.startsWith('/api/')) return;
+
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => response)
+        .catch(() => caches.match(OFFLINE_URL))
+    );
+    return;
+  }
+
+  const staticAssetTypes = ['script', 'style', 'image', 'font', 'manifest'];
+  if (!staticAssetTypes.includes(event.request.destination) && !requestUrl.pathname.startsWith('/_next/')) {
+    return;
+  }
+
   event.respondWith(
     caches.match(event.request).then((cached) => {
       if (cached) return cached;
       return fetch(event.request)
         .then((response) => {
-          // Put a copy in cache for future
           if (!response || response.status !== 200 || response.type !== 'basic') {
             return response;
           }
