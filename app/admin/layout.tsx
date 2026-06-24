@@ -13,6 +13,7 @@ import {
     Image as ImageIcon,
     BarChart2,
     Bell,
+    Clock,
     Settings,
     LogOut,
     Search,
