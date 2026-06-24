@@ -35,6 +35,7 @@ const adminNavItems = [
     { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
     { name: "Storefront", href: "/", icon: ShoppingBag },
     { name: "Products", href: "/admin/products", icon: Package },
+    { name: "Flash Sales", href: "/admin/flash-sales", icon: Clock },
     { name: "Orders", href: "/admin/orders", icon: ShoppingBag },
     { name: "Logistics", href: "/admin/logistics", icon: Truck },
     { name: "Customers", href: "/admin/customers", icon: Users },
