@@ -10,7 +10,10 @@ export async function POST(req: Request) {
     try {
         const { name, email, phone, password, referralCode } = await req.json();
 
-        if (!email || !password || !name) {
+        // Normalize email
+        const normalizedEmail = email?.toLowerCase().trim() ?? "";
+
+        if (!normalizedEmail || !password || !name) {
             return NextResponse.json(
                 { message: "Missing required fields" },
                 { status: 400 }
@@ -18,7 +21,7 @@ export async function POST(req: Request) {
         }
 
         const existingUser = await prisma.user.findUnique({
-            where: { email },
+            where: { email: normalizedEmail },
         });
 
         if (existingUser) {
@@ -57,7 +60,7 @@ export async function POST(req: Request) {
         const user = await prisma.user.create({
             data: {
                 name,
-                email,
+                email: normalizedEmail,
                 phone,
                 passwordHash,
                 referralCode: generatedReferralCode,

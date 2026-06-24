@@ -30,20 +30,36 @@ export const {
             async authorize(
                 credentials: Partial<Record<"email" | "password", unknown>> | undefined
             ) {
-                const email = typeof credentials?.email === "string" ? credentials.email : null;
+                const email = typeof credentials?.email === "string" ? credentials.email.trim().toLowerCase() : null;
                 const password = typeof credentials?.password === "string" ? credentials.password : null;
-                if (!email || !password) return null;
+                if (!email || !password) {
+                    console.log("Auth: Missing email or password", { email: !!email, password: !!password });
+                    return null;
+                }
 
                 const user = await prisma.user.findUnique({
                     where: { email },
                 });
 
-                if (!user || !user.passwordHash) return null;
+                if (!user) {
+                    console.log("Auth: User not found for email:", email);
+                    return null;
+                }
+
+                if (!user.passwordHash) {
+                    console.log("Auth: User has no password hash:", email);
+                    return null;
+                }
 
                 const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
+                console.log("Auth: Password validation for", email, ":", isPasswordValid);
 
-                if (!isPasswordValid) return null;
+                if (!isPasswordValid) {
+                    console.log("Auth: Password mismatch for:", email);
+                    return null;
+                }
 
+                console.log("Auth: Login successful for:", email);
                 return {
                     id: user.id,
                     name: user.name,
