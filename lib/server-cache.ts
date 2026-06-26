@@ -24,7 +24,7 @@ export function setCachedValue<T>(key: string, value: T, ttl = DEFAULT_TTL_MS): 
 }
 
 export function makeCacheKey(prefix: string, url: URL) {
-  const params = [...url.searchParams.entries()]
+  const params = Array.from(url.searchParams.entries())
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([key, value]) => `${key}=${value}`)
     .join('&');
