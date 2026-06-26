@@ -21,13 +21,15 @@ const geistMono = localFont({
   weight: "100 900",
 });
 
-export const metadata: Metadata = {
+const defaultIcons = {
+  icon: "/images/nairobimart-logo.svg",
+  apple: "/images/nairobimart-logo.svg",
+};
+
+const defaultMetadata: Metadata = {
   title: "NairobiMart | Shop Smart. Shop Kenya.",
   description: "NairobiMart is your premier destination for quality products in Kenya. Shop smart, shop Kenya.",
-  icons: {
-    icon: "/images/nairobimart-logo.svg",
-    apple: "/images/nairobimart-logo.svg",
-  },
+  icons: defaultIcons,
 };
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -36,14 +38,14 @@ export async function generateMetadata(): Promise<Metadata> {
     const settings = await getSiteSettingsMap();
     return {
       title: `${settings.store_name || 'NairobiMart'} | ${settings.store_tagline || 'Shop Smart. Shop Kenya.'}`,
-      description: settings.store_description || 'NairobiMart is your premier destination for quality products in Kenya. Shop smart, shop Kenya.',
+      description: settings.store_description || defaultMetadata.description,
       icons: {
-        icon: settings.logo_url || '/images/nairobimart-logo.svg',
-        apple: settings.logo_url || '/images/nairobimart-logo.svg',
+        icon: settings.logo_url || defaultIcons.icon,
+        apple: settings.logo_url || defaultIcons.apple,
       },
     };
   } catch {
-    return metadata;
+    return defaultMetadata;
   }
 }
 
