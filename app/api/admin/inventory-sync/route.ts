@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
 
         const url = new URL(req.url);
         const totalProducts = await prisma.product.count({ where: { cjProductId: { not: null } } });
-        const limit = Math.min(Math.max(Number(url.searchParams.get('limit') || '20'), 1), 50);
+        const limit = Math.min(Math.max(Number(url.searchParams.get('limit') || '10'), 1), 20);
         const skip = Math.max(Number(url.searchParams.get('skip') || '0'), 0);
 
         // Fetch a bounded batch of products linked to CJ to avoid Vercel function timeout.
@@ -38,6 +38,14 @@ export async function POST(req: NextRequest) {
         let priceChangedCount = 0;
         const syncErrors: string[] = [];
 
+        const parsePriceValue = (raw: any): number => {
+            if (!raw && raw !== 0) return NaN;
+            const str = String(raw).trim();
+            const match = str.match(/-?\d+(?:\.\d+)?/);
+            if (!match) return NaN;
+            return Number(match[0]);
+        };
+
         // In a real production app with thousands of products, we'd batch these
         for (const product of cjProducts) {
             if (!product.cjProductId) continue;
@@ -45,14 +53,15 @@ export async function POST(req: NextRequest) {
             const cjDetail = await fetchCJProductDetail(product.cjProductId);
             
             if (cjDetail.success && cjDetail.data) {
-                const latestCost = parseFloat(cjDetail.data.sellPrice || "0");
-                const latestStock = parseInt(cjDetail.data.productInventory || "0");
+                const latestCostUsd = parsePriceValue(cjDetail.data.sellPrice);
+                const latestCostKES = Number.isFinite(latestCostUsd) ? latestCostUsd * 130 : NaN;
+                const latestStock = parsePriceValue(cjDetail.data.productInventory);
 
                 const updates: any = {};
                 let requiresUpdate = false;
 
                 // Sync Stock
-                if (product.stock !== latestStock) {
+                if (!Number.isNaN(latestStock) && product.stock !== latestStock) {
                     updates.stock = latestStock;
                     requiresUpdate = true;
                     if (latestStock === 0) {
@@ -63,9 +72,9 @@ export async function POST(req: NextRequest) {
 
                 // Sync Price and Protect Margins (assuming 1.5x margin multiplier)
                 const currentCost = Number(product.costPrice || 0);
-                if (latestCost > 0 && Math.abs(currentCost - latestCost) > 0.1) {
-                    updates.costPrice = latestCost;
-                    updates.price = Math.ceil(latestCost * 1.5); // 50% margin
+                if (!Number.isNaN(latestCostKES) && latestCostKES > 0 && Math.abs(currentCost - latestCostKES) > 1) {
+                    updates.costPrice = latestCostKES;
+                    updates.price = Math.ceil(latestCostKES * 1.5); // 50% margin
                     requiresUpdate = true;
                     priceChangedCount++;
                 }
@@ -83,8 +92,8 @@ export async function POST(req: NextRequest) {
                 syncErrors.push(`CJ product ${product.cjProductId}: ${errorMessage}`);
             }
             
-            // Add a small delay to avoid hitting CJ API rate limits
-            await new Promise(resolve => setTimeout(resolve, 300));
+            // Add a small delay to avoid hitting CJ API rate limits (CJ QPS ~= 1/sec)
+            await new Promise(resolve => setTimeout(resolve, 1100));
         }
 
         return NextResponse.json({

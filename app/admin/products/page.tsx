@@ -55,6 +55,8 @@ export default function AdminProductsPage() {
     const [products, setProducts] = useState<Product[]>([]);
     const [loading, setLoading] = useState(true);
     const [syncing, setSyncing] = useState(false);
+    const [syncStatus, setSyncStatus] = useState<string | null>(null);
+    const [syncProgress, setSyncProgress] = useState<{ processed: number; total: number; batch: number } | null>(null);
     const [page, setPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
     const [totalProducts, setTotalProducts] = useState(0);
@@ -80,7 +82,7 @@ export default function AdminProductsPage() {
     }, [fetchProducts]);
 
     const handleSyncCJ = async () => {
-        const batchSize = 20;
+        const batchSize = 10;
         let skip = 0;
         let totalProducts = 0;
         let totalUpdated = 0;
@@ -90,8 +92,13 @@ export default function AdminProductsPage() {
 
         try {
             setSyncing(true);
+            setSyncStatus('Starting CJ sync...');
+            setSyncProgress({ processed: 0, total: 0, batch: 0 });
 
             while (true) {
+                const batch = Math.floor(skip / batchSize) + 1;
+                setSyncStatus(`Syncing batch ${batch}...`);
+
                 const res = await fetch(`/api/admin/inventory-sync?limit=${batchSize}&skip=${skip}`, { method: "POST" });
                 const contentType = res.headers.get('content-type') || '';
                 const data = contentType.includes('application/json') ? await res.json() : null;
@@ -113,6 +120,8 @@ export default function AdminProductsPage() {
                         console.warn('CJ Sync error:', msg);
                     });
                 }
+
+                setSyncProgress({ processed: skip + (data?.processed || 0), total: totalProducts, batch });
 
                 if (!totalProducts) {
                     // If the endpoint reports no CJ products at all, stop after one batch.
