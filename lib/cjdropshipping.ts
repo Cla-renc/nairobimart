@@ -1,8 +1,14 @@
+let cachedCJToken: { token: string; expiresAt: number } | null = null;
+
 export const getCJAccessToken = async () => {
     const apiKey = process.env.CJ_API_KEY;
     if (!apiKey) {
         console.error("CJ_API_KEY is not set in environment variables.");
         return null;
+    }
+
+    if (cachedCJToken && cachedCJToken.expiresAt > Date.now()) {
+        return cachedCJToken.token;
     }
 
     try {
@@ -16,7 +22,13 @@ export const getCJAccessToken = async () => {
 
         const result = await response.json();
         if (result.code === 200 && result.data && result.data.accessToken) {
-            return result.data.accessToken;
+            const expiresIn = Number(result.data.expiresIn || result.data.expireTime || 600);
+            const ttlMs = Number.isFinite(expiresIn) && expiresIn > 30 ? (expiresIn - 30) * 1000 : 9 * 60 * 1000;
+            cachedCJToken = {
+                token: result.data.accessToken,
+                expiresAt: Date.now() + ttlMs
+            };
+            return cachedCJToken.token;
         } else {
             console.error("Failed to get CJ Access Token:", result.message);
             return null;
