@@ -83,9 +83,16 @@ export default function AdminProductsPage() {
         try {
             setSyncing(true);
             const res = await fetch("/api/admin/inventory-sync", { method: "POST" });
-            const data = await res.json();
+            const contentType = res.headers.get('content-type') || '';
+            const data = contentType.includes('application/json') ? await res.json() : null;
 
-            if (data.success) {
+            if (!res.ok) {
+                const errorMessage = data?.error || data?.message || res.statusText || 'Unknown error';
+                toast({ title: "Sync Failed", description: errorMessage, variant: "destructive" });
+                return;
+            }
+
+            if (data?.success) {
                 toast({
                     title: "Sync Complete",
                     description: `Synced ${data.stats?.updated || 0} items. ${data.stats?.priceChanged || 0} price changes, ${data.stats?.flaggedOOS || 0} out of stock.`,
@@ -93,9 +100,10 @@ export default function AdminProductsPage() {
                 });
                 fetchProducts();
             } else {
-                toast({ title: "Sync Failed", description: data.error || data.message, variant: "destructive" });
+                toast({ title: "Sync Failed", description: data?.error || data?.message || 'CJ sync returned an error.', variant: "destructive" });
             }
         } catch (error) {
+            console.error('CJ Sync client error:', error);
             toast({ title: "Error", description: "Failed to run CJ Inventory Sync.", variant: "destructive" });
         } finally {
             setSyncing(false);

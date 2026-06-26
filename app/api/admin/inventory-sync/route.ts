@@ -7,21 +7,36 @@ export const maxDuration = 60; // Allow 60 seconds for execution if supported by
 export async function POST(req: NextRequest) {
     try {
         console.log("Starting CJ Inventory Sync...");
-        
-        // Fetch all products that are linked to CJ
+
+        const url = new URL(req.url);
+        const totalProducts = await prisma.product.count({ where: { cjProductId: { not: null } } });
+        const limit = Math.min(Math.max(Number(url.searchParams.get('limit') || '20'), 1), 50);
+        const skip = Math.max(Number(url.searchParams.get('skip') || '0'), 0);
+
+        // Fetch a bounded batch of products linked to CJ to avoid Vercel function timeout.
         const cjProducts = await prisma.product.findMany({
             where: {
                 cjProductId: { not: null }
-            }
+            },
+            skip,
+            take: limit
         });
 
         if (cjProducts.length === 0) {
-            return NextResponse.json({ success: true, message: "No CJ products to sync." });
+            return NextResponse.json({
+                success: true,
+                message: "No CJ products to sync in this batch.",
+                totalProducts,
+                processed: 0,
+                skip,
+                limit,
+            });
         }
 
         let updatedCount = 0;
         let outOfStockCount = 0;
         let priceChangedCount = 0;
+        const syncErrors: string[] = [];
 
         // In a real production app with thousands of products, we'd batch these
         for (const product of cjProducts) {
@@ -47,7 +62,8 @@ export async function POST(req: NextRequest) {
                 }
 
                 // Sync Price and Protect Margins (assuming 1.5x margin multiplier)
-                if (latestCost > 0 && Math.abs(product.costPrice - latestCost) > 0.1) {
+                const currentCost = Number(product.costPrice || 0);
+                if (latestCost > 0 && Math.abs(currentCost - latestCost) > 0.1) {
                     updates.costPrice = latestCost;
                     updates.price = Math.ceil(latestCost * 1.5); // 50% margin
                     requiresUpdate = true;
@@ -62,7 +78,9 @@ export async function POST(req: NextRequest) {
                     updatedCount++;
                 }
             } else {
-                console.warn(`Failed to fetch CJ details for ${product.cjProductId}`);
+                const errorMessage = cjDetail.error || 'Unknown CJ fetch error';
+                console.warn(`Failed to fetch CJ details for ${product.cjProductId}: ${errorMessage}`);
+                syncErrors.push(`CJ product ${product.cjProductId}: ${errorMessage}`);
             }
             
             // Add a small delay to avoid hitting CJ API rate limits
@@ -70,13 +88,19 @@ export async function POST(req: NextRequest) {
         }
 
         return NextResponse.json({
-            success: true,
-            message: `Synced ${cjProducts.length} products.`,
+            success: syncErrors.length === 0,
+            message: syncErrors.length === 0 ? `Synced ${cjProducts.length} products.` : `Synced ${cjProducts.length} products with ${syncErrors.length} errors.`,
             stats: {
                 updated: updatedCount,
                 priceChanged: priceChangedCount,
-                flaggedOOS: outOfStockCount
-            }
+                flaggedOOS: outOfStockCount,
+                errorCount: syncErrors.length
+            },
+            errors: syncErrors,
+            totalProducts,
+            skip,
+            limit,
+            processed: cjProducts.length
         });
     } catch (error) {
         console.error("Inventory Sync Error:", error);
