@@ -63,18 +63,15 @@ export async function POST(req: Request) {
             attributes
         } = body;
 
-        // Generate category slug
-        const categorySlug = category.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+        // Validate categoryId
+        if (!body.categoryId) {
+            return NextResponse.json({ error: 'categoryId is required. Select a valid category from the list.' }, { status: 400 });
+        }
 
-        // Find or create category
-        const dbCategory = await prisma.category.upsert({
-            where: { slug: categorySlug },
-            update: {},
-            create: {
-                name: category,
-                slug: categorySlug
-            }
-        });
+        const dbCategory = await prisma.category.findUnique({ where: { id: body.categoryId } });
+        if (!dbCategory) {
+            return NextResponse.json({ error: 'categoryId is invalid' }, { status: 400 });
+        }
 
         // Ensure product slug uniqueness
         let finalSlug = slug;

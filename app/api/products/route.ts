@@ -1,11 +1,22 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
+import { getCachedValue, makeCacheKey, setCachedValue } from '@/lib/server-cache';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
     try {
         const url = new URL(request.url);
+        const cacheKey = makeCacheKey('products', url);
+        const cached = getCachedValue(cacheKey) as { products: any[]; total: number; page: number; perPage: number } | undefined;
+        if (cached) {
+            return NextResponse.json(cached, {
+                headers: {
+                    'Cache-Control': 'public, max-age=10, stale-while-revalidate=20',
+                },
+            });
+        }
+
         const page = Number(url.searchParams.get('page') ?? '1');
         const perPage = Math.min(Number(url.searchParams.get('perPage') ?? '12'), 100);
         const search = url.searchParams.get('search') ?? undefined;
@@ -74,9 +85,20 @@ export async function GET(request: Request) {
             isFeatured: p.isFeatured,
         }));
 
-        return NextResponse.json({ products, total, page, perPage });
+        const body = { products, total, page, perPage };
+        setCachedValue(cacheKey, body, 15_000);
+        return NextResponse.json(body, {
+            headers: {
+                'Cache-Control': 'public, max-age=10, stale-while-revalidate=20',
+            },
+        });
     } catch (error) {
         console.error('Products API error', error);
-        return NextResponse.json({ products: [], total: 0, page: 1, perPage: 12 }, { status: 500 });
+        return NextResponse.json({ products: [], total: 0, page: 1, perPage: 12 }, {
+            status: 500,
+            headers: {
+                'Cache-Control': 'no-store',
+            },
+        });
     }
 }

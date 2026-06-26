@@ -39,8 +39,14 @@ function getSearchKeyword(categoryName: string): string {
         .join(' ') || categoryName;
 }
 
-export async function GET() {
+export async function GET(req: Request) {
     try {
+        const url = new URL(req.url);
+        const maxPages = Number(url.searchParams.get('maxPages') || process.env.CJ_SEED_MAX_PAGES || 50);
+        const maxPerCategory = Number(url.searchParams.get('maxPerCategory') || process.env.CJ_SEED_MAX_PER_CATEGORY || 0); // 0 = unlimited
+        const force = (url.searchParams.get('force') || 'false').toLowerCase() === 'true';
+        const verbose = (url.searchParams.get('verbose') || 'false').toLowerCase() === 'true';
+
         const categories = await prisma.category.findMany();
         if (categories.length === 0) {
             return NextResponse.json({ success: false, message: "No categories found in the database. Please create them first." }, { status: 400 });
@@ -48,40 +54,61 @@ export async function GET() {
 
         let insertedCount = 0;
         let skippedCount = 0;
+        let updatedCount = 0;
+        const report: any[] = [];
 
         for (const category of categories) {
             const keyword = getSearchKeyword(category.name);
             console.log(`Seeding category: ${category.name} with keyword: ${keyword}`);
 
-            // Default to page 1 to ensure results are found.
-            // Using random page > 1 often returns empty results for specific keywords.
-            const cjResponse = await fetchCJProductList(keyword, undefined, 1);
+            const categoryReport: any = {
+                category: category.name,
+                keyword,
+                pagesProcessed: 0,
+                productsFound: 0,
+                inserted: 0,
+                updated: 0,
+                skipped: 0,
+                samples: [] as string[],
+            };
 
-            if (!cjResponse.success) {
-                console.error(`CJ API Error for keyword ${keyword}:`, cjResponse.error);
-                continue;
+            // Iterate pages until no more results or limits reached
+            let page = 1;
+            let processedCount = 0;
+            const pageDelayMs = Number(process.env.CJ_SEED_PAGE_DELAY_MS || 300);
+
+            // Process helper
+            interface CJProduct {
+                id: string;
+                nameEn?: string;
+                sellPrice?: string;
+                bigImage?: string;
+                productImage?: string;
+                sku?: string;
+                description?: string;
+                [key: string]: unknown;
             }
 
-            const content = cjResponse.data?.content;
-            const products = content && content.length > 0 ? content[0].productList : null;
+            outer: while (page <= maxPages) {
+                const cjResponse = await fetchCJProductList(keyword, undefined, page);
 
-            if (products && products.length > 0) {
-                console.log(`Found ${products.length} products for ${keyword}`);
-                const topProducts = products.slice(0, 5); // Limit to 5 per category for Vercel Hobby plan timeout (10s)
-
-                // Process products in parallel within each category
-                interface CJProduct {
-                    id: string;
-                    nameEn?: string;
-                    sellPrice?: string;
-                    bigImage?: string;
-                    productImage?: string;
-                    sku?: string;
-                    description?: string;
-                    [key: string]: unknown;
+                if (!cjResponse.success) {
+                    console.error(`CJ API Error for keyword ${keyword} page ${page}:`, cjResponse.error);
+                    break outer;
                 }
 
-                await Promise.all(topProducts.map(async (pd: CJProduct) => {
+                const content = cjResponse.data?.content;
+                const products = content && content.length > 0 ? content[0].productList : null;
+
+                if (!products || products.length === 0) break outer;
+
+                console.log(`Found ${products.length} products for ${keyword} on page ${page}`);
+                categoryReport.pagesProcessed = page;
+
+                for (const pd of products as CJProduct[]) {
+                    // collect sample ids (limited)
+                    if (categoryReport.samples.length < 10 && pd.id) categoryReport.samples.push(pd.id);
+                    categoryReport.productsFound++;
                     try {
                         // Check if already exists by CJ ID
                         const exists = await prisma.product.findFirst({
@@ -89,10 +116,11 @@ export async function GET() {
                             include: { images: true }
                         });
 
-                        // If exists and has rich description already, skip
-                        if (exists && exists.description && exists.description.length > 100) {
+                        // If exists and has rich description already, skip this product unless force update requested
+                        if (exists && exists.description && exists.description.length > 100 && !force) {
                             skippedCount++;
-                            return;
+                            categoryReport.skipped++;
+                            continue;
                         }
 
                         // Fetch full product detail for rich description and all images
@@ -131,25 +159,83 @@ export async function GET() {
                         if (exists) {
                             const existingProduct = exists as Record<string, unknown>;
                             // Update existing product with missing details
+                            // Determine best matching category from CJ metadata or fall back to review bucket
+                            const candidateNames = [
+                                (detail as any)?.oneCategoryName,
+                                (detail as any)?.twoCategoryName,
+                                (detail as any)?.threeCategoryName,
+                            ].filter(Boolean).map((s: any) => String(s).trim());
+
+                            let assignedCategoryId: string | null = null;
+                            for (const name of candidateNames) {
+                                const found = await prisma.category.findFirst({ where: { name: { equals: name, mode: 'insensitive' } } });
+                                if (found) { assignedCategoryId = found.id; break; }
+                            }
+
+                            if (!assignedCategoryId) {
+                                // fallback to a review bucket so admin can reassign later
+                                const review = await prisma.category.upsert({
+                                    where: { slug: 'imported-cj' },
+                                    update: {},
+                                    create: { name: 'Imported (CJ)', slug: 'imported-cj', isActive: false }
+                                });
+                                assignedCategoryId = review.id;
+                            }
+
                             await prisma.product.update({
                                 where: { id: existingProduct.id as string },
                                 data: {
                                     description: detail?.description || existingProduct.description as string,
                                     attributes: attributes || existingProduct.attributes || null,
                                     comparePrice: (existingProduct.comparePrice as number) || Math.round(retailPriceKES * 1.3),
-                                    category: { connect: { id: category.id } },
+                                    category: { connect: { id: assignedCategoryId } },
                                     images: {
                                         deleteMany: {}, // Fresh start for images to ensure order and quality
                                         create: imageUrls.map((url: string, index: number) => ({
                                             url: url || "",
                                             position: index
-                                        }))
-                                    }
+                                        });
+                                        // treat update as updated
+                                        updatedCount++;
+                                        categoryReport.updated++;
+                                        insertedCount++; // keep total increment for compatibility with previous message
+                                        processedCount++;
+                                        if (maxPerCategory > 0 && processedCount >= maxPerCategory) {
+                                            console.log(`Reached maxPerCategory=${maxPerCategory} for ${category.name}`);
+                                            break outer;
+                                        }
                                 } as unknown as Prisma.ProductUpdateInput
                             });
                             insertedCount++;
+                            processedCount++;
+                            if (maxPerCategory > 0 && processedCount >= maxPerCategory) {
+                                console.log(`Reached maxPerCategory=${maxPerCategory} for ${category.name}`);
+                                break outer;
+                            }
                         } else {
                             // Create new product
+                            // Determine best matching category from CJ metadata or fall back to review bucket
+                            const candidateNames = [
+                                (detail as any)?.oneCategoryName,
+                                (detail as any)?.twoCategoryName,
+                                (detail as any)?.threeCategoryName,
+                            ].filter(Boolean).map((s: any) => String(s).trim());
+
+                            let assignedCategoryId: string | null = null;
+                            for (const name of candidateNames) {
+                                const found = await prisma.category.findFirst({ where: { name: { equals: name, mode: 'insensitive' } } });
+                                if (found) { assignedCategoryId = found.id; break; }
+                            }
+
+                            if (!assignedCategoryId) {
+                                const review = await prisma.category.upsert({
+                                    where: { slug: 'imported-cj' },
+                                    update: {},
+                                    create: { name: 'Imported (CJ)', slug: 'imported-cj', isActive: false }
+                                });
+                                assignedCategoryId = review.id;
+                            }
+
                             await prisma.product.create({
                                 data: {
                                     name: detail?.productNameEn || pd.nameEn || "CJ Product",
@@ -162,29 +248,48 @@ export async function GET() {
                                     sku: detail?.productSku || pd.sku || `CJ-SKU-${pd.id}`,
                                     cjProductId: pd.id,
                                     attributes: attributes || null,
-                                    category: { connect: { id: category.id } },
+                                    category: { connect: { id: assignedCategoryId } },
                                     isActive: true,
                                     images: {
                                         create: imageUrls.map((url: string, index: number) => ({
                                             url: url || "",
                                             position: index
                                         }))
+                                    });
+                                    insertedCount++;
+                                    categoryReport.inserted++;
+                                    processedCount++;
+                                    if (maxPerCategory > 0 && processedCount >= maxPerCategory) {
+                                        console.log(`Reached maxPerCategory=${maxPerCategory} for ${category.name}`);
+                                        break outer;
                                     }
-                                } as unknown as Prisma.ProductCreateInput
                             });
                             insertedCount++;
+                            processedCount++;
+                            if (maxPerCategory > 0 && processedCount >= maxPerCategory) {
+                                console.log(`Reached maxPerCategory=${maxPerCategory} for ${category.name}`);
+                                break outer;
+                            }
                         }
                     } catch (err) {
                         console.error(`Error processing product ${pd.id}:`, err);
                     }
-                }));
+                }
+
+                // small delay between pages to be kind to the CJ API
+                await new Promise((r) => setTimeout(r, pageDelayMs));
+                page++;
             }
+            report.push(categoryReport);
         }
 
-        return NextResponse.json({
+        const result: any = {
             success: true,
-            message: `Seeding completed! Inserted ${insertedCount} new CJ products. (Skipped ${skippedCount} duplicates)`
-        });
+            message: `Seeding completed! Inserted ${insertedCount} new CJ products. Updated ${updatedCount}. Skipped ${skippedCount} duplicates.`
+        };
+        if (verbose) result.report = report;
+
+        return NextResponse.json(result);
     } catch (error: unknown) {
         console.error("Critical error in seeding process:", error);
         return NextResponse.json({

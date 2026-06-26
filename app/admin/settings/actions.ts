@@ -2,6 +2,7 @@
 
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { clearSiteSettingsCache } from '@/lib/site-settings';
 
 export async function saveSiteSettings(data: Record<string, string>) {
     try {
@@ -14,6 +15,7 @@ export async function saveSiteSettings(data: Record<string, string>) {
         });
 
         await Promise.all(promises);
+        await clearSiteSettingsCache();
         revalidatePath("/admin/settings");
         return { success: true };
     } catch (error) {

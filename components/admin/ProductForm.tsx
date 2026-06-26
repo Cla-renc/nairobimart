@@ -32,7 +32,7 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { useState, useRef, type ChangeEvent } from "react";
+import { useState, useRef, useEffect, type ChangeEvent } from "react";
 import { Switch } from "@/components/ui/switch";
 import Link from "next/link";
 
@@ -66,6 +66,7 @@ const ProductForm = ({ initialData, productId }: { initialData?: Partial<Product
     const [uploadedImages, setUploadedImages] = useState<{ url: string; publicId?: string }[]>(
         initialData?.images?.map((image) => (typeof image === "string" ? { url: image } : image)) || []
     );
+    const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
     const fileInputRef = useRef<HTMLInputElement | null>(null);
 
     const fileToDataUrl = (file: File) =>
@@ -176,6 +177,20 @@ const ProductForm = ({ initialData, productId }: { initialData?: Partial<Product
             setIsSubmitting(false);
         }
     };
+
+    useEffect(() => {
+        const load = async () => {
+            try {
+                const res = await fetch('/api/admin/categories');
+                if (!res.ok) return;
+                const data = await res.json();
+                setCategories(data.map((c: any) => ({ id: c.id, name: c.name })));
+            } catch (e) {
+                // ignore
+            }
+        };
+        load();
+    }, []);
 
     return (
         <Form {...form}>
@@ -494,11 +509,13 @@ const ProductForm = ({ initialData, productId }: { initialData?: Partial<Product
                                                     </SelectTrigger>
                                                 </FormControl>
                                                 <SelectContent>
-                                                    <SelectItem value="Electronics">Electronics</SelectItem>
-                                                    <SelectItem value="Accessories">Accessories</SelectItem>
-                                                    <SelectItem value="Fashion">Fashion</SelectItem>
-                                                    <SelectItem value="Home">Home & Kitchen</SelectItem>
-                                                    <SelectItem value="Gifts">Gifts</SelectItem>
+                                                    {categories.length === 0 ? (
+                                                        <SelectItem value="">No categories</SelectItem>
+                                                    ) : (
+                                                        categories.map((cat) => (
+                                                            <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>
+                                                        ))
+                                                    )}
                                                 </SelectContent>
                                             </Select>
                                             <FormMessage />

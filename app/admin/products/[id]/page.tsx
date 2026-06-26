@@ -30,7 +30,7 @@ export default async function EditProductPage({
         comparePrice: product.comparePrice || undefined,
         sku: product.sku || "",
         stock: product.stock,
-        category: product.category?.name || "",
+        category: product.category?.id || "",
         status: product.isActive ? "Active" : "Draft",
         cjProductId: product.cjProductId || "",
         isFlashSale: product.isFlashSale,

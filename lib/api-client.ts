@@ -8,15 +8,14 @@
  */
 
 export const getApiUrl = (): string => {
-  // In browser, use NEXT_PUBLIC_API_URL if set (points to Render)
-  if (typeof window !== 'undefined') {
-    const publicUrl = process.env.NEXT_PUBLIC_API_URL;
-    if (publicUrl) {
-      return publicUrl;
-    }
+  // Prefer explicit render backend URL for both client and server.
+  // Set NEXT_PUBLIC_API_URL in Vercel to your Render backend base URL.
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL;
+  if (apiUrl) {
+    return apiUrl.replace(/\/$/, '');
   }
-  
-  // Server-side, use internal localhost or NEXT_PUBLIC_URL
+
+  // Fall back to frontend base URL for local dev or if backend URL is not configured.
   return process.env.NEXT_PUBLIC_URL || 'http://localhost:3000';
 };
 

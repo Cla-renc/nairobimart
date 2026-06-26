@@ -48,16 +48,15 @@ export async function PATCH(
             images
         } = body;
 
-        // Find or create category
-        const categorySlug = category.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-        const dbCategory = await prisma.category.upsert({
-            where: { slug: categorySlug },
-            update: {},
-            create: {
-                name: category,
-                slug: categorySlug
-            }
-        });
+        // Validate categoryId
+        if (!category) {
+            return NextResponse.json({ error: 'categoryId is required. Select a valid category from the list.' }, { status: 400 });
+        }
+
+        const dbCategory = await prisma.category.findUnique({ where: { id: category } });
+        if (!dbCategory) {
+            return NextResponse.json({ error: 'categoryId is invalid' }, { status: 400 });
+        }
 
         const updatedProduct = await prisma.product.update({
             where: { id: params.id },

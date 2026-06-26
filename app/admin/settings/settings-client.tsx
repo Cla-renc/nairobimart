@@ -153,6 +153,14 @@ export default function SettingsClient({ initialSettings }: { initialSettings: S
                                             onChange={(e) => handleInputChange("currency", e.target.value)}
                                         />
                                     </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="products_per_page">Products Per Page</Label>
+                                        <Input
+                                            id="products_per_page"
+                                            value={getVal("products_per_page", "8")}
+                                            onChange={(e) => handleInputChange("products_per_page", e.target.value)}
+                                        />
+                                    </div>
                                 </div>
                             </CardContent>
                         </Card>

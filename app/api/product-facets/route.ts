@@ -1,12 +1,22 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { ObjectId } from 'mongodb';
+import { getCachedValue, makeCacheKey, setCachedValue } from '@/lib/server-cache';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
     try {
         const url = new URL(request.url);
+        const cacheKey = makeCacheKey('product-facets', url);
+        const cached = getCachedValue(cacheKey) as any | undefined;
+        if (cached) {
+            return NextResponse.json(cached, {
+                headers: {
+                    'Cache-Control': 'public, max-age=15, stale-while-revalidate=30',
+                },
+            });
+        }
         const search = url.searchParams.get('search') ?? undefined;
         const category = url.searchParams.get('category') ?? undefined;
         const filter = url.searchParams.get('filter') ?? undefined;
@@ -141,7 +151,13 @@ export async function GET(request: Request) {
             options: Object.entries(m).sort((a, b) => b[1] - a[1]).map(([value, count]) => ({ value, count }))
         }));
 
-        return NextResponse.json({ facets: result });
+        const body = { facets };
+        setCachedValue(cacheKey, body, 30_000);
+        return NextResponse.json(body, {
+            headers: {
+                'Cache-Control': 'public, max-age=15, stale-while-revalidate=30',
+            },
+        });
     } catch (error) {
         console.error('Product facets error', error);
         return NextResponse.json({ facets: [] }, { status: 500 });

@@ -30,6 +30,23 @@ export const metadata: Metadata = {
   },
 };
 
+export async function generateMetadata(): Promise<Metadata> {
+  try {
+    const { getSiteSettingsMap } = await import('@/lib/site-settings');
+    const settings = await getSiteSettingsMap();
+    return {
+      title: `${settings.store_name || 'NairobiMart'} | ${settings.store_tagline || 'Shop Smart. Shop Kenya.'}`,
+      description: settings.store_description || 'NairobiMart is your premier destination for quality products in Kenya. Shop smart, shop Kenya.',
+      icons: {
+        icon: settings.logo_url || '/images/nairobimart-logo.svg',
+        apple: settings.logo_url || '/images/nairobimart-logo.svg',
+      },
+    };
+  } catch {
+    return metadata;
+  }
+}
+
 export default function RootLayout({
   children,
 }: Readonly<{

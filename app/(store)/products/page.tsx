@@ -50,12 +50,26 @@ function ProductsContent() {
     const [hasInteracted, setHasInteracted] = useState(false);
     const [sortBy, setSortBy] = useState("newest");
     const [currentPage, setCurrentPage] = useState(1);
-    const productsPerPage = 8;
+    const [productsPerPage, setProductsPerPage] = useState(8);
 
     // Facets fetched from server (attribute -> [{value, count}])
     const [facets, setFacets] = useState<{ name: string; options: { value: string; count: number }[] }[]>([]);
 
     useEffect(() => {
+        // load site settings for productsPerPage
+        const loadSettings = async () => {
+            try {
+                const res = await fetch('/api/site-settings');
+                if (!res.ok) return;
+                const data = await res.json();
+                const p = parseInt(data.products_per_page || data.productsPerPage || data.productsPerPage || data.productsPerpage || '8');
+                if (!Number.isNaN(p) && p > 0) setProductsPerPage(p);
+            } catch (e) {
+                // ignore
+            }
+        };
+        loadSettings();
+
         const loadFacets = async () => {
             try {
                 const params = new URLSearchParams();

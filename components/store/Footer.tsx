@@ -10,8 +10,15 @@ import {
     MapPin,
 } from "lucide-react";
 
-const Footer = () => {
+import { getSiteSettingsMap } from '@/lib/site-settings';
+
+const Footer = async () => {
+    const settings = await getSiteSettingsMap();
     const currentYear = new Date().getFullYear();
+    const storeName = settings.store_name || 'NairobiMart';
+    const tagline = settings.store_tagline || 'Shop Smart. Shop Kenya.';
+    const supportEmail = settings.store_email || 'support@nairobimart.co.ke';
+    const supportPhone = settings.store_phone || '0759193674';
 
     return (
         <footer className="bg-primary text-primary-foreground">
@@ -19,9 +26,9 @@ const Footer = () => {
                 <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-4">
                     {/* Brand & Newsletter */}
                     <div className="space-y-4">
-                        <h2 className="text-2xl font-bold text-accent">NairobiMart</h2>
+                        <h2 className="text-2xl font-bold text-accent">{storeName}</h2>
                         <p className="text-sm text-primary-foreground/80">
-                            &quot;Shop Smart. Shop Kenya.&quot;
+                            {`"${tagline}"`}
                         </p>
                         <div className="pt-4">
                             <h3 className="text-sm font-semibold mb-2">Subscribe to our newsletter</h3>
@@ -94,11 +101,11 @@ const Footer = () => {
                         <ul className="space-y-3 text-sm text-primary-foreground/80">
                             <li className="flex items-center space-x-2">
                                 <Mail className="h-4 w-4 text-accent" />
-                                <span>support@nairobimart.co.ke</span>
+                                <span>{supportEmail}</span>
                             </li>
                             <li className="flex items-center space-x-2">
                                 <Phone className="h-4 w-4 text-accent" />
-                                <span>0759193674</span>
+                                <span>{supportPhone}</span>
                             </li>
                             <li className="flex items-center space-x-2">
                                 <MapPin className="h-4 w-4 text-accent" />
@@ -123,7 +130,7 @@ const Footer = () => {
                 </div>
 
                 <div className="mt-12 pt-8 border-t border-primary-foreground/10 text-center text-sm text-primary-foreground/60">
-                    <p>© {currentYear} NairobiMart. All rights reserved. Built in Kenya, For Kenya.</p>
+                    <p>© {currentYear} {storeName}. All rights reserved. Built in Kenya, For Kenya.</p>
                 </div>
             </div>
         </footer>

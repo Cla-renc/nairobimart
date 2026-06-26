@@ -6,7 +6,7 @@ services:
   - type: web
     name: nairobimart-api
     runtime: node
-    plan: free # Can be upgraded to 'starter' or higher in the Render dashboard if needed
+    plan: free # For development/testing only. A production deployment should use a paid Render plan and autoscaling.
     buildCommand: npm install --legacy-peer-deps --include=dev && npm run build
     startCommand: npm start
     healthCheckPath: /api/health
@@ -16,7 +16,26 @@ services:
 
       # ===== DATABASE =====
       - key: DATABASE_URL
-        sync: false # User will provide their MongoDB Atlas URL
+        sync: false # User will provide their MongoDB Atlas URL.
+        # Recommended production format: mongodb+srv://user:pass@cluster0.mongodb.net/dbname?retryWrites=true&w=majority&maxPoolSize=100&connectTimeoutMS=10000
+      - key: MONGODB_OPTIONS
+        sync: false # Optional: use your own connection options in the URL above if needed
+
+      # ===== BACKEND URL CONFIGURATION =====
+      - key: NEXT_PUBLIC_URL
+        sync: false # Set to your Vercel frontend URL (e.g. https://nairobimart-gwna.vercel.app)
+      - key: NEXT_PUBLIC_API_URL
+        generateValue: false # Set this in Vercel frontend environment to your Render backend URL.
+
+      # ===== AUTHENTICATION =====
+      - key: AUTH_TRUST_HOST
+        value: "true"
+      - key: NEXTAUTH_URL
+        sync: false # Set to Vercel frontend URL, not the Render backend URL.
+      - key: NEXTAUTH_SECRET
+        generateValue: true # Render will generate a secure random secret key automatically
+      - key: AUTH_SECRET
+        generateValue: true # Render will generate a secure random secret key automatically
 
       # ===== AUTHENTICATION =====
       - key: AUTH_TRUST_HOST
