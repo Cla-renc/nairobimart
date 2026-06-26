@@ -80,28 +80,67 @@ export default function AdminProductsPage() {
     }, [fetchProducts]);
 
     const handleSyncCJ = async () => {
+        const batchSize = 20;
+        let skip = 0;
+        let totalProducts = 0;
+        let totalUpdated = 0;
+        let totalPriceChanged = 0;
+        let totalOOS = 0;
+        let totalErrors = 0;
+
         try {
             setSyncing(true);
-            const res = await fetch("/api/admin/inventory-sync", { method: "POST" });
-            const contentType = res.headers.get('content-type') || '';
-            const data = contentType.includes('application/json') ? await res.json() : null;
 
-            if (!res.ok) {
-                const errorMessage = data?.error || data?.message || res.statusText || 'Unknown error';
-                toast({ title: "Sync Failed", description: errorMessage, variant: "destructive" });
-                return;
+            while (true) {
+                const res = await fetch(`/api/admin/inventory-sync?limit=${batchSize}&skip=${skip}`, { method: "POST" });
+                const contentType = res.headers.get('content-type') || '';
+                const data = contentType.includes('application/json') ? await res.json() : null;
+
+                if (!res.ok) {
+                    const errorMessage = data?.error || data?.message || res.statusText || 'Unknown error';
+                    toast({ title: "Sync Failed", description: errorMessage, variant: "destructive" });
+                    return;
+                }
+
+                totalProducts = data?.totalProducts ?? totalProducts;
+                totalUpdated += data?.stats?.updated || 0;
+                totalPriceChanged += data?.stats?.priceChanged || 0;
+                totalOOS += data?.stats?.flaggedOOS || 0;
+                totalErrors += data?.stats?.errorCount || 0;
+
+                if (data?.errors && Array.isArray(data.errors) && data.errors.length > 0) {
+                    data.errors.slice(0, 3).forEach((msg: string) => {
+                        console.warn('CJ Sync error:', msg);
+                    });
+                }
+
+                if (!totalProducts) {
+                    // If the endpoint reports no CJ products at all, stop after one batch.
+                    break;
+                }
+
+                skip += batchSize;
+                if (skip >= totalProducts) {
+                    break;
+                }
+
+                if (data?.processed === 0) {
+                    break;
+                }
+
+                await new Promise((resolve) => setTimeout(resolve, 250));
             }
 
-            if (data?.success) {
-                toast({
-                    title: "Sync Complete",
-                    description: `Synced ${data.stats?.updated || 0} items. ${data.stats?.priceChanged || 0} price changes, ${data.stats?.flaggedOOS || 0} out of stock.`,
-                    className: "bg-green-600 text-white"
-                });
-                fetchProducts();
-            } else {
-                toast({ title: "Sync Failed", description: data?.error || data?.message || 'CJ sync returned an error.', variant: "destructive" });
-            }
+            const description = totalProducts === 0
+                ? 'No CJ-linked products were found to sync.'
+                : `Synced ${totalUpdated} updates across ${totalProducts} CJ products. ${totalPriceChanged} price changes, ${totalOOS} out of stock.`;
+
+            toast({
+                title: "Sync Complete",
+                description,
+                className: totalErrors > 0 ? undefined : "bg-green-600 text-white"
+            });
+            fetchProducts();
         } catch (error) {
             console.error('CJ Sync client error:', error);
             toast({ title: "Error", description: "Failed to run CJ Inventory Sync.", variant: "destructive" });
