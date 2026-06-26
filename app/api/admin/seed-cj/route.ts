@@ -194,19 +194,13 @@ export async function GET(req: Request) {
                                         create: imageUrls.map((url: string, index: number) => ({
                                             url: url || "",
                                             position: index
-                                        });
-                                        // treat update as updated
-                                        updatedCount++;
-                                        categoryReport.updated++;
-                                        insertedCount++; // keep total increment for compatibility with previous message
-                                        processedCount++;
-                                        if (maxPerCategory > 0 && processedCount >= maxPerCategory) {
-                                            console.log(`Reached maxPerCategory=${maxPerCategory} for ${category.name}`);
-                                            break outer;
-                                        }
+                                        }))
+                                    }
                                 } as unknown as Prisma.ProductUpdateInput
                             });
-                            insertedCount++;
+                            updatedCount++;
+                            categoryReport.updated++;
+                            insertedCount++; // keep total increment for compatibility with previous message
                             processedCount++;
                             if (maxPerCategory > 0 && processedCount >= maxPerCategory) {
                                 console.log(`Reached maxPerCategory=${maxPerCategory} for ${category.name}`);
@@ -255,16 +249,11 @@ export async function GET(req: Request) {
                                             url: url || "",
                                             position: index
                                         }))
-                                    });
-                                    insertedCount++;
-                                    categoryReport.inserted++;
-                                    processedCount++;
-                                    if (maxPerCategory > 0 && processedCount >= maxPerCategory) {
-                                        console.log(`Reached maxPerCategory=${maxPerCategory} for ${category.name}`);
-                                        break outer;
                                     }
+                                }
                             });
                             insertedCount++;
+                            categoryReport.inserted++;
                             processedCount++;
                             if (maxPerCategory > 0 && processedCount >= maxPerCategory) {
                                 console.log(`Reached maxPerCategory=${maxPerCategory} for ${category.name}`);
