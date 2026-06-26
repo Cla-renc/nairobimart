@@ -7,6 +7,10 @@ import authConfig from "./auth.config";
 import type { JWT } from "next-auth/jwt";
 import type { Session, User } from "next-auth";
 
+const authSecrets = [process.env.NEXTAUTH_SECRET, process.env.AUTH_SECRET]
+    .filter((secret): secret is string => typeof secret === "string" && secret.length > 0);
+const authSecret = authSecrets.length === 0 ? undefined : authSecrets.length === 1 ? authSecrets[0] : authSecrets;
+
 export const {
     handlers: { GET, POST },
     auth,
@@ -15,7 +19,7 @@ export const {
 } = NextAuth({
     ...authConfig,
     adapter: PrismaAdapter(prisma),
-    secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET,
+    secret: authSecret,
     session: { strategy: "jwt" },
     debug: true,
     // Merge any providers defined in auth.config with the Credentials provider used by the app.

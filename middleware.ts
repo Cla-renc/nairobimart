@@ -2,9 +2,13 @@ import NextAuth from "next-auth";
 import authConfig from "./auth.config";
 import { NextResponse } from "next/server";
 
+const authSecrets = [process.env.NEXTAUTH_SECRET, process.env.AUTH_SECRET]
+    .filter((secret): secret is string => typeof secret === "string" && secret.length > 0);
+const authSecret = authSecrets.length === 0 ? undefined : authSecrets.length === 1 ? authSecrets[0] : authSecrets;
+
 const { auth } = NextAuth({
     ...authConfig,
-    secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET,
+    secret: authSecret,
     session: { strategy: "jwt" },
 });
 
