@@ -24,11 +24,14 @@ const nextConfig = {
         ],
     },
     async rewrites() {
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "");
+        if (!apiUrl) {
+            return [];
+        }
         return [
             {
                 source: '/api/:path*',
-                destination: `${apiUrl.replace(/\/$/, '')}/api/:path*`,
+                destination: `${apiUrl}/api/:path*`,
             },
         ];
     },

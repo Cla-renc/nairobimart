@@ -2,7 +2,11 @@ import NextAuth from "next-auth";
 import authConfig from "./auth.config";
 import { NextResponse } from "next/server";
 
-const { auth } = NextAuth(authConfig);
+const { auth } = NextAuth({
+    ...authConfig,
+    secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET,
+    session: { strategy: "jwt" },
+});
 
 // Simple in-memory rate limiter (per-instance). For production use a shared store.
 const RATE_WINDOW_SECONDS = 60; // time window
