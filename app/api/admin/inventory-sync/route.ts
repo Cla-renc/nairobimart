@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
 
         const url = new URL(req.url);
         const totalProducts = await prisma.product.count({ where: { cjProductId: { not: null } } });
-        const limit = Math.min(Math.max(Number(url.searchParams.get('limit') || '10'), 1), 20);
+        const limit = Math.min(Math.max(Number(url.searchParams.get('limit') || '3'), 1), 5);
         const skip = Math.max(Number(url.searchParams.get('skip') || '0'), 0);
 
         // Fetch a bounded batch of products linked to CJ to avoid Vercel function timeout.
@@ -65,16 +65,18 @@ export async function POST(req: NextRequest) {
                     updates.stock = latestStock;
                     requiresUpdate = true;
                     if (latestStock === 0) {
-                        updates.isActive = false; // Auto-disable if OOS
                         outOfStockCount++;
                     }
                 }
 
-                // Sync Price and Protect Margins (assuming 1.5x margin multiplier)
+                // Sync Cost Price and protect retail pricing against sharp drops
                 const currentCost = Number(product.costPrice || 0);
                 if (!Number.isNaN(latestCostKES) && latestCostKES > 0 && Math.abs(currentCost - latestCostKES) > 1) {
                     updates.costPrice = latestCostKES;
-                    updates.price = Math.ceil(latestCostKES * 1.5); // 50% margin
+                    const newRetail = Math.ceil(latestCostKES * 1.5); // suggested retail price
+                    if (newRetail >= product.price) {
+                        updates.price = newRetail;
+                    }
                     requiresUpdate = true;
                     priceChangedCount++;
                 }
@@ -93,7 +95,7 @@ export async function POST(req: NextRequest) {
             }
             
             // Add a small delay to avoid hitting CJ API rate limits (CJ QPS ~= 1/sec)
-            await new Promise(resolve => setTimeout(resolve, 1100));
+            await new Promise(resolve => setTimeout(resolve, 600));
         }
 
         return NextResponse.json({

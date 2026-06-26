@@ -82,7 +82,7 @@ export default function AdminProductsPage() {
     }, [fetchProducts]);
 
     const handleSyncCJ = async () => {
-        const batchSize = 10;
+        const batchSize = 3;
         let skip = 0;
         let totalProducts = 0;
         let totalUpdated = 0;
