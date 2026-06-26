@@ -146,7 +146,7 @@ export async function GET(request: Request) {
             return NextResponse.json({ facet, options: paged, total, page, perPage });
         }
 
-        const result = Object.entries(map).map(([key, m]) => ({
+        const facets = Object.entries(map).map(([key, m]) => ({
             name: key,
             options: Object.entries(m).sort((a, b) => b[1] - a[1]).map(([value, count]) => ({ value, count }))
         }));
