@@ -24,7 +24,7 @@ export async function GET(req: Request) {
 
         // Fetch a bounded batch of products linked to CJ to avoid Vercel function timeout.
         // We order by updatedAt ascending to act as a round-robin queue. The oldest synced products are synced first.
-        const limit = 30; // 30 products * 600ms = 18 seconds of delay + API time, safely within 60s maxDuration.
+        const limit = 10; // 10 products * 600ms = 6 seconds of delay + API time, safely within 10s maxDuration for Vercel Hobby.
         const cjProducts = await prisma.product.findMany({
             where: validCjCondition,
             orderBy: {
