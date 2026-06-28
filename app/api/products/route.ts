@@ -40,6 +40,12 @@ export async function GET(request: Request) {
             where.category = { slug: category };
         }
 
+        // Support multiple categories: ?categories=slug1&categories=slug2
+        const categorySlugs = url.searchParams.getAll('categories');
+        if (categorySlugs.length > 0) {
+            where.category = { slug: { in: categorySlugs } };
+        }
+
         if (filter === 'sale') {
             where.comparePrice = { not: null };
         }

@@ -41,8 +41,8 @@ function ProductsContent() {
 
     const [allProducts, setAllProducts] = useState<Product[]>([]);
     const [categories, setCategories] = useState<{name: string, slug: string}[]>([]);
-    const [loading, setLoading] = useState(true);
     const [totalItems, setTotalItems] = useState(0);
+    const [loading, setLoading] = useState(true);
 
     const [priceRange, setPriceRange] = useState<number[]>([0, 50000]);
     const [selectedCategoriesState, setSelectedCategoriesState] = useState<string[]>([]);
@@ -119,7 +119,30 @@ function ProductsContent() {
                 if (sortBy) params.set('sort', sortBy);
                 if (priceRange[0] > 0) params.set('minPrice', String(priceRange[0]));
                 if (priceRange[1] < 50000) params.set('maxPrice', String(priceRange[1]));
-                if (!hasInteracted && initialCategory && selectedCategoriesState.length === 0) params.set('category', initialCategory);
+
+                // Determine which categories are active and pass their slugs to the API
+                const resolvedActiveCategories = (!hasInteracted && initialCategory && selectedCategoriesState.length === 0)
+                    ? (() => {
+                        const safeDecode = decodeURIComponent(initialCategory).trim().toLowerCase();
+                        const found = categories.find(c => c.slug.trim().toLowerCase() === safeDecode || c.name.trim().toLowerCase() === safeDecode);
+                        return found ? [found.name] : [];
+                    })()
+                    : selectedCategoriesState;
+
+                if (resolvedActiveCategories.length > 0) {
+                    // Map category names to slugs for the API
+                    const slugs = resolvedActiveCategories
+                        .map(name => categories.find(c => c.name === name)?.slug)
+                        .filter(Boolean) as string[];
+                    if (slugs.length === 1) {
+                        params.set('category', slugs[0]);
+                    } else if (slugs.length > 1) {
+                        // For multiple categories, pass as comma-separated (handled below)
+                        slugs.forEach(s => params.append('categories', s));
+                    }
+                } else if (!hasInteracted && initialCategory && selectedCategoriesState.length === 0) {
+                    params.set('category', initialCategory);
+                }
 
                 const res = await fetch(`/api/products?${params.toString()}`);
                 const data = await res.json();
@@ -134,7 +157,7 @@ function ProductsContent() {
             }
         };
         loadProducts();
-    }, [currentPage, productsPerPage, searchParam, filterParam, selectedCategoriesState, selectedAttributesState, priceRange, sortBy, hasInteracted, initialCategory]);
+    }, [currentPage, productsPerPage, searchParam, filterParam, selectedCategoriesState, selectedAttributesState, priceRange, sortBy, hasInteracted, initialCategory, categories]);
 
     // Synchronously derive active categories from URL if user hasn't interacted yet
     // This completely eliminates useEffect race conditions
@@ -350,7 +373,7 @@ function ProductsContent() {
                             <h1 className="text-3xl font-black text-primary tracking-tighter uppercase leading-none">
                                 {activeCategories.length === 1 ? activeCategories[0] : "All"} <span className="text-accent">Products</span>
                             </h1>
-                            <p className="text-muted-foreground mt-2 text-sm font-medium">Found {totalItems} items from global fulfillment centers</p>
+                            <p className="text-muted-foreground mt-2 text-sm font-medium">Found {totalItems.toLocaleString()} items from global fulfillment centers</p>
                         </div>
 
                         <div className="flex items-center space-x-3">

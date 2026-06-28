@@ -5,32 +5,37 @@ import { Prisma } from '@prisma/client';
 
 export const dynamic = 'force-dynamic';
 
-// Map our categories to typical CJ search keywords
-const KEYWORDS: Record<string, string> = {
-    'electronics': 'electronics',
-    'laptop': 'laptop',
-    'watch': 'watch',
-    'fashion': 'clothing',
-    'beauty': 'beauty',
-    'toy': 'toys',
-    'home': 'decor',
-    'kitchen': 'kitchen',
-    'automotive': 'car accessories',
-    'office': 'office',
-    'security': 'security camera'
-};
+// Ordered list: MORE SPECIFIC keys must come BEFORE shorter/broader keys to avoid wrong matches
+// e.g. "Smart Home & Security" must match 'smart home' before 'home'
+const KEYWORD_MAP: { key: string; value: string }[] = [
+    { key: 'smart home', value: 'smart home device' },
+    { key: 'security', value: 'security camera' },
+    { key: 'automotive', value: 'car accessories' },
+    { key: 'electronics', value: 'phone accessories' },
+    { key: 'computer', value: 'computer accessories' },
+    { key: 'laptop', value: 'laptop' },
+    { key: 'watch', value: 'watch' },
+    { key: 'fashion', value: 'women fashion clothing' },
+    { key: 'clothing', value: 'women fashion clothing' },
+    { key: 'beauty', value: 'skincare beauty' },
+    { key: 'skincare', value: 'skincare beauty' },
+    { key: 'toy', value: 'toys' },
+    { key: 'kitchen', value: 'kitchen gadgets' },
+    { key: 'office', value: 'office desk accessories' },
+    { key: 'home', value: 'home decor' },
+];
 
 function getSearchKeyword(categoryName: string): string {
     const lowerName = categoryName.toLowerCase();
 
-    // Check for predefined keywords as substrings
-    for (const [key, value] of Object.entries(KEYWORDS)) {
+    // Iterate in order — more specific keys are listed first
+    for (const { key, value } of KEYWORD_MAP) {
         if (lowerName.includes(key)) {
             return value;
         }
     }
 
-    // Default: Clean the name (remove common special chars and take first few words)
+    // Default: use cleaned category name
     return categoryName
         .replace(/[&/\\#,+()$~%.'":*?<>{}]/g, ' ')
         .split(' ')
