@@ -47,17 +47,28 @@ export async function GET(req: Request) {
         const force = (url.searchParams.get('force') || 'false').toLowerCase() === 'true';
         const verbose = (url.searchParams.get('verbose') || 'false').toLowerCase() === 'true';
 
+        const startTime = Date.now();
+        const VERCEL_TIMEOUT_MS = 7500; // Return early before Vercel 10s hobby timeout
+
         const categories = await prisma.category.findMany();
         if (categories.length === 0) {
             return NextResponse.json({ success: false, message: "No categories found in the database. Please create them first." }, { status: 400 });
         }
+
+        // Shuffle categories so repeated clicks don't get stuck skipping the same first category
+        const shuffledCategories = categories.sort(() => Math.random() - 0.5);
 
         let insertedCount = 0;
         let skippedCount = 0;
         let updatedCount = 0;
         const report: any[] = [];
 
-        for (const category of categories) {
+        for (const category of shuffledCategories) {
+            if (Date.now() - startTime > VERCEL_TIMEOUT_MS) {
+                console.log("Approaching Vercel timeout, returning early.");
+                break;
+            }
+
             const keyword = getSearchKeyword(category.name);
             console.log(`Seeding category: ${category.name} with keyword: ${keyword}`);
 
@@ -106,6 +117,11 @@ export async function GET(req: Request) {
                 categoryReport.pagesProcessed = page;
 
                 for (const pd of products as CJProduct[]) {
+                    if (Date.now() - startTime > VERCEL_TIMEOUT_MS) {
+                        console.log("Approaching Vercel timeout inside loop, returning early.");
+                        break outer;
+                    }
+
                     // collect sample ids (limited)
                     if (categoryReport.samples.length < 10 && pd.id) categoryReport.samples.push(pd.id);
                     categoryReport.productsFound++;
