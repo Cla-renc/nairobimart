@@ -8,16 +8,19 @@ export async function POST(req: NextRequest) {
     try {
         console.log("Starting CJ Inventory Sync...");
 
-        const url = new URL(req.url);
-        const totalProducts = await prisma.product.count({ where: { cjProductId: { not: null } } });
-        const limit = Math.min(Math.max(Number(url.searchParams.get('limit') || '3'), 1), 5);
-        const skip = Math.max(Number(url.searchParams.get('skip') || '0'), 0);
+        const limit = Math.min(Math.max(Number(req.nextUrl.searchParams.get('limit') || '3'), 1), 5);
+        const skip = Math.max(Number(req.nextUrl.searchParams.get('skip') || '0'), 0);
+
+        const validCjCondition = {
+            cjProductId: { not: null },
+            NOT: { cjProductId: "" }
+        };
+
+        const totalProducts = await prisma.product.count({ where: validCjCondition });
 
         // Fetch a bounded batch of products linked to CJ to avoid Vercel function timeout.
         const cjProducts = await prisma.product.findMany({
-            where: {
-                cjProductId: { not: null }
-            },
+            where: validCjCondition,
             skip,
             take: limit
         });
