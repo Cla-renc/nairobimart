@@ -1,0 +1,15 @@
+name: CJ Inventory Sync Cron
+
+on:
+  schedule:
+    - cron: '*/10 * * * *' # Runs every 10 minutes
+  workflow_dispatch: # Allows manual trigger from GitHub UI
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Inventory Sync Endpoint
+        run: |
+          curl -X GET "${{ secrets.SITE_URL }}/api/cron/inventory-sync" \
+          -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"

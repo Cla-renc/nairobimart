@@ -1,0 +1,6 @@
+- [x] Examine existing cron job implementations in `app/api/cron/`
+- [x] Create `app/api/cron/inventory-sync/route.ts` to handle background batch syncing of CJ products.
+- [x] Ensure the cron endpoint is protected by a cron secret.
+- [x] Modify `app/admin/products/page.tsx` button to either trigger the sync in the background or just inform the user that it runs automatically. Alternatively, keep the manual batch sync but add a clear message that it runs automatically daily.
+- [x] Update `vercel.json` if applicable to schedule the new cron job.
+- [x] Add GitHub Actions Workflow to avoid Vercel Hobby tier limitations.
