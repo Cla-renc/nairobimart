@@ -46,9 +46,10 @@ export async function GET(req: Request) {
         const maxPerCategory = Number(url.searchParams.get('maxPerCategory') || process.env.CJ_SEED_MAX_PER_CATEGORY || 0); // 0 = unlimited
         const force = (url.searchParams.get('force') || 'false').toLowerCase() === 'true';
         const verbose = (url.searchParams.get('verbose') || 'false').toLowerCase() === 'true';
-
+        
         const startTime = Date.now();
         const VERCEL_TIMEOUT_MS = 7500; // Return early before Vercel 10s hobby timeout
+        const isVercel = process.env.VERCEL === '1';
 
         const categories = await prisma.category.findMany();
         if (categories.length === 0) {
@@ -64,7 +65,7 @@ export async function GET(req: Request) {
         const report: any[] = [];
 
         for (const category of shuffledCategories) {
-            if (Date.now() - startTime > VERCEL_TIMEOUT_MS) {
+            if (isVercel && Date.now() - startTime > VERCEL_TIMEOUT_MS) {
                 console.log("Approaching Vercel timeout, returning early.");
                 break;
             }
@@ -117,7 +118,7 @@ export async function GET(req: Request) {
                 categoryReport.pagesProcessed = page;
 
                 for (const pd of products as CJProduct[]) {
-                    if (Date.now() - startTime > VERCEL_TIMEOUT_MS) {
+                    if (isVercel && Date.now() - startTime > VERCEL_TIMEOUT_MS) {
                         console.log("Approaching Vercel timeout inside loop, returning early.");
                         break outer;
                     }
