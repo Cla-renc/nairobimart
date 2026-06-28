@@ -175,29 +175,8 @@ export async function GET(req: Request) {
 
                         if (exists) {
                             const existingProduct = exists as Record<string, unknown>;
-                            // Update existing product with missing details
-                            // Determine best matching category from CJ metadata or fall back to review bucket
-                            const candidateNames = [
-                                (detail as any)?.oneCategoryName,
-                                (detail as any)?.twoCategoryName,
-                                (detail as any)?.threeCategoryName,
-                            ].filter(Boolean).map((s: any) => String(s).trim());
-
-                            let assignedCategoryId: string | null = null;
-                            for (const name of candidateNames) {
-                                const found = await prisma.category.findFirst({ where: { name: { equals: name, mode: 'insensitive' } } });
-                                if (found) { assignedCategoryId = found.id; break; }
-                            }
-
-                            if (!assignedCategoryId) {
-                                // fallback to a review bucket so admin can reassign later
-                                const review = await prisma.category.upsert({
-                                    where: { slug: 'imported-cj' },
-                                    update: {},
-                                    create: { name: 'Imported (CJ)', slug: 'imported-cj', isActive: false }
-                                });
-                                assignedCategoryId = review.id;
-                            }
+                            // Directly use the current store category we are seeding for
+                            const assignedCategoryId: string = category.id;
 
                             await prisma.product.update({
                                 where: { id: existingProduct.id as string },
@@ -225,27 +204,8 @@ export async function GET(req: Request) {
                             }
                         } else {
                             // Create new product
-                            // Determine best matching category from CJ metadata or fall back to review bucket
-                            const candidateNames = [
-                                (detail as any)?.oneCategoryName,
-                                (detail as any)?.twoCategoryName,
-                                (detail as any)?.threeCategoryName,
-                            ].filter(Boolean).map((s: any) => String(s).trim());
-
-                            let assignedCategoryId: string | null = null;
-                            for (const name of candidateNames) {
-                                const found = await prisma.category.findFirst({ where: { name: { equals: name, mode: 'insensitive' } } });
-                                if (found) { assignedCategoryId = found.id; break; }
-                            }
-
-                            if (!assignedCategoryId) {
-                                const review = await prisma.category.upsert({
-                                    where: { slug: 'imported-cj' },
-                                    update: {},
-                                    create: { name: 'Imported (CJ)', slug: 'imported-cj', isActive: false }
-                                });
-                                assignedCategoryId = review.id;
-                            }
+                            // Directly use the current store category we are seeding for
+                            const assignedCategoryId: string = category.id;
 
                             await prisma.product.create({
                                 data: {
