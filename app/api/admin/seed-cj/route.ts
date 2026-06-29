@@ -57,6 +57,13 @@ export async function GET(req: Request) {
         const VERCEL_TIMEOUT_MS = 7500; // Return early before Vercel 10s hobby timeout
         const isVercel = process.env.VERCEL === '1';
 
+        // Auto-create Bedroom Essentials if it doesn't exist yet
+        await prisma.category.upsert({
+            where: { slug: 'bedroom-essentials' },
+            update: {},
+            create: { name: 'Bedroom Essentials', slug: 'bedroom-essentials', isActive: true, position: 8 }
+        });
+
         const categories = await prisma.category.findMany({
             include: {
                 _count: {
