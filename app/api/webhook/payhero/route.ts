@@ -88,15 +88,59 @@ export async function POST(req: Request) {
             const { processSuccessfulPayment } = await import("@/lib/postPayment");
             await processSuccessfulPayment(order.id);
 
-            // Send confirmation email ONLY after payment is confirmed
-            if ((updatedOrder as any).shippingEmail) {
+            // Detect if this is a WhatsApp order
+            const isWhatsAppOrder = order.notes?.includes('Source: whatsapp');
+            const shippingAddr = order.shippingAddress as any;
+            const customerPhone = shippingAddr?.phone || '';
+            const customerName = shippingAddr?.name || 'Valued Customer';
+            const deliveryAddress = shippingAddr?.address || '';
+            const customerEmail = shippingAddr?.email || (updatedOrder as any).shippingEmail || '';
+
+            // --- Email Confirmation ---
+            if (customerEmail) {
                 try {
-                    const { sendOrderConfirmationEmail } = await import("@/lib/email");
-                    await sendOrderConfirmationEmail((updatedOrder as any).shippingEmail, updatedOrder.orderNumber, updatedOrder.total);
-                    console.log(`✅ Order confirmation email sent after M-Pesa payment for: ${(updatedOrder as any).shippingEmail}`);
+                    const { sendOrderConfirmationEmail } = await import('@/lib/email');
+                    await sendOrderConfirmationEmail(customerEmail, updatedOrder.orderNumber, updatedOrder.total);
+                    console.log(`✅ Confirmation email sent to: ${customerEmail}`);
                 } catch (emailError) {
-                    console.error("❌ Failed to send confirmation email after M-Pesa payment:", emailError);
-                    // Don't fail the webhook if email fails - payment is already confirmed
+                    console.error('❌ Failed to send confirmation email:', emailError);
+                }
+            }
+
+            // --- SMS Confirmation ---
+            if (customerPhone) {
+                try {
+                    const { sendOrderConfirmationSMS } = await import('@/lib/sms');
+                    await sendOrderConfirmationSMS({
+                        phone: customerPhone,
+                        customerName,
+                        orderNumber: updatedOrder.orderNumber,
+                        total: `KES ${updatedOrder.total.toLocaleString()}`,
+                        deliveryAddress,
+                    });
+                    console.log(`✅ Confirmation SMS sent to: ${customerPhone}`);
+                } catch (smsError) {
+                    console.error('❌ Failed to send confirmation SMS:', smsError);
+                }
+            }
+
+            // --- WhatsApp Confirmation (WhatsApp orders only) ---
+            if (isWhatsAppOrder && customerPhone && process.env.BOT_SERVER_URL) {
+                try {
+                    const waPhone = customerPhone.replace(/\D/g, '').replace(/^0/, '254');
+                    await fetch(`${process.env.BOT_SERVER_URL}/api/send-dispatch`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            phone: waPhone,
+                            customerName,
+                            orderNumber: updatedOrder.orderNumber,
+                            trackingUrl: `${process.env.NEXT_PUBLIC_URL}/orders/${updatedOrder.orderNumber}`,
+                        })
+                    });
+                    console.log(`✅ WhatsApp confirmation sent to: ${waPhone}`);
+                } catch (waError) {
+                    console.error('❌ Failed to send WhatsApp confirmation:', waError);
                 }
             }
         } else {

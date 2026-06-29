@@ -64,3 +64,35 @@ export const sendSMS = async (to: string, message: string) => {
         return { success: false, error };
     }
 };
+
+/**
+ * Sends a WhatsApp order confirmation SMS
+ */
+export async function sendOrderConfirmationSMS(params: {
+    phone: string;
+    customerName: string;
+    orderNumber: string;
+    total: string;
+    deliveryAddress: string;
+}) {
+    const message =
+        `NairobiMart: Hi ${params.customerName}! ✅ Order #${params.orderNumber} confirmed. ` +
+        `Amount: ${params.total}. Delivery to: ${params.deliveryAddress}. ` +
+        `We'll update you when it ships. Thank you! 🛒`;
+    return sendSMS(params.phone, message);
+}
+
+/**
+ * Sends a dispatch notification SMS
+ */
+export async function sendDispatchSMS(params: {
+    phone: string;
+    customerName: string;
+    orderNumber: string;
+    trackingUrl?: string;
+}) {
+    const message =
+        `NairobiMart: Hi ${params.customerName}! 🚚 Order #${params.orderNumber} has been dispatched. ` +
+        (params.trackingUrl ? `Track here: ${params.trackingUrl}` : `We'll keep you updated!`);
+    return sendSMS(params.phone, message);
+}

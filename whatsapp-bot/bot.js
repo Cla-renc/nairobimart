@@ -66,18 +66,20 @@ const groq = new OpenAI({
 });
 
 // In-memory conversation history removed. State is now persisted to MongoDB via Prisma.
+const WEBSITE_URL = process.env.NEXT_PUBLIC_URL || 'https://nairobimart-gwna.vercel.app';
+const ORDER_PREFIX = '🛒 *ORDER REQUEST*'; // Magic prefix from the WhatsApp Order button
 
 async function getProductCatalog() {
     try {
         const products = await prisma.product.findMany({
             where: { isActive: true },
             select: { name: true, price: true, costPrice: true, stock: true, category: { select: { name: true } } },
-            take: 25, // Limit to 25 products to stay within AI token limits
+            take: 25,
             orderBy: { createdAt: 'desc' }
         });
         return products;
     } catch (error) {
-        console.error("Error fetching catalog:", error);
+        console.error('Error fetching catalog:', error);
         return [];
     }
 }
@@ -85,13 +87,13 @@ async function getProductCatalog() {
 async function getCategories() {
     try {
         const categories = await prisma.category.findMany({
-            where: { isActive: true, parentId: null }, // Top-level categories only
+            where: { isActive: true, parentId: null },
             select: { name: true },
             orderBy: { position: 'asc' }
         });
         return categories.map(c => c.name);
     } catch (error) {
-        console.error("Error fetching categories:", error);
+        console.error('Error fetching categories:', error);
         return [];
     }
 }
@@ -111,10 +113,58 @@ async function searchProductsInDB(query) {
         });
         return results;
     } catch (error) {
-        console.error("Error searching products:", error);
+        console.error('Error searching products:', error);
         return [];
     }
 }
+
+async function getProductById(productId) {
+    try {
+        const product = await prisma.product.findUnique({
+            where: { id: productId },
+            select: {
+                id: true, name: true, price: true, costPrice: true, comparePrice: true,
+                stock: true, isFlashSale: true, flashSalePrice: true, flashSaleEndsAt: true,
+                category: { select: { name: true } }
+            }
+        });
+        return product;
+    } catch (error) {
+        console.error('Error fetching product by id:', error);
+        return null;
+    }
+}
+
+// Calls the Next.js backend to create a WhatsApp order in the DB
+async function callBotCreateOrder(params) {
+    try {
+        const res = await fetch(`${WEBSITE_URL}/api/bot/create-order`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(params)
+        });
+        return await res.json();
+    } catch (e) {
+        console.error('callBotCreateOrder error:', e);
+        return { success: false, error: e.message };
+    }
+}
+
+// Calls the Next.js backend to trigger PayHero or Pesapal payment
+async function callBotTriggerPayment(params) {
+    try {
+        const res = await fetch(`${WEBSITE_URL}/api/bot/trigger-payment`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(params)
+        });
+        return await res.json();
+    } catch (e) {
+        console.error('callBotTriggerPayment error:', e);
+        return { success: false, error: e.message };
+    }
+}
+
 
 async function startBot() {
     console.log("Starting NairobiMart AI WhatsApp Bot...");
@@ -228,53 +278,64 @@ async function startBot() {
     sock.ev.on('messages.upsert', async (m) => {
         try {
             const msg = m.messages[0];
-            
-            // Add a debug log to see if we're even receiving the event
-            console.log("\n[DEBUG] Incoming message event:", JSON.stringify(msg.message ? Object.keys(msg.message) : "No message object"));
-            console.log("[DEBUG] Is from me?", msg.key.fromMe);
+            console.log('\n[DEBUG] Incoming message event:', JSON.stringify(msg.message ? Object.keys(msg.message) : 'No message object'));
+            console.log('[DEBUG] Is from me?', msg.key.fromMe);
 
             if (!msg.message || msg.key.fromMe) return;
 
             const remoteJid = msg.key.remoteJid;
-            
-            // Ignore status updates or group messages
             if (remoteJid.includes('@g.us') || remoteJid === 'status@broadcast') return;
 
-            // Extract text
             const textMessage = msg.message.conversation || msg.message.extendedTextMessage?.text;
-            
             if (!textMessage) {
-                console.log("[DEBUG] Could not extract text from message. Message types:", Object.keys(msg.message));
+                console.log('[DEBUG] Could not extract text. Types:', Object.keys(msg.message));
                 return;
             }
 
-            console.log(`✅ Received text message from ${remoteJid}: ${textMessage}`);
+            console.log(`✅ Received from ${remoteJid}: ${textMessage}`);
 
-            console.log("[DEBUG] Fetching product catalog and categories from database...");
-            const [catalog, categoryNames] = await Promise.all([
-                getProductCatalog(),
-                getCategories()
-            ]);
-            console.log(`[DEBUG] Catalog fetched! Found ${catalog.length} products across ${categoryNames.length} categories.`);
+            // ─── DETECT MODE ──────────────────────────────────────────
+            const isOrderMode = textMessage.trim().startsWith(ORDER_PREFIX);
 
-            // Removed unused catalogString
+            // ─── BUILD SYSTEM PROMPT ─────────────────────────────────
+            let systemPrompt;
 
-            const categoriesString = categoryNames.join(", ");
+            if (isOrderMode) {
+                systemPrompt = `You are NairobiMart's AI Sales Agent. A customer has clicked the "Order via WhatsApp" button on our website.
+You are in SALES & CHECKOUT MODE. Your job is to guide them through the full purchase.
 
-            // Retrieve history from DB
-            let conversationRecord = await prisma.whatsAppConversation.findUnique({ where: { remoteJid } });
-            let chatHistory = conversationRecord ? conversationRecord.messages : [];
-            
-            // Add user message
-            chatHistory.push({ role: "user", content: textMessage });
+PRODUCT INFO is included in their opening message (name, productId, price, quantity, flash sale status).
 
-            // Keep only last 8 messages to save tokens
-            if (chatHistory.length > 8) {
-                chatHistory = chatHistory.slice(-8);
-            }
+RULES:
+1. Use get_product_details tool with the productId from the message to get live stock and pricing.
+2. If OUT OF STOCK, apologize and do not proceed.
+3. Quote the price breakdown clearly:
+   - Product: KES [price]
+   - Shipping: KES [amount] (use calculate_shipping tool)
+   - TOTAL: KES [grand total]
+4. FLASH SALE products: Apply the flashSalePrice automatically. Tell the customer it's on flash sale 🔥
+5. NEGOTIATION: Only if the product has a comparePrice (discount already applied):
+   - You may offer a small additional discount.
+   - NEVER go below costPrice × 1.15. If they push below that, politely decline.
+   - If product has NO comparePrice (full price), do NOT negotiate.
+6. Once price agreed, collect in order:
+   a. Full Name
+   b. Country (Kenya / Uganda / Tanzania)
+   c. Town & Delivery Address
+   d. Phone Number (for payment)
+   e. Email (optional, for receipt)
+7. Based on country:
+   - Kenya → use create_order tool then trigger_payment (payhero). Tell them: "I've sent an M-Pesa prompt to your phone. Enter your PIN."
+   - Uganda/Tanzania → use create_order then trigger_payment (pesapal). Send them the payment link.
+8. After payment confirmed: Tell customer their order number and expected delivery time.
+9. NEVER send them back to the website to pay — complete the sale here in WhatsApp.
 
-            const websiteUrl = process.env.NEXT_PUBLIC_URL || "https://nairobimart-gwna.vercel.app";
-            const systemPrompt = `You are a NairobiMart sales agent in Kenya. Be friendly, brief, and use Kenyan warmth.
+Be warm, friendly, use Kenyan energy! Emojis encouraged: 🛒✨🔥🚚💳`;
+            } else {
+                // Standard support mode (unchanged)
+                const [catalog, categoryNames] = await Promise.all([getProductCatalog(), getCategories()]);
+                const categoriesString = categoryNames.join(', ');
+                systemPrompt = `You are a NairobiMart sales agent in Kenya. Be friendly, brief, and use Kenyan warmth.
 
 OUR PRODUCT CATEGORIES:
 ${categoriesString}
@@ -285,96 +346,213 @@ RULES:
 1. Use the search_catalog tool to look up product prices and stock before answering.
 2. If stock is OUT, say it's sold out and suggest alternatives.
 3. If stock < 5, create urgency: "Only a few left!"
-4. To buy: direct them to ${websiteUrl} (M-Pesa & card accepted).
+4. To buy: direct them to ${WEBSITE_URL} (M-Pesa & card accepted).
 5. Only discuss NairobiMart products. Decline off-topic requests politely.
 6. Keep replies short and mobile-friendly. Use emojis (🛒✨🔥🚚).`;
+            }
 
-            console.log("[DEBUG] Contacting Groq AI for reply...");
+            // ─── LOAD CHAT HISTORY ───────────────────────────────────
+            let conversationRecord = await prisma.whatsAppConversation.findUnique({ where: { remoteJid } });
+            let chatHistory = conversationRecord ? conversationRecord.messages : [];
+            chatHistory.push({ role: 'user', content: textMessage });
+            if (chatHistory.length > 10) chatHistory = chatHistory.slice(-10);
 
-            const tools = [
+            // ─── DEFINE TOOLS ─────────────────────────────────────────
+            const commonTools = [
                 {
-                    type: "function",
+                    type: 'function',
                     function: {
-                        name: "search_catalog",
-                        description: "Search the product catalog for specific items by keyword.",
+                        name: 'search_catalog',
+                        description: 'Search the product catalog for specific items by keyword.',
+                        parameters: { type: 'object', properties: { query: { type: 'string', description: 'Search keyword' } }, required: ['query'] }
+                    }
+                }
+            ];
+
+            const salesTools = [
+                {
+                    type: 'function',
+                    function: {
+                        name: 'get_product_details',
+                        description: 'Get full product details including costPrice, flashSalePrice, stock, and comparePrice.',
+                        parameters: { type: 'object', properties: { productId: { type: 'string' } }, required: ['productId'] }
+                    }
+                },
+                {
+                    type: 'function',
+                    function: {
+                        name: 'calculate_shipping',
+                        description: 'Calculate shipping cost for a product to a country.',
                         parameters: {
-                            type: "object",
+                            type: 'object',
                             properties: {
-                                query: { type: "string", description: "Search keyword" }
+                                productId: { type: 'string' },
+                                quantity: { type: 'number' },
+                                country: { type: 'string', description: 'kenya, uganda, or tanzania' }
                             },
-                            required: ["query"]
+                            required: ['productId', 'quantity', 'country']
+                        }
+                    }
+                },
+                {
+                    type: 'function',
+                    function: {
+                        name: 'create_order',
+                        description: 'Create a WhatsApp order in the database after collecting all customer details.',
+                        parameters: {
+                            type: 'object',
+                            properties: {
+                                productId: { type: 'string' },
+                                quantity: { type: 'number' },
+                                agreedPriceKes: { type: 'number' },
+                                customerName: { type: 'string' },
+                                customerPhone: { type: 'string' },
+                                customerEmail: { type: 'string' },
+                                country: { type: 'string' },
+                                deliveryAddress: { type: 'string' }
+                            },
+                            required: ['productId', 'quantity', 'agreedPriceKes', 'customerName', 'customerPhone', 'country', 'deliveryAddress']
+                        }
+                    }
+                },
+                {
+                    type: 'function',
+                    function: {
+                        name: 'trigger_payment',
+                        description: 'Trigger payment (M-Pesa STK push for Kenya, Pesapal link for Uganda/Tanzania).',
+                        parameters: {
+                            type: 'object',
+                            properties: {
+                                orderId: { type: 'string' },
+                                orderNumber: { type: 'string' },
+                                paymentMethod: { type: 'string', description: 'payhero or pesapal' },
+                                amount: { type: 'number' },
+                                customerPhone: { type: 'string' },
+                                customerName: { type: 'string' },
+                                customerEmail: { type: 'string' },
+                                country: { type: 'string' }
+                            },
+                            required: ['orderId', 'orderNumber', 'paymentMethod', 'amount', 'customerPhone', 'customerName']
                         }
                     }
                 }
             ];
 
-            // Call Groq
+            const tools = isOrderMode ? [...salesTools, ...commonTools] : commonTools;
+
+            // ─── FIRST AI CALL ────────────────────────────────────────
+            console.log('[DEBUG] Calling Groq AI...');
             let completion = await groq.chat.completions.create({
-                model: "llama-3.1-8b-instant",
-                messages: [
-                    { role: "system", content: systemPrompt },
-                    ...chatHistory
-                ],
-                tools: tools,
-                tool_choice: "auto",
-                max_tokens: 500,
+                model: 'llama-3.1-8b-instant',
+                messages: [{ role: 'system', content: systemPrompt }, ...chatHistory],
+                tools,
+                tool_choice: 'auto',
+                max_tokens: 600,
             });
 
-            const responseMessage = completion.choices[0].message;
+            let responseMessage = completion.choices[0].message;
             let replyText = responseMessage.content;
 
-            // Handle tool calling
-            if (responseMessage.tool_calls) {
-                console.log("[DEBUG] Tool call detected:", responseMessage.tool_calls[0].function.name);
-                chatHistory.push(responseMessage); // append tool call
-                
+            // ─── TOOL CALL HANDLING ───────────────────────────────────
+            const maxToolRounds = 4;
+            let toolRound = 0;
+
+            while (responseMessage.tool_calls && toolRound < maxToolRounds) {
+                toolRound++;
+                console.log('[DEBUG] Tool call round', toolRound);
+                chatHistory.push(responseMessage);
+
                 for (const toolCall of responseMessage.tool_calls) {
-                    if (toolCall.function.name === "search_catalog") {
-                        const args = JSON.parse(toolCall.function.arguments);
-                        // Query the database directly for accurate, real-time results
+                    const args = JSON.parse(toolCall.function.arguments);
+                    let toolResult = '';
+
+                    if (toolCall.function.name === 'search_catalog') {
                         const results = await searchProductsInDB(args.query);
-                        const toolResult = results.length > 0 
-                            ? results.map(p => `${p.name} | KES ${p.price} | Stock: ${p.stock > 0 ? p.stock : 'OUT OF STOCK'} | Category: ${p.category?.name || 'N/A'}`).join("\n")
-                            : "No products found for that query.";
-                        
-                        chatHistory.push({
-                            role: "tool",
-                            tool_call_id: toolCall.id,
-                            content: toolResult
+                        toolResult = results.length > 0
+                            ? results.map(p => `${p.name} | KES ${p.price} | Stock: ${p.stock > 0 ? p.stock : 'OUT OF STOCK'} | Category: ${p.category?.name || 'N/A'}`).join('\n')
+                            : 'No products found for that query.';
+
+                    } else if (toolCall.function.name === 'get_product_details') {
+                        const product = await getProductById(args.productId);
+                        if (!product) {
+                            toolResult = 'Product not found.';
+                        } else {
+                            const isFlash = product.isFlashSale && product.flashSalePrice;
+                            const MIN_FLOOR = Math.round((product.costPrice || product.price * 0.7) * 1.15);
+                            toolResult = JSON.stringify({
+                                name: product.name,
+                                price: isFlash ? product.flashSalePrice : product.price,
+                                originalPrice: product.price,
+                                costPrice: product.costPrice,
+                                minFloor: MIN_FLOOR,
+                                comparePrice: product.comparePrice,
+                                canNegotiate: !!product.comparePrice,
+                                isFlashSale: isFlash,
+                                flashSaleEndsAt: product.flashSaleEndsAt,
+                                stock: product.stock,
+                                category: product.category?.name
+                            });
+                        }
+
+                    } else if (toolCall.function.name === 'calculate_shipping') {
+                        const orderResult = await callBotCreateOrder({
+                            productId: args.productId,
+                            quantity: args.quantity || 1,
+                            country: args.country,
+                            deliveryAddress: 'estimate',
+                            customerName: 'estimate',
+                            customerPhone: '0700000000',
+                            agreedPriceKes: 0,
                         });
+                        if (orderResult.success) {
+                            toolResult = `Shipping to ${args.country}: ${orderResult.currency} ${orderResult.shippingFeeLocal} via ${orderResult.shippingMethod}. Estimated delivery: ${orderResult.estimatedDays} days.`;
+                        } else {
+                            toolResult = `Could not calculate shipping: ${orderResult.error}`;
+                        }
+
+                    } else if (toolCall.function.name === 'create_order') {
+                        const orderResult = await callBotCreateOrder(args);
+                        toolResult = JSON.stringify(orderResult);
+
+                    } else if (toolCall.function.name === 'trigger_payment') {
+                        const payResult = await callBotTriggerPayment(args);
+                        toolResult = JSON.stringify(payResult);
                     }
+
+                    chatHistory.push({
+                        role: 'tool',
+                        tool_call_id: toolCall.id,
+                        content: toolResult
+                    });
                 }
 
-                // Second call with tool results
+                // Follow-up AI call with tool results
                 completion = await groq.chat.completions.create({
-                    model: "llama-3.1-8b-instant",
-                    messages: [
-                        { role: "system", content: systemPrompt },
-                        ...chatHistory
-                    ]
+                    model: 'llama-3.1-8b-instant',
+                    messages: [{ role: 'system', content: systemPrompt }, ...chatHistory],
+                    tools,
+                    tool_choice: 'auto',
+                    max_tokens: 600,
                 });
-                replyText = completion.choices[0].message.content;
+                responseMessage = completion.choices[0].message;
+                replyText = responseMessage.content;
             }
 
-            console.log("[DEBUG] AI generated reply:", replyText);
+            console.log('[DEBUG] Final reply:', replyText);
 
-            // Add bot reply to history
-            chatHistory.push({ role: "assistant", content: replyText });
-
-            // Save history back to DB
+            // ─── SAVE HISTORY & REPLY ─────────────────────────────────
+            chatHistory.push({ role: 'assistant', content: replyText });
             await prisma.whatsAppConversation.upsert({
                 where: { remoteJid },
                 update: { messages: chatHistory },
                 create: { remoteJid, messages: chatHistory }
             });
 
-            console.log("[DEBUG] Sending message back to WhatsApp...");
-            // Send reply on WhatsApp
             await sock.sendMessage(remoteJid, { text: replyText });
-            console.log(`✅ Replied successfully to ${remoteJid}!`);
+            console.log(`✅ Replied to ${remoteJid}!`);
 
         } catch (error) {
-            console.error("❌ Error processing message:", error);
+            console.error('❌ Error processing message:', error);
         }
     });
 }
