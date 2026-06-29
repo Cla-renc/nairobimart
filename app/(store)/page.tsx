@@ -25,7 +25,8 @@ import {
     ChefHat,
     ShieldCheck,
     Car,
-    Sparkles
+    Sparkles,
+    BedDouble
 } from "lucide-react";
 
 const ICON_MAP: Record<string, LucideIcon> = {
@@ -42,6 +43,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
     'Automotive Accessories': Car,
     'Fashion & Clothing': Shirt,
     'Beauty & Skincare': Sparkles,
+    'Bedroom Essentials': BedDouble,
 };
 
 const COLOR_MAP: Record<string, string> = {
@@ -58,6 +60,7 @@ const COLOR_MAP: Record<string, string> = {
     'Automotive Accessories': "bg-slate-100 text-slate-600",
     'Fashion & Clothing': "bg-pink-100 text-pink-600",
     'Beauty & Skincare': "bg-rose-100 text-rose-600",
+    'Bedroom Essentials': "bg-purple-100 text-purple-600",
 };
 
 import prisma from "@/lib/prisma";

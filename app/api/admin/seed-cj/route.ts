@@ -22,6 +22,7 @@ const KEYWORD_MAP: { key: string; value: string }[] = [
     { key: 'toy', value: 'toys' },
     { key: 'kitchen', value: 'kitchen gadgets' },
     { key: 'office', value: 'office desk accessories' },
+    { key: 'bedroom', value: 'bedroom decor organizer lamp' },
     { key: 'home', value: 'home decor' },
 ];
 
@@ -56,20 +57,33 @@ export async function GET(req: Request) {
         const VERCEL_TIMEOUT_MS = 7500; // Return early before Vercel 10s hobby timeout
         const isVercel = process.env.VERCEL === '1';
 
-        const categories = await prisma.category.findMany();
+        const categories = await prisma.category.findMany({
+            include: {
+                _count: {
+                    select: { products: true }
+                }
+            }
+        });
+        
         if (categories.length === 0) {
             return NextResponse.json({ success: false, message: "No categories found in the database. Please create them first." }, { status: 400 });
         }
 
-        // Shuffle categories so repeated clicks don't get stuck skipping the same first category
-        const shuffledCategories = categories.sort(() => Math.random() - 0.5);
+        // Sort categories by product count (lowest first) so we always balance the categories
+        // If they have the same count, shuffle them randomly to prevent getting stuck
+        const prioritizedCategories = categories.sort((a, b) => {
+            if (a._count.products !== b._count.products) {
+                return a._count.products - b._count.products;
+            }
+            return Math.random() - 0.5;
+        });
 
         let insertedCount = 0;
         let skippedCount = 0;
         let updatedCount = 0;
         const report: any[] = [];
 
-        for (const category of shuffledCategories) {
+        for (const category of prioritizedCategories) {
             if (isVercel && Date.now() - startTime > VERCEL_TIMEOUT_MS) {
                 console.log("Approaching Vercel timeout, returning early.");
                 break;
