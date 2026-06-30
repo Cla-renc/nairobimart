@@ -358,14 +358,12 @@ RULES:
    a. Full Name
    b. Country (Kenya / Uganda / Tanzania)
    c. Town & Delivery Address
-   d. Phone Number (for payment)
+   d. Phone Number (for M-Pesa payment)
    e. Email (optional, for receipt)
-7. Based on country:
-   - Kenya → use create_order tool then trigger_payment (payhero). Tell them: "I've sent an M-Pesa prompt to your phone. Enter your PIN."
-   - Uganda/Tanzania → use create_order then trigger_payment (pesapal). Send them the payment link.
-8. After payment confirmed: Tell customer their order number and expected delivery time.
+7. Once you have ALL details (a-d required), call the create_order tool. The system will automatically send the M-Pesa prompt to their phone.
+8. After calling create_order, tell the customer to wait for an M-Pesa prompt on their phone. Say: "Please check your phone for the M-Pesa prompt and enter your PIN."
 9. NEVER send them back to the website to pay — complete the sale here in WhatsApp.
-10. YOU MUST CALL the create_order tool to generate the REAL order ID. DO NOT hallucinate or make up an order ID. DO NOT tell the user to pay on the website!
+10. YOU MUST CALL the create_order tool. Do NOT invent order IDs. Do NOT tell them to pay on the website!
 
 Be warm, friendly, use Kenyan energy! Emojis encouraged: 🛒✨🔥🚚💳`;
             } else {
@@ -446,28 +444,9 @@ RULES:
                         }
                     }
                 },
-                {
-                    type: 'function',
-                    function: {
-                        name: 'trigger_payment',
-                        description: 'Trigger payment (M-Pesa STK push for Kenya, Pesapal link for Uganda/Tanzania).',
-                        parameters: {
-                            type: 'object',
-                            properties: {
-                                orderId: { type: 'string' },
-                                orderNumber: { type: 'string' },
-                                paymentMethod: { type: 'string', description: 'payhero or pesapal' },
-                                amount: { type: 'number' },
-                                customerPhone: { type: 'string' },
-                                customerName: { type: 'string' },
-                                customerEmail: { type: 'string' },
-                                country: { type: 'string' }
-                            },
-                            required: ['orderId', 'orderNumber', 'paymentMethod', 'amount', 'customerPhone', 'customerName']
-                        }
-                    }
-                }
             ];
+            // NOTE: trigger_payment is intentionally NOT an AI tool.
+            // The bot code triggers payment automatically after create_order succeeds.
 
             const tools = isOrderMode ? [...salesTools, ...commonTools] : commonTools;
 
@@ -543,37 +522,54 @@ RULES:
 
                     } else if (toolCall.function.name === 'create_order') {
                         const orderResult = await callBotCreateOrder(args);
-                        toolResult = JSON.stringify(orderResult);
 
-                    } else if (toolCall.function.name === 'trigger_payment') {
-                        const payResult = await callBotTriggerPayment(args);
+                        // ── AUTO TRIGGER PAYMENT after successful order creation ──
+                        // This is done in CODE, not by the AI, to guarantee it always happens.
+                        if (orderResult.success) {
+                            console.log(`[DEBUG] Order created: ${orderResult.orderNumber}. Auto-triggering payment...`);
+                            console.log(`[DEBUG] Payment method: ${orderResult.paymentMethod}, Amount: ${orderResult.totalKes}, Phone: ${orderResult.customerPhone}`);
 
-                        // ── INTERCEPT: Don't let AI prematurely confirm the order ──
-                        // If payment was triggered successfully, send a clear message and stop.
-                        // The real order confirmation (with order number) will be sent by the
-                        // PayHero webhook ONLY after we confirm the customer actually paid.
-                        if (payResult.success) {
-                            const pendingMsg = `✅ Almost there! I've sent an *M-Pesa payment prompt* to *${args.customerPhone}* 📱
-
-👉 Please check your phone now and *enter your M-Pesa PIN* to complete the payment of *KES ${args.amount?.toLocaleString()}*.
-
-Once your payment is confirmed, I'll send you your *Order Number* and full receipt right here! 🎉
-
-_If you didn't get the prompt, reply "retry" and I'll send it again._`;
-
-                            chatHistory.push({ role: 'assistant', content: pendingMsg });
-                            await prisma.whatsAppConversation.upsert({
-                                where: { remoteJid },
-                                update: { messages: chatHistory },
-                                create: { remoteJid, messages: chatHistory }
+                            const payResult = await callBotTriggerPayment({
+                                orderId: orderResult.orderId,
+                                orderNumber: orderResult.orderNumber,
+                                paymentMethod: orderResult.paymentMethod,
+                                amount: orderResult.totalKes,
+                                customerPhone: orderResult.customerPhone || args.customerPhone,
+                                customerName: args.customerName,
+                                customerEmail: args.customerEmail || '',
+                                country: orderResult.country,
                             });
-                            await sock.sendMessage(remoteJid, { text: pendingMsg });
-                            console.log(`✅ M-Pesa prompt sent. Waiting for PayHero webhook to confirm payment.`);
-                            return; // Stop here — webhook handles the rest
-                        }
 
-                        toolResult = JSON.stringify(payResult);
-                    }
+                            console.log(`[DEBUG] Payment trigger result:`, JSON.stringify(payResult));
+
+                            if (payResult.success) {
+                                // Kenya M-Pesa: tell them to check phone for prompt
+                                const pendingMsg = `✅ *Order created!* Now let's get you paid 📱
+
+I've sent an *M-Pesa STK Push* to *${args.customerPhone}*.
+
+👉 *Check your phone now* and *enter your M-Pesa PIN* to pay *KES ${orderResult.totalKes?.toLocaleString()}*.
+
+Your *Order Number* and receipt will be sent here the moment payment is confirmed! 🎉
+
+_Didn't get the prompt? Make sure your phone number is correct, then reply "retry"._`;
+
+                                chatHistory.push({ role: 'assistant', content: pendingMsg });
+                                await prisma.whatsAppConversation.upsert({
+                                    where: { remoteJid },
+                                    update: { messages: chatHistory },
+                                    create: { remoteJid, messages: chatHistory }
+                                });
+                                await sock.sendMessage(remoteJid, { text: pendingMsg });
+                                console.log(`✅ M-Pesa STK push sent successfully for order ${orderResult.orderNumber}`);
+                                return; // Done — webhook will send order confirmation after payment
+                            } else {
+                                // Payment trigger failed — tell the AI so it can handle gracefully
+                                toolResult = JSON.stringify({ ...orderResult, paymentError: payResult.error || 'Payment trigger failed' });
+                            }
+                        } else {
+                            toolResult = JSON.stringify(orderResult);
+                        }
 
                     chatHistory.push({
                         role: 'tool',
