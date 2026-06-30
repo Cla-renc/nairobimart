@@ -111,12 +111,12 @@ export async function POST(request: Request) {
                 shippingCost: countryKey === 'kenya' ? shippingFeeLocal : 0,
                 currency: 'KES',
                 notes: `WhatsApp Order | Source: whatsapp | Country: ${country} | Address: ${deliveryAddress}`,
-                shippingAddress: {
+                shippingAddress: JSON.stringify({
                     name: customerName,
                     phone: customerPhone,
                     address: deliveryAddress,
                     country,
-                },
+                }),
                 items: {
                     create: [{
                         productId: product.id,
