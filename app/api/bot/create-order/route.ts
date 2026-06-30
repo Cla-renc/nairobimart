@@ -121,9 +121,8 @@ export async function POST(request: Request) {
                     create: [{
                         productId: product.id,
                         quantity,
-                        price: productPriceKes,
+                        unitPrice: productPriceKes,
                         costPrice: product.costPrice ?? 0,
-                        name: product.name,
                     }]
                 }
             }
