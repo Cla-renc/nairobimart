@@ -8,6 +8,7 @@ export const dynamic = "force-dynamic";
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
     const product = await prisma.product.findUnique({
         where: { slug: params.slug },
+        include: { images: true },
     });
 
     if (!product) {
@@ -22,6 +23,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
         openGraph: {
             title: product.name,
             description: product.description.substring(0, 160),
+            images: product.images.length > 0 ? [{ url: product.images[0].url }] : [],
         }
     };
 }
