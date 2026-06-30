@@ -267,7 +267,7 @@ export default function ProductDetailClient({
                     {/* WhatsApp Order Button */}
                     <a
                         href={`https://wa.me/254741206995?text=${encodeURIComponent(
-                            `${product.images[0]?.url || ''}\n\n🛒 *ORDER REQUEST*\nProduct: ${product.name}\nProduct ID: ${product.id}\nVariant: ${selectedVariantId || 'Standard'}\nPrice: KES ${product.price.toLocaleString()}\nQuantity: ${quantity}\nFlash Sale: ${false}\n\nProduct Link: ${(process.env.NEXT_PUBLIC_URL || 'https://nairobimart-gwna.vercel.app')}/products/${product.slug}\n\nI am interested in ordering this item via WhatsApp.`
+                            `🛒 *ORDER REQUEST*\nProduct: ${product.name}\nProduct ID: ${product.id}\nVariant: ${selectedVariantId || 'Standard'}\nPrice: KES ${product.price.toLocaleString()}\nQuantity: ${quantity}\nFlash Sale: ${false}\n\nProduct Link: ${(process.env.NEXT_PUBLIC_URL || 'https://nairobimart-gwna.vercel.app')}/products/${product.slug}?ref=wa2\n\nI am interested in ordering this item via WhatsApp.`
                         )}`}
                         target="_blank"
                         rel="noopener noreferrer"
