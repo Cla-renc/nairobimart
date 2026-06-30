@@ -81,9 +81,10 @@ export async function POST(request: Request) {
         if (paymentMethod === 'payhero') {
             const result = await triggerPayheroSTK(customerPhone, amount, orderId, orderNumber);
             if (result.success) {
+                const ref = (result as any).reference;
                 await prisma.order.update({
                     where: { id: orderId },
-                    data: { notes: { set: `WhatsApp Order | payhero_ref: ${result.reference}` } }
+                    data: { notes: { set: `WhatsApp Order | payhero_ref: ${ref}` } }
                 });
             }
             return NextResponse.json(result);
