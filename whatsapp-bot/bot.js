@@ -189,19 +189,20 @@ async function startBot() {
 
     const logger = pino({ level: "silent" });
     const sock = makeWASocket({
-        version, // Pass the dynamically fetched version
+        version,
         auth: {
             creds: state.creds,
             keys: makeCacheableSignalKeyStore(state.keys, logger)
         },
-        printQRInTerminal: !process.env.BOT_PHONE_NUMBER, // Only print QR if no phone number is provided
-        logger, 
-        browser: Browsers.ubuntu('Chrome'),
-        markOnlineOnConnect: false, // Prevents suspicious constant online status
-        syncFullHistory: false, // Prevents memory crashes on reconnect
+        printQRInTerminal: !process.env.BOT_PHONE_NUMBER,
+        logger,
+        // macOS Chrome is required for pairing code flow to work correctly
+        browser: Browsers.macOS('Chrome'),
+        markOnlineOnConnect: false,
+        syncFullHistory: false,
         generateHighQualityLinkPreview: false,
         getMessage: async (key) => {
-            return { conversation: 'hello' }; // Dummy return to prevent crash on missing message
+            return { conversation: 'hello' };
         }
     });
 
@@ -228,19 +229,23 @@ async function startBot() {
                     // Short delay to ensure crypto is ready
                     setTimeout(async () => {
                     try {
-                        const cleanNumber = process.env.BOT_PHONE_NUMBER.replace(/[^0-9]/g, '');
+                        const rawNumber = process.env.BOT_PHONE_NUMBER || '';
+                        const cleanNumber = rawNumber.replace(/[^0-9]/g, '');
+                        console.log(`[PAIRING] Raw BOT_PHONE_NUMBER: "${rawNumber}"`);
+                        console.log(`[PAIRING] Cleaned number being used: "${cleanNumber}"`);
+                        console.log(`[PAIRING] Make sure this EXACTLY matches the WhatsApp Business number on your phone!`);
                         const code = await sock.requestPairingCode(cleanNumber);
                         console.log(`\n╔══════════════════════════════════════════════╗`);
                         console.log(`║   🚀 YOUR PAIRING CODE IS: ${code.padEnd(16)}║`);
                         console.log(`╚══════════════════════════════════════════════╝\n`);
-                        console.log(`STEPS: Open WhatsApp on your host phone`);
+                        console.log(`STEPS: Open WhatsApp Business on your phone`);
                         console.log(`→ Tap (⋮) Menu → Linked Devices → Link a Device`);
                         console.log(`→ Tap 'Link with phone number instead'`);
                         console.log(`→ Enter the code above. You have 60 seconds!`);
-                        console.log(`→ If it expires, restart this service on Render.`);
+                        console.log(`→ The linked number must match: ${cleanNumber}`);
                     } catch (error) {
                         console.error("Failed to request pairing code:", error.message);
-                        pairingCodeRequested = false; // allow retry if it failed
+                        pairingCodeRequested = false;
                     }
                 }, 3000);
                 }
