@@ -570,6 +570,7 @@ _Didn't get the prompt? Make sure your phone number is correct, then reply "retr
                         } else {
                             toolResult = JSON.stringify(orderResult);
                         }
+                    } // end create_order
 
                     chatHistory.push({
                         role: 'tool',
