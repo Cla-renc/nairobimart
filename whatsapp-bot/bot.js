@@ -347,6 +347,7 @@ RULES:
    - Uganda/Tanzania → use create_order then trigger_payment (pesapal). Send them the payment link.
 8. After payment confirmed: Tell customer their order number and expected delivery time.
 9. NEVER send them back to the website to pay — complete the sale here in WhatsApp.
+10. YOU MUST CALL the create_order tool to generate the REAL order ID. DO NOT hallucinate or make up an order ID. DO NOT tell the user to pay on the website!
 
 Be warm, friendly, use Kenyan energy! Emojis encouraged: 🛒✨🔥🚚💳`;
             } else {
@@ -455,7 +456,7 @@ RULES:
             // ─── FIRST AI CALL ────────────────────────────────────────
             console.log('[DEBUG] Calling Groq AI...');
             let completion = await groq.chat.completions.create({
-                model: 'llama-3.1-8b-instant',
+                model: 'llama-3.1-70b-versatile',
                 messages: [{ role: 'system', content: systemPrompt }, ...chatHistory],
                 tools,
                 tool_choice: 'auto',
