@@ -77,7 +77,7 @@ const groq = new OpenAI({
 
 // In-memory conversation history removed. State is now persisted to MongoDB via Prisma.
 const WEBSITE_URL = process.env.NEXT_PUBLIC_URL || 'https://nairobimart-gwna.vercel.app';
-const ORDER_PREFIX = '🛒 *ORDER REQUEST*'; // Magic prefix from the WhatsApp Order button
+const ORDER_PREFIX = '*ORDER REQUEST*'; // Magic prefix from the WhatsApp Order button (omitting emoji for robustness)
 
 async function getProductCatalog() {
     try {
