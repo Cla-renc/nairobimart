@@ -303,8 +303,17 @@ async function startBot() {
 
             console.log(`✅ Received from ${remoteJid}: ${textMessage}`);
 
+            // ─── LOAD CHAT HISTORY FIRST ─────────────────────────────
+            let conversationRecord = await prisma.whatsAppConversation.findUnique({ where: { remoteJid } });
+            let chatHistory = conversationRecord ? conversationRecord.messages : [];
+            chatHistory.push({ role: 'user', content: textMessage });
+            if (chatHistory.length > 10) chatHistory = chatHistory.slice(-10);
+
             // ─── DETECT MODE ──────────────────────────────────────────
-            const isOrderMode = textMessage.trim().startsWith(ORDER_PREFIX);
+            // If the current message, OR any message in the recent history, is an order request, we stay in Order Mode.
+            const isOrderMode = chatHistory.some(msg => 
+                msg.role === 'user' && msg.content.includes(ORDER_PREFIX)
+            );
 
             // ─── BUILD SYSTEM PROMPT ─────────────────────────────────
             let systemPrompt;
@@ -355,16 +364,10 @@ RULES:
 1. Use the search_catalog tool to look up product prices and stock before answering.
 2. If stock is OUT, say it's sold out and suggest alternatives.
 3. If stock < 5, create urgency: "Only a few left!"
-4. To buy: direct them to ${WEBSITE_URL} (M-Pesa & card accepted).
+4. To buy: direct them to ${process.env.NEXT_PUBLIC_URL || 'https://nairobimart-gwna.vercel.app'} (M-Pesa & card accepted).
 5. Only discuss NairobiMart products. Decline off-topic requests politely.
 6. Keep replies short and mobile-friendly. Use emojis (🛒✨🔥🚚).`;
             }
-
-            // ─── LOAD CHAT HISTORY ───────────────────────────────────
-            let conversationRecord = await prisma.whatsAppConversation.findUnique({ where: { remoteJid } });
-            let chatHistory = conversationRecord ? conversationRecord.messages : [];
-            chatHistory.push({ role: 'user', content: textMessage });
-            if (chatHistory.length > 10) chatHistory = chatHistory.slice(-10);
 
             // ─── DEFINE TOOLS ─────────────────────────────────────────
             const commonTools = [
