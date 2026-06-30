@@ -46,6 +46,16 @@ app.post('/api/send-dispatch', async (req, res) => {
     }
 });
 
+// Admin endpoint to clear WhatsApp session from MongoDB and force fresh pairing
+app.post('/clear-session', async (req, res) => {
+    try {
+        await prisma.whatsAppSession.deleteMany({});
+        res.json({ success: true, message: '✅ Session cleared. Restart the Render service to get a fresh pairing code.' });
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`Express HTTP Server listening on port ${PORT}`);
@@ -168,14 +178,6 @@ async function callBotTriggerPayment(params) {
 
 async function startBot() {
     console.log("Starting NairobiMart AI WhatsApp Bot...");
-
-    // TEMPORARY FIX: Wipe the corrupted MongoDB session keys to force a clean start
-    try {
-        await prisma.whatsAppSession.deleteMany({});
-        console.log('🗑️  MongoDB session forcefully cleared for a fresh start!');
-    } catch(e) {
-        console.error('Failed to clear MongoDB session:', e.message);
-    }
 
     const { state, saveCreds } = await useMongoDBAuthState(prisma);
     console.log('✅ Loaded auth state from MongoDB.');
