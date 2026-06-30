@@ -325,13 +325,21 @@ async function startBot() {
             let conversationRecord = await prisma.whatsAppConversation.findUnique({ where: { remoteJid } });
             let chatHistory = conversationRecord ? conversationRecord.messages : [];
             chatHistory.push({ role: 'user', content: textMessage });
-            if (chatHistory.length > 10) chatHistory = chatHistory.slice(-10);
-
             // ─── DETECT MODE ──────────────────────────────────────────
-            // If the current message, OR any message in the recent history, is an order request, we stay in Order Mode.
+            // If the current message, OR any message in the FULL history, is an order request, we stay in Order Mode.
             const isOrderMode = chatHistory.some(msg => 
                 msg.role === 'user' && msg.content.includes(ORDER_PREFIX)
             );
+
+            // Slice history to last 40 messages (10 full turns with tool calls) to save tokens but retain negotiation context
+            if (chatHistory.length > 40) {
+                // Ensure we keep the initial order request message if we are in order mode
+                const initialOrderMsg = isOrderMode ? chatHistory.find(m => m.role === 'user' && m.content.includes(ORDER_PREFIX)) : null;
+                chatHistory = chatHistory.slice(-40);
+                if (initialOrderMsg && !chatHistory.includes(initialOrderMsg)) {
+                    chatHistory.unshift(initialOrderMsg);
+                }
+            }
 
             // ─── BUILD SYSTEM PROMPT ─────────────────────────────────
             let systemPrompt;
