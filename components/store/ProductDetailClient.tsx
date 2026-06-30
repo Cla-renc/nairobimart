@@ -266,7 +266,7 @@ export default function ProductDetailClient({
                     {/* WhatsApp Order Button */}
                     <a
                         href={`https://wa.me/254741206995?text=${encodeURIComponent(
-                            `🛒 *ORDER REQUEST*\nProduct: ${product.name}\nProduct ID: ${product.id}\nVariant: ${selectedVariantId || 'Standard'}\nPrice: KES ${product.price.toLocaleString()}\nQuantity: ${quantity}\nFlash Sale: ${false}\n\nI am interested in ordering this item via WhatsApp.`
+                            `🛒 *ORDER REQUEST*\nProduct: ${product.name}\nProduct ID: ${product.id}\nVariant: ${selectedVariantId || 'Standard'}\nPrice: KES ${product.price.toLocaleString()}\nQuantity: ${quantity}\nFlash Sale: ${false}\nImage: ${product.images[0]?.url}\n\nI am interested in ordering this item via WhatsApp.`
                         )}`}
                         target="_blank"
                         rel="noopener noreferrer"
