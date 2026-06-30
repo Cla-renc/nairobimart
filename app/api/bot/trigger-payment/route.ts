@@ -10,35 +10,14 @@ import prisma from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 
-const PAYHERO_AUTH = Buffer.from(
-    `${process.env.PAYHERO_USERNAME}:${process.env.PAYHERO_PASSWORD}`
-).toString('base64');
+import { initiatePayHeroStkPush } from '@/lib/payhero';
 
 async function triggerPayheroSTK(phone: string, amount: number, orderId: string, orderNumber: string) {
-    const payload = {
-        amount: Math.round(amount),
-        phone_number: phone.replace(/\D/g, '').replace(/^0/, '254'),
-        channel_id: process.env.PAYHERO_CHANNEL_ID,
-        provider: 'm-pesa',
-        external_reference: orderNumber,
-        callback_url: `${process.env.NEXT_PUBLIC_URL}/api/webhook/payhero`,
-    };
-
-    const response = await fetch('https://backend.payhero.co.ke/api/v2/payments', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Basic ${PAYHERO_AUTH}`,
-        },
-        body: JSON.stringify(payload),
-    });
-
-    const result = await response.json();
-
-    if (response.ok && result.success !== false) {
-        return { success: true, reference: result.reference || result.CheckoutRequestID };
-    } else {
-        return { success: false, error: result.message || 'PayHero STK push failed' };
+    try {
+        const result = await initiatePayHeroStkPush(amount, phone, orderNumber, "NairobiMart WhatsApp User");
+        return result;
+    } catch (error: any) {
+        return { success: false, error: error.message || 'PayHero STK push failed' };
     }
 }
 
