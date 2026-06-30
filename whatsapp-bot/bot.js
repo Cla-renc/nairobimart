@@ -46,6 +46,24 @@ app.post('/api/send-dispatch', async (req, res) => {
     }
 });
 
+// Generic send-message endpoint — used by webhooks to send any message to a customer
+app.post('/api/send-message', async (req, res) => {
+    try {
+        const { phone, message } = req.body;
+        if (!phone || !message || !whatsappSocket) {
+            return res.status(400).json({ error: "Missing phone/message or socket not ready" });
+        }
+        let jid = phone.replace(/[^0-9]/g, '');
+        if (jid.startsWith('0')) jid = '254' + jid.slice(1);
+        jid = jid + '@s.whatsapp.net';
+        await whatsappSocket.sendMessage(jid, { text: message });
+        res.json({ success: true, message: "Message sent" });
+    } catch (error) {
+        console.error("Error sending message:", error);
+        res.status(500).json({ error: "Failed to send message" });
+    }
+});
+
 // Admin endpoint to clear WhatsApp session from MongoDB and force fresh pairing
 app.post('/clear-session', async (req, res) => {
     try {
@@ -529,6 +547,31 @@ RULES:
 
                     } else if (toolCall.function.name === 'trigger_payment') {
                         const payResult = await callBotTriggerPayment(args);
+
+                        // ── INTERCEPT: Don't let AI prematurely confirm the order ──
+                        // If payment was triggered successfully, send a clear message and stop.
+                        // The real order confirmation (with order number) will be sent by the
+                        // PayHero webhook ONLY after we confirm the customer actually paid.
+                        if (payResult.success) {
+                            const pendingMsg = `✅ Almost there! I've sent an *M-Pesa payment prompt* to *${args.customerPhone}* 📱
+
+👉 Please check your phone now and *enter your M-Pesa PIN* to complete the payment of *KES ${args.amount?.toLocaleString()}*.
+
+Once your payment is confirmed, I'll send you your *Order Number* and full receipt right here! 🎉
+
+_If you didn't get the prompt, reply "retry" and I'll send it again._`;
+
+                            chatHistory.push({ role: 'assistant', content: pendingMsg });
+                            await prisma.whatsAppConversation.upsert({
+                                where: { remoteJid },
+                                update: { messages: chatHistory },
+                                create: { remoteJid, messages: chatHistory }
+                            });
+                            await sock.sendMessage(remoteJid, { text: pendingMsg });
+                            console.log(`✅ M-Pesa prompt sent. Waiting for PayHero webhook to confirm payment.`);
+                            return; // Stop here — webhook handles the rest
+                        }
+
                         toolResult = JSON.stringify(payResult);
                     }
 
@@ -541,7 +584,7 @@ RULES:
 
                 // Follow-up AI call with tool results
                 completion = await groq.chat.completions.create({
-                    model: 'llama-3.1-8b-instant',
+                    model: 'llama-3.3-70b-versatile',
                     messages: [{ role: 'system', content: systemPrompt }, ...chatHistory],
                     tools,
                     tool_choice: 'auto',

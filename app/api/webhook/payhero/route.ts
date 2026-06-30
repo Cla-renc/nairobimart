@@ -128,17 +128,13 @@ export async function POST(req: Request) {
             if (isWhatsAppOrder && customerPhone && process.env.BOT_SERVER_URL) {
                 try {
                     const waPhone = customerPhone.replace(/\D/g, '').replace(/^0/, '254');
-                    await fetch(`${process.env.BOT_SERVER_URL}/api/send-dispatch`, {
+                    const confirmMsg = `🎉 *Payment Confirmed!* Thank you, ${customerName}!\n\n✅ *Order Number:* ${updatedOrder.orderNumber}\n💰 *Amount Paid:* KES ${updatedOrder.total?.toLocaleString()}\n📦 *Delivery Address:* ${deliveryAddress}\n🚚 *Estimated Delivery:* 15–30 days\n\nWe'll notify you once your order is dispatched. Thank you for shopping with *NairobiMart!* 🛒✨`;
+                    await fetch(`${process.env.BOT_SERVER_URL}/api/send-message`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            phone: waPhone,
-                            customerName,
-                            orderNumber: updatedOrder.orderNumber,
-                            trackingUrl: `${process.env.NEXT_PUBLIC_URL}/orders/${updatedOrder.orderNumber}`,
-                        })
+                        body: JSON.stringify({ phone: waPhone, message: confirmMsg }),
                     });
-                    console.log(`✅ WhatsApp confirmation sent to: ${waPhone}`);
+                    console.log(`✅ WhatsApp order confirmation sent to: ${waPhone}`);
                 } catch (waError) {
                     console.error('❌ Failed to send WhatsApp confirmation:', waError);
                 }
