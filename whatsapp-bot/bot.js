@@ -360,10 +360,9 @@ RULES:
    c. Town & Delivery Address
    d. Phone Number (for M-Pesa payment)
    e. Email (optional, for receipt)
-7. Once you have ALL details (a-d required), call the create_order tool. The system will automatically send the M-Pesa prompt to their phone.
-8. After calling create_order, tell the customer to wait for an M-Pesa prompt on their phone. Say: "Please check your phone for the M-Pesa prompt and enter your PIN."
-9. NEVER send them back to the website to pay — complete the sale here in WhatsApp.
-10. YOU MUST CALL the create_order tool. Do NOT invent order IDs. Do NOT tell them to pay on the website!
+7. Once you have ALL details (a-d required), call the create_order tool immediately. Do not say anything else.
+8. NEVER send them back to the website to pay — complete the sale here in WhatsApp.
+9. YOU MUST CALL the create_order tool. Do NOT invent order IDs. Do NOT tell them to pay on the website!
 
 Be warm, friendly, use Kenyan energy! Emojis encouraged: 🛒✨🔥🚚💳`;
             } else {
@@ -453,10 +452,11 @@ RULES:
             // ─── FIRST AI CALL ────────────────────────────────────────
             console.log('[DEBUG] Calling Groq AI...');
             let completion = await groq.chat.completions.create({
-                model: 'llama-3.1-8b-instant',
+                model: 'llama-3.3-70b-versatile',
                 messages: [{ role: 'system', content: systemPrompt }, ...chatHistory],
                 tools,
                 tool_choice: 'auto',
+                parallel_tool_calls: false,
                 max_tokens: 600,
             });
 
@@ -544,15 +544,7 @@ RULES:
 
                             if (payResult.success) {
                                 // Kenya M-Pesa: tell them to check phone for prompt
-                                const pendingMsg = `✅ *Order created!* Now let's get you paid 📱
-
-I've sent an *M-Pesa STK Push* to *${args.customerPhone}*.
-
-👉 *Check your phone now* and *enter your M-Pesa PIN* to pay *KES ${orderResult.totalKes?.toLocaleString()}*.
-
-Your *Order Number* and receipt will be sent here the moment payment is confirmed! 🎉
-
-_Didn't get the prompt? Make sure your phone number is correct, then reply "retry"._`;
+                                const pendingMsg = `✅ *Order created!* Now let's get you paid 📱\n\nI've sent an *M-Pesa STK Push* to *${args.customerPhone}*.\n\n👉 *Check your phone now* and *enter your M-Pesa PIN* to pay *KES ${orderResult.totalKes?.toLocaleString()}*.\n\nYour *Order Number* and receipt will be sent here the moment payment is confirmed! 🎉\n\n_Didn't get the prompt? Make sure your phone number is correct, then reply "retry"._`;
 
                                 chatHistory.push({ role: 'assistant', content: pendingMsg });
                                 await prisma.whatsAppConversation.upsert({
@@ -564,8 +556,18 @@ _Didn't get the prompt? Make sure your phone number is correct, then reply "retr
                                 console.log(`✅ M-Pesa STK push sent successfully for order ${orderResult.orderNumber}`);
                                 return; // Done — webhook will send order confirmation after payment
                             } else {
-                                // Payment trigger failed — tell the AI so it can handle gracefully
-                                toolResult = JSON.stringify({ ...orderResult, paymentError: payResult.error || 'Payment trigger failed' });
+                                // Payment trigger failed — intercept and tell the user directly
+                                const errorMsg = `⚠️ *Order created, but payment failed to trigger.*\n\nWe couldn't send the M-Pesa prompt to ${args.customerPhone}. Error: ${payResult.error || 'Unknown error'}\n\nPlease check if your number is correct and registered on M-Pesa, then reply to try again.`;
+                                
+                                chatHistory.push({ role: 'assistant', content: errorMsg });
+                                await prisma.whatsAppConversation.upsert({
+                                    where: { remoteJid },
+                                    update: { messages: chatHistory },
+                                    create: { remoteJid, messages: chatHistory }
+                                });
+                                await sock.sendMessage(remoteJid, { text: errorMsg });
+                                console.error(`❌ M-Pesa STK push failed:`, payResult.error);
+                                return; // Stop here so AI doesn't hallucinate
                             }
                         } else {
                             toolResult = JSON.stringify(orderResult);
@@ -581,10 +583,11 @@ _Didn't get the prompt? Make sure your phone number is correct, then reply "retr
 
                 // Follow-up AI call with tool results
                 completion = await groq.chat.completions.create({
-                    model: 'llama-3.1-8b-instant',
+                    model: 'llama-3.3-70b-versatile',
                     messages: [{ role: 'system', content: systemPrompt }, ...chatHistory],
                     tools,
                     tool_choice: 'auto',
+                    parallel_tool_calls: false,
                     max_tokens: 600,
                 });
                 responseMessage = completion.choices[0].message;
