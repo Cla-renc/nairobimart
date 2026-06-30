@@ -108,8 +108,7 @@ export async function POST(request: Request) {
                 paymentMethod: config.paymentMethod === 'payhero' ? 'mpesa' : 'card',
                 total: totalKes,
                 subtotal: productPriceKes * quantity,
-                shippingCost: countryKey === 'kenya' ? shippingFeeLocal : 0,
-                currency: 'KES',
+                shippingFee: countryKey === 'kenya' ? shippingFeeLocal : 0,
                 notes: `WhatsApp Order | Source: whatsapp | Country: ${country} | Address: ${deliveryAddress}`,
                 shippingAddress: JSON.stringify({
                     name: customerName,
