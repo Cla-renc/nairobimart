@@ -453,7 +453,7 @@ RULES:
             // ─── FIRST AI CALL ────────────────────────────────────────
             console.log('[DEBUG] Calling Groq AI...');
             let completion = await groq.chat.completions.create({
-                model: 'llama3-70b-8192',
+                model: 'llama-3.1-8b-instant',
                 messages: [{ role: 'system', content: systemPrompt }, ...chatHistory],
                 tools,
                 tool_choice: 'auto',
@@ -581,7 +581,7 @@ _Didn't get the prompt? Make sure your phone number is correct, then reply "retr
 
                 // Follow-up AI call with tool results
                 completion = await groq.chat.completions.create({
-                    model: 'llama3-70b-8192',
+                    model: 'llama-3.1-8b-instant',
                     messages: [{ role: 'system', content: systemPrompt }, ...chatHistory],
                     tools,
                     tool_choice: 'auto',
