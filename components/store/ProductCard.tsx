@@ -187,7 +187,7 @@ const ProductCard = ({ product }: ProductCardProps) => {
                 </Button>
                 <a
                     href={`https://wa.me/254741206995?text=${encodeURIComponent(
-                        `🛒 *ORDER REQUEST*\nProduct: ${product.name}\nProduct ID: ${product.id}\nPrice: KES ${product.price.toLocaleString()}\nQuantity: 1\nFlash Sale: ${product.isSale ? 'true' : 'false'}\n\nProduct Link: ${(process.env.NEXT_PUBLIC_URL || 'https://nairobimart-gwna.vercel.app')}/products/${product.slug}?ref=wa\n\nI am interested in ordering this item via WhatsApp.`
+                        `${product.image}\n\n🛒 *ORDER REQUEST*\nProduct: ${product.name}\nProduct ID: ${product.id}\nPrice: KES ${product.price.toLocaleString()}\nQuantity: 1\nFlash Sale: ${product.isSale ? 'true' : 'false'}\n\nProduct Link: ${(process.env.NEXT_PUBLIC_URL || 'https://nairobimart-gwna.vercel.app')}/products/${product.slug}\n\nI am interested in ordering this item via WhatsApp.`
                     )}`}
                     target="_blank"
                     rel="noopener noreferrer"
