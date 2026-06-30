@@ -456,7 +456,7 @@ RULES:
             // ─── FIRST AI CALL ────────────────────────────────────────
             console.log('[DEBUG] Calling Groq AI...');
             let completion = await groq.chat.completions.create({
-                model: 'llama-3.1-70b-versatile',
+                model: 'llama-3.3-70b-versatile',
                 messages: [{ role: 'system', content: systemPrompt }, ...chatHistory],
                 tools,
                 tool_choice: 'auto',
