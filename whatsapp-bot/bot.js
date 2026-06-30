@@ -252,6 +252,8 @@ async function startBot() {
             } else {
                 console.log("\nSCAN THIS QR CODE IN YOUR WHATSAPP TO LOG IN:\n");
                 qrcode.generate(qr, { small: true });
+                console.log("\n🚨 IF THE QR CODE ABOVE IS DISTORTED BY LOG PREFIXES, CLICK THIS LINK INSTEAD:");
+                console.log(`👉 https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(qr)} \n`);
             }
         }
 
