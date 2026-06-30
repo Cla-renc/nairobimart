@@ -24,7 +24,7 @@ export async function generateMetadata({ params }: { params: { slug: string } })
             title: product.name,
             description: product.description.substring(0, 160),
             images: product.images.length > 0 
-                ? [{ url: `${process.env.NEXT_PUBLIC_URL || 'https://nairobimart-gwna.vercel.app'}/_next/image?url=${encodeURIComponent(product.images[0].url)}&w=640&q=75` }] 
+                ? [{ url: `${process.env.NEXT_PUBLIC_URL || 'https://nairobimart-gwna.vercel.app'}/api/product-image/${product.slug}/image.jpg` }] 
                 : [],
         }
     };
