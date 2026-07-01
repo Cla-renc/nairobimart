@@ -15,7 +15,15 @@ export async function processSuccessfulPayment(orderId: string) {
 
         if (!order.cjOrderId) {
             console.log(`Automatically generating CJ Order for: ${order.orderNumber}`);
-            
+
+            // Parse the shipping address JSON stored in the order
+            let shippingData: any = {};
+            try {
+                shippingData = typeof order.shippingAddress === 'string'
+                    ? JSON.parse(order.shippingAddress)
+                    : (order.shippingAddress || {});
+            } catch { shippingData = {}; }
+
             // Map the items to CJ Order format
             const cjItems = order.items.map(item => ({
                 product: { cjProductId: item.product.cjProductId || "" },
@@ -30,11 +38,12 @@ export async function processSuccessfulPayment(orderId: string) {
 
             const cjOrderData = {
                 orderNumber: order.orderNumber,
-                shippingCity: order.shippingCity || "",
-                shippingProvince: order.shippingCounty || "",
-                shippingAddress: order.shippingAddress || "",
-                shippingName: order.shippingName || "Customer",
-                shippingPhone: order.shippingPhone || "",
+                shippingCountry: shippingData.country || order.notes?.match(/Country: (\w+)/)?.[1] || 'Kenya',
+                shippingCity: shippingData.city || shippingData.address || order.shippingCity || '',
+                shippingProvince: shippingData.county || order.shippingCounty || '',
+                shippingAddress: shippingData.address || order.shippingAddress as string || '',
+                shippingName: shippingData.name || order.shippingName || 'Customer',
+                shippingPhone: shippingData.phone || order.shippingPhone || '',
                 items: cjItems
             };
 

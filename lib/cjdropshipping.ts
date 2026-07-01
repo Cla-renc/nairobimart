@@ -124,8 +124,10 @@ export const fetchCJProductDetail = async (productId: string) => {
 
 export interface CJOrderData {
     orderNumber: string;
+    shippingCountry?: string;
     shippingProvince?: string;
     shippingCity: string;
+    shippingZip?: string;
     shippingAddress: string;
     shippingName: string;
     shippingPhone: string;
@@ -141,18 +143,27 @@ export const createCJOrder = async (orderData: CJOrderData) => {
     const token = await getCJAccessToken();
     if (!token) return { success: false, error: "No API token could be generated" };
 
+    // Map country name to ISO code and full name for CJ API
+    const countryMap: Record<string, { code: string; name: string }> = {
+        kenya:    { code: 'KE', name: 'Kenya' },
+        uganda:   { code: 'UG', name: 'Uganda' },
+        tanzania: { code: 'TZ', name: 'Tanzania' },
+    };
+    const countryKey = (orderData.shippingCountry || 'kenya').toLowerCase().trim();
+    const countryInfo = countryMap[countryKey] || { code: 'KE', name: 'Kenya' };
+
     const payload = {
         orderNumber: orderData.orderNumber,
-        shippingZip: "90210",
-        shippingCountryCode: "US", // Defaulting for now
-        shippingCountry: "United States",
-        shippingProvince: orderData.shippingProvince || "CA",
+        shippingZip: orderData.shippingZip || '00100',
+        shippingCountryCode: countryInfo.code,
+        shippingCountry: countryInfo.name,
+        shippingProvince: orderData.shippingProvince || orderData.shippingCity,
         shippingCity: orderData.shippingCity,
         shippingAddress: orderData.shippingAddress,
         shippingCustomerName: orderData.shippingName,
         shippingPhone: orderData.shippingPhone,
-        remark: "Dropshipping Order",
-        fromCountryCode: "CN",
+        remark: 'Dropshipping Order via NairobiMart',
+        fromCountryCode: 'CN',
         products: orderData.items.map((item) => ({
             vid: item.variant?.cjVariantId || item.product.cjProductId,
             quantity: item.quantity
