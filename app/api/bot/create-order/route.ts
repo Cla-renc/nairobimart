@@ -86,16 +86,32 @@ export async function POST(request: Request) {
         const orderNumber = `WA-${Date.now().toString(36).toUpperCase()}`;
 
         // 5. Find or create a guest user for this phone
-        let user = await prisma.user.findFirst({ where: { phone: customerPhone } });
+        const guestEmail = customerEmail || `wa.${customerPhone.replace(/\D/g, '')}@nairobimart.co.ke`;
+        let user = await prisma.user.findFirst({
+            where: { OR: [{ phone: customerPhone }, { email: guestEmail }] }
+        });
         if (!user) {
-            user = await prisma.user.create({
-                data: {
-                    name: customerName,
-                    phone: customerPhone,
-                    email: customerEmail || `${customerPhone.replace(/\D/g, '')}@whatsapp.nairobimart.co.ke`,
-                    role: 'customer',
-                }
-            });
+            try {
+                user = await prisma.user.create({
+                    data: {
+                        name: customerName,
+                        phone: customerPhone,
+                        email: guestEmail,
+                    }
+                });
+            } catch (createErr: any) {
+                // Race condition or duplicate — fetch the existing record
+                user = await prisma.user.findFirst({
+                    where: { OR: [{ phone: customerPhone }, { email: guestEmail }] }
+                });
+                if (!user) throw createErr;
+            }
+        } else {
+            // Update name/phone if customer has returned
+            await prisma.user.update({
+                where: { id: user.id },
+                data: { name: customerName, phone: customerPhone }
+            }).catch(() => {}); // non-critical
         }
 
         // 6. Create the order in the database
