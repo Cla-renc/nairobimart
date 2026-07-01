@@ -78,7 +78,14 @@ export async function POST(request: Request) {
         }
 
         // 3. Calculate totals
-        const productPriceKes = agreedPriceKes ?? product.price;
+        let productPriceKes = product.price;
+        if (product.isFlashSale && product.flashSalePrice) {
+            productPriceKes = product.flashSalePrice;
+        }
+        if (agreedPriceKes && agreedPriceKes > 0) {
+            productPriceKes = agreedPriceKes;
+        }
+
         const totalKes = productPriceKes * quantity + (countryKey === 'kenya' ? shippingFeeLocal : 0);
         const totalLocal = countryKey === 'kenya' ? totalKes : Math.round(productPriceKes * quantity * config.usdRate / 130) + shippingFeeLocal;
 

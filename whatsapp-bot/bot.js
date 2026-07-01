@@ -351,18 +351,15 @@ PRODUCT INFO is in their opening message (name, productId, price, quantity, flas
 RULES:
 1. First, call get_product_details using the productId to check live stock.
 2. If OUT OF STOCK, apologize and stop.
-3. Quote the exact price breakdown:
-   - Product: KES [exact price from their message]
-   - Shipping: KES [amount] (use calculate_shipping tool)
-   - TOTAL: KES [grand total]
-4. DO NOT offer random discounts. Only negotiate if they explicitly beg for a discount. NEVER go below costPrice + 10%.
-5. Once price is agreed, collect in order:
+3. Quote the price breakdown using the exact prices returned by get_product_details.
+4. DO NOT negotiate or offer discounts.
+5. Ask for the customer's details to complete the order:
    a. Full Name
    b. Country (Kenya / Uganda / Tanzania)
    c. Town & Delivery Address
    d. Phone Number (for M-Pesa payment)
    e. Email (optional, for receipt)
-6. Once you have ALL details (a-d required), call the create_order tool immediately. YOU MUST provide 'agreedPriceKes' matching the final product price!
+6. Once you have ALL details (a-d required), call the create_order tool immediately. Do not say anything else.
 7. NEVER tell them to pay on the website.
 
 Be warm and friendly! 🛒✨🔥🚚💳`;
@@ -433,7 +430,7 @@ RULES:
                                 country: { type: 'string' },
                                 deliveryAddress: { type: 'string' }
                             },
-                            required: ['productId', 'quantity', 'agreedPriceKes', 'customerName', 'customerPhone', 'country', 'deliveryAddress']
+                            required: ['productId', 'quantity', 'customerName', 'customerPhone', 'country', 'deliveryAddress']
                         }
                     }
                 },
@@ -446,7 +443,7 @@ RULES:
             // ─── FIRST AI CALL ────────────────────────────────────────
             console.log('[DEBUG] Calling Groq AI...');
             let completion = await groq.chat.completions.create({
-                model: 'llama-3.3-70b-versatile',
+                model: 'llama-3.1-8b-instant',
                 messages: [{ role: 'system', content: systemPrompt }, ...chatHistory],
                 tools,
                 tool_choice: 'auto',
@@ -577,7 +574,7 @@ RULES:
 
                 // Follow-up AI call with tool results
                 completion = await groq.chat.completions.create({
-                    model: 'llama-3.3-70b-versatile',
+                    model: 'llama-3.1-8b-instant',
                     messages: [{ role: 'system', content: systemPrompt }, ...chatHistory],
                     tools,
                     tool_choice: 'auto',
@@ -593,7 +590,7 @@ RULES:
                 // Force a plain-text response from the model (no tools)
                 try {
                     const forceCompletion = await groq.chat.completions.create({
-                        model: 'llama-3.3-70b-versatile',
+                        model: 'llama-3.1-8b-instant',
                         messages: [{ role: 'system', content: systemPrompt }, ...chatHistory,
                             { role: 'user', content: 'Please summarise what just happened and what the customer needs to do next.' }
                         ],
