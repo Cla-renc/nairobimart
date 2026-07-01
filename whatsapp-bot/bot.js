@@ -359,7 +359,8 @@ RULES:
    c. Town & Delivery Address
    d. Phone Number (for M-Pesa payment)
    e. Email (optional, for receipt)
-6. Once you have ALL details (a-d required), call the create_order tool immediately. Do not say anything else.
+6. Once you have ALL details (a-d required), call the create_order tool immediately. 
+   - CRITICAL: You MUST extract the exact numeric price from the user's initial message (e.g., if they sent "Price: KES 1,611", pass 1611) and provide it as 'agreedPriceKes'.
 7. NEVER tell them to pay on the website.
 
 Be warm and friendly! 🛒✨🔥🚚💳`;
@@ -430,7 +431,7 @@ RULES:
                                 country: { type: 'string' },
                                 deliveryAddress: { type: 'string' }
                             },
-                            required: ['productId', 'quantity', 'customerName', 'customerPhone', 'country', 'deliveryAddress']
+                            required: ['productId', 'quantity', 'agreedPriceKes', 'customerName', 'customerPhone', 'country', 'deliveryAddress']
                         }
                     }
                 },
