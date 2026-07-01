@@ -472,7 +472,7 @@ RULES:
             let replyText = responseMessage.content;
 
             // ─── TOOL CALL HANDLING ───────────────────────────────────
-            const maxToolRounds = 4;
+            const maxToolRounds = 6;
             let toolRound = 0;
 
             while (responseMessage.tool_calls && toolRound < maxToolRounds) {
@@ -600,6 +600,24 @@ RULES:
                 });
                 responseMessage = completion.choices[0].message;
                 replyText = responseMessage.content;
+            }
+
+            // ─── GUARD: ensure we always have text to send ──────────
+            if (!replyText) {
+                // Force a plain-text response from the model (no tools)
+                try {
+                    const forceCompletion = await groq.chat.completions.create({
+                        model: 'llama-3.3-70b-versatile',
+                        messages: [{ role: 'system', content: systemPrompt }, ...chatHistory,
+                            { role: 'user', content: 'Please summarise what just happened and what the customer needs to do next.' }
+                        ],
+                        tool_choice: 'none',
+                        max_tokens: 400,
+                    });
+                    replyText = forceCompletion.choices[0].message.content || '✅ Your order details have been received. We are processing your payment shortly!';
+                } catch {
+                    replyText = '✅ Your order details have been received. We are processing your payment shortly!';
+                }
             }
 
             console.log('[DEBUG] Final reply:', replyText);
