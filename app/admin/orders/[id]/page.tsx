@@ -19,6 +19,9 @@ import {
     Phone,
     Mail,
     ExternalLink,
+    TrendingUp,
+    TrendingDown,
+    ShoppingBag,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -302,9 +305,19 @@ export default function OrderDetailPage() {
                                                 )}
                                                 <p className="text-xs text-muted-foreground">Qty: {item.quantity} × KES {item.unitPrice.toLocaleString()}</p>
                                             </div>
-                                            <div className="text-right flex-shrink-0">
+                                            <div className="text-right flex-shrink-0 space-y-1">
                                                 <p className="font-bold text-primary">KES {(item.quantity * item.unitPrice).toLocaleString()}</p>
-                                                <p className="text-[10px] text-muted-foreground">Cost: KES {(item.quantity * item.costPrice).toLocaleString()}</p>
+                                                <p className="text-[10px] text-muted-foreground">Cost: KES {(item.quantity * (item.costPrice || 0)).toLocaleString()}</p>
+                                                {(() => {
+                                                    const profit = (item.quantity * item.unitPrice) - (item.quantity * (item.costPrice || 0));
+                                                    const isPositive = profit >= 0;
+                                                    return (
+                                                        <p className={`text-[11px] font-bold flex items-center justify-end gap-0.5 ${isPositive ? 'text-green-600' : 'text-red-500'}`}>
+                                                            {isPositive ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                                                            KES {Math.abs(profit).toLocaleString()} profit
+                                                        </p>
+                                                    );
+                                                })()}
                                             </div>
                                         </div>
                                     ))
@@ -342,6 +355,21 @@ export default function OrderDetailPage() {
                                     <span>Total</span>
                                     <span>KES {order.total.toLocaleString()}</span>
                                 </div>
+                                {order.items.length > 0 && (() => {
+                                    const totalCost = order.items.reduce((sum, item) => sum + (item.quantity * (item.costPrice || 0)), 0);
+                                    const netProfit = order.subtotal - totalCost - (order.discount || 0);
+                                    const margin = order.subtotal > 0 ? ((netProfit / order.subtotal) * 100).toFixed(1) : '0';
+                                    const isPositive = netProfit >= 0;
+                                    return (
+                                        <div className={`flex justify-between font-bold text-sm rounded-lg px-3 py-2 mt-1 ${ isPositive ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600' }`}>
+                                            <span className="flex items-center gap-1">
+                                                {isPositive ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
+                                                Net Profit ({margin}% margin)
+                                            </span>
+                                            <span>KES {netProfit.toLocaleString()}</span>
+                                        </div>
+                                    );
+                                })()}
                             </div>
                         </CardContent>
                     </Card>
@@ -488,6 +516,52 @@ export default function OrderDetailPage() {
                             </div>
                         </CardContent>
                     </Card>
+
+                    {/* Profit Breakdown Card */}
+                    {order.items.length > 0 && (() => {
+                        const totalRevenue = order.subtotal;
+                        const totalCost = order.items.reduce((sum, item) => sum + (item.quantity * (item.costPrice || 0)), 0);
+                        const netProfit = totalRevenue - totalCost - (order.discount || 0);
+                        const margin = totalRevenue > 0 ? ((netProfit / totalRevenue) * 100).toFixed(1) : '0';
+                        const isPositive = netProfit >= 0;
+                        return (
+                            <Card className="border-none shadow-sm overflow-hidden">
+                                <CardHeader className={`py-3 ${isPositive ? 'bg-green-50' : 'bg-red-50'}`}>
+                                    <CardTitle className={`flex items-center gap-2 text-base ${isPositive ? 'text-green-700' : 'text-red-600'}`}>
+                                        <TrendingUp className="h-4 w-4" /> Profit Breakdown
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="pt-4 space-y-3 text-sm">
+                                    <div className="flex justify-between">
+                                        <span className="text-muted-foreground flex items-center gap-1"><ShoppingBag className="h-3 w-3" /> Revenue</span>
+                                        <span className="font-semibold text-primary">KES {totalRevenue.toLocaleString()}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-muted-foreground">CJ Cost</span>
+                                        <span className="font-semibold text-red-500">- KES {totalCost.toLocaleString()}</span>
+                                    </div>
+                                    {(order.discount || 0) > 0 && (
+                                        <div className="flex justify-between">
+                                            <span className="text-muted-foreground">Discounts Given</span>
+                                            <span className="font-semibold text-orange-500">- KES {order.discount.toLocaleString()}</span>
+                                        </div>
+                                    )}
+                                    <Separator />
+                                    <div className={`flex justify-between font-extrabold text-base rounded-lg px-2 py-1.5 ${isPositive ? 'text-green-700 bg-green-50' : 'text-red-600 bg-red-50'}`}>
+                                        <span>Net Profit</span>
+                                        <span>KES {netProfit.toLocaleString()}</span>
+                                    </div>
+                                    <div className="text-center">
+                                        <span className={`text-xs font-bold px-3 py-1 rounded-full ${isPositive ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>
+                                            {margin}% profit margin
+                                        </span>
+                                    </div>
+                                    <Separator />
+                                    <p className="text-[10px] text-muted-foreground text-center">Per product breakdown shown in order items above ↑</p>
+                                </CardContent>
+                            </Card>
+                        );
+                    })()}
 
                     {/* Order Actions */}
                     <Card className="border-none shadow-sm">
