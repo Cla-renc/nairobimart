@@ -6,7 +6,7 @@ export interface PesaPalLineItem {
 }
 
 const getApiUrl = () => {
-    const pesapalEnv = process.env.PESAPAL_ENV || "sandbox";
+    const pesapalEnv = (process.env.PESAPAL_ENV || "sandbox").toLowerCase().trim();
     return pesapalEnv === "production"
         ? "https://pay.pesapal.com/v3"
         : "https://cybqa.pesapal.com/pesapalv3";
@@ -14,7 +14,7 @@ const getApiUrl = () => {
 
 export const getPesaPalToken = async () => {
     const apiUrl = getApiUrl();
-    const pesapalEnv = process.env.PESAPAL_ENV || "sandbox";
+    const pesapalEnv = (process.env.PESAPAL_ENV || "sandbox").toLowerCase().trim();
 
     try {
         console.log(`Getting PesaPal token from (${pesapalEnv}):`, `${apiUrl}/api/Auth/RequestToken`);
