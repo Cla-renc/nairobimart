@@ -2,7 +2,6 @@ import HeroBanner from "@/components/store/HeroBanner";
 import ProductCard from "@/components/store/ProductCard";
 import FlashSaleCountdown from "@/components/store/FlashSaleCountdown";
 import RecommendedProducts from "@/components/store/RecommendedProducts";
-import RecentPurchasesTicker from "@/components/store/RecentPurchasesTicker";
 
 export const dynamic = "force-dynamic";
 import { Button } from "@/components/ui/button";
@@ -172,24 +171,11 @@ export default async function HomePage() {
     const freeDeliveryThreshold = freeDeliverySetting ? Number(freeDeliverySetting.value) : 5000;
     const liveFlashDeals = flashSaleProducts.length;
 
-    // Count recent purchases in the last hour for a live headline
-    const oneHourAgo = new Date();
-    oneHourAgo.setHours(oneHourAgo.getHours() - 1);
-
-    const recentPurchasesLastHour = await prisma.order.count({
-        where: {
-            createdAt: { gte: oneHourAgo },
-            status: { notIn: ["cancelled", "refunded"] }
-        }
-    });
 
     return (
         <div className="flex flex-col min-h-screen">
             <div className="relative">
-                <HeroBanner banners={banners} recentPurchasesLastHour={recentPurchasesLastHour} />
-                <div className="absolute inset-x-0 bottom-0 z-10 -mb-10 px-4 sm:px-6 lg:px-8">
-                    <RecentPurchasesTicker />
-                </div>
+                <HeroBanner banners={banners} />
             </div>
 
             <section className="bg-slate-950 text-white py-10">
