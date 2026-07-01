@@ -165,7 +165,6 @@ export const createPesaPalCheckout = async (
             description: `NairobiMart Order #${orderId}`,
             callback_url: `${baseUrl}/order-success?id=${orderId}&payment=pesapal`,
             notification_id: notification_id,
-            payment_method: "VISA", // Skip method selection page, go straight to card
             billing_address: {
                 email_address: customerEmail || "customer@nairobimart.com",
                 phone_number: customerPhone || "0000000000",
@@ -206,8 +205,12 @@ export const createPesaPalCheckout = async (
             throw new Error(`PesaPal API returned an embedded error during checkout: ${JSON.stringify(data)}`);
         }
 
+        // Append payment method to redirect URL to skip method selection page
+        const checkoutUrl = new URL(data.redirect_url);
+        checkoutUrl.searchParams.append("type", "VISA"); // type parameter for card payment
+        
         return {
-            checkoutUrl: data.redirect_url,
+            checkoutUrl: checkoutUrl.toString(),
             orderTrackingId: data.order_tracking_id,
         };
     } catch (error) {
