@@ -325,21 +325,19 @@ async function startBot() {
             let conversationRecord = await prisma.whatsAppConversation.findUnique({ where: { remoteJid } });
             let chatHistory = conversationRecord ? conversationRecord.messages : [];
             chatHistory.push({ role: 'user', content: textMessage });
-            // ─── DETECT MODE ──────────────────────────────────────────
-            // If the current message, OR any message in the FULL history, is an order request, we stay in Order Mode.
-            const isOrderMode = chatHistory.some(msg => 
-                msg.role === 'user' && msg.content.includes(ORDER_PREFIX)
-            );
-
-            // Slice history to last 40 messages (10 full turns with tool calls) to save tokens but retain negotiation context
-            if (chatHistory.length > 40) {
-                // Ensure we keep the initial order request message if we are in order mode
-                const initialOrderMsg = isOrderMode ? chatHistory.find(m => m.role === 'user' && m.content.includes(ORDER_PREFIX)) : null;
-                chatHistory = chatHistory.slice(-40);
-                if (initialOrderMsg && !chatHistory.includes(initialOrderMsg)) {
+            // Slice history BEFORE checking order mode, to avoid context explosion
+            if (chatHistory.length > 20) {
+                const initialOrderMsg = chatHistory.find(m => m.role === 'user' && m.content.includes(ORDER_PREFIX));
+                chatHistory = chatHistory.slice(-20);
+                if (initialOrderMsg && !chatHistory.some(m => m.content === initialOrderMsg.content)) {
                     chatHistory.unshift(initialOrderMsg);
                 }
             }
+
+            // ─── DETECT MODE ──────────────────────────────────────────
+            const isOrderMode = chatHistory.some(msg =>
+                msg.role === 'user' && msg.content.includes(ORDER_PREFIX)
+            );
 
             // ─── BUILD SYSTEM PROMPT ─────────────────────────────────
             let systemPrompt;
@@ -374,23 +372,16 @@ RULES:
 
 Be warm, friendly, use Kenyan energy! Emojis encouraged: 🛒✨🔥🚚💳`;
             } else {
-                // Standard support mode (unchanged)
-                const [catalog, categoryNames] = await Promise.all([getProductCatalog(), getCategories()]);
-                const categoriesString = categoryNames.join(', ');
-                systemPrompt = `You are a NairobiMart sales agent in Kenya. Be friendly, brief, and use Kenyan warmth.
-
-OUR PRODUCT CATEGORIES:
-${categoriesString}
-
-IMPORTANT: We stock items across ALL the categories listed above. If a customer asks about a product, you should use the search_catalog tool to find it.
-
+                // Standard support mode — no catalog dump, use search_catalog tool on demand
+                const categoryNames = await getCategories();
+                systemPrompt = `You are a NairobiMart sales agent (Kenya). Be brief, friendly, mobile-friendly.
+Categories: ${categoryNames.join(', ')}.
 RULES:
-1. Use the search_catalog tool to look up product prices and stock before answering.
-2. If stock is OUT, say it's sold out and suggest alternatives.
-3. If stock < 5, create urgency: "Only a few left!"
-4. To buy: direct them to ${process.env.NEXT_PUBLIC_URL || 'https://nairobimart-gwna.vercel.app'} (M-Pesa & card accepted).
-5. Only discuss NairobiMart products. Decline off-topic requests politely.
-6. Keep replies short and mobile-friendly. Use emojis (🛒✨🔥🚚).`;
+1. Use search_catalog tool to find products before answering prices/stock.
+2. OUT OF STOCK → say sold out, suggest alternatives.
+3. Stock < 5 → "Only a few left!"
+4. To buy → send to ${process.env.NEXT_PUBLIC_URL || 'https://nairobimart-gwna.vercel.app'}
+5. Off-topic → politely decline. Use emojis 🛒✨🔥🚚.`;
             }
 
             // ─── DEFINE TOOLS ─────────────────────────────────────────
@@ -460,7 +451,7 @@ RULES:
             // ─── FIRST AI CALL ────────────────────────────────────────
             console.log('[DEBUG] Calling Groq AI...');
             let completion = await groq.chat.completions.create({
-                model: 'llama-3.3-70b-versatile',
+                model: 'llama-3.1-8b-instant',
                 messages: [{ role: 'system', content: systemPrompt }, ...chatHistory],
                 tools,
                 tool_choice: 'auto',
@@ -591,7 +582,7 @@ RULES:
 
                 // Follow-up AI call with tool results
                 completion = await groq.chat.completions.create({
-                    model: 'llama-3.3-70b-versatile',
+                    model: 'llama-3.1-8b-instant',
                     messages: [{ role: 'system', content: systemPrompt }, ...chatHistory],
                     tools,
                     tool_choice: 'auto',
@@ -607,7 +598,7 @@ RULES:
                 // Force a plain-text response from the model (no tools)
                 try {
                     const forceCompletion = await groq.chat.completions.create({
-                        model: 'llama-3.3-70b-versatile',
+                        model: 'llama-3.1-8b-instant',
                         messages: [{ role: 'system', content: systemPrompt }, ...chatHistory,
                             { role: 'user', content: 'Please summarise what just happened and what the customer needs to do next.' }
                         ],
