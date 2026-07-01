@@ -26,6 +26,12 @@ export const getPesaPalToken = async () => {
             throw new Error(`PesaPal credentials missing. Environment: ${pesapalEnv}. Please check PESAPAL_CONSUMER_KEY and PESAPAL_CONSUMER_SECRET in Vercel.`);
         }
 
+        // Debug: Log credential format (safely)
+        console.log(`[PESAPAL DEBUG] Environment: ${pesapalEnv}`);
+        console.log(`[PESAPAL DEBUG] Consumer Key length: ${consumerKey.length}, starts with: ${consumerKey.substring(0, 5)}...`);
+        console.log(`[PESAPAL DEBUG] Consumer Secret length: ${consumerSecret.length}, starts with: ${consumerSecret.substring(0, 5)}...`);
+        console.log(`[PESAPAL DEBUG] Endpoint: ${apiUrl}`);
+
         const response = await fetch(`${apiUrl}/api/Auth/RequestToken`, {
             method: "POST",
             headers: {
@@ -159,6 +165,7 @@ export const createPesaPalCheckout = async (
             description: `NairobiMart Order #${orderId}`,
             callback_url: `${baseUrl}/order-success?id=${orderId}&payment=pesapal`,
             notification_id: notification_id,
+            payment_method: "VISA", // Skip method selection page, go straight to card
             billing_address: {
                 email_address: customerEmail || "customer@nairobimart.com",
                 phone_number: customerPhone || "0000000000",
