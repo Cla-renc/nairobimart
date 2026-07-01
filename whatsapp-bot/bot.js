@@ -343,34 +343,29 @@ async function startBot() {
             let systemPrompt;
 
             if (isOrderMode) {
-                systemPrompt = `You are NairobiMart's AI Sales Agent. A customer has clicked the "Order via WhatsApp" button on our website.
-You are in SALES & CHECKOUT MODE. Your job is to guide them through the full purchase.
+                systemPrompt = `You are NairobiMart's WhatsApp Sales Agent. A customer wants to order.
+You are in CHECKOUT MODE. Guide them to complete the purchase.
 
-PRODUCT INFO is included in their opening message (name, productId, price, quantity, flash sale status).
+PRODUCT INFO is in their opening message (name, productId, price, quantity, flash sale).
 
 RULES:
-1. Use get_product_details tool with the productId from the message to get live stock and pricing.
-2. If OUT OF STOCK, apologize and do not proceed.
-3. Quote the price breakdown clearly:
-   - Product: KES [price]
+1. First, call get_product_details using the productId to check live stock.
+2. If OUT OF STOCK, apologize and stop.
+3. Quote the exact price breakdown:
+   - Product: KES [exact price from their message]
    - Shipping: KES [amount] (use calculate_shipping tool)
    - TOTAL: KES [grand total]
-4. FLASH SALE products: Apply the flashSalePrice automatically. Tell the customer it's on flash sale 🔥
-5. NEGOTIATION: Only if the product has a comparePrice (discount already applied):
-   - You may offer a small additional discount.
-   - NEVER go below costPrice × 1.15. If they push below that, politely decline.
-   - If product has NO comparePrice (full price), do NOT negotiate.
-6. Once price agreed, collect in order:
+4. DO NOT offer random discounts. Only negotiate if they explicitly beg for a discount. NEVER go below costPrice + 10%.
+5. Once price is agreed, collect in order:
    a. Full Name
    b. Country (Kenya / Uganda / Tanzania)
    c. Town & Delivery Address
    d. Phone Number (for M-Pesa payment)
    e. Email (optional, for receipt)
-7. Once you have ALL details (a-d required), call the create_order tool immediately. Do not say anything else.
-8. NEVER send them back to the website to pay — complete the sale here in WhatsApp.
-9. YOU MUST CALL the create_order tool. Do NOT invent order IDs. Do NOT tell them to pay on the website!
+6. Once you have ALL details (a-d required), call the create_order tool immediately. YOU MUST provide 'agreedPriceKes' matching the final product price!
+7. NEVER tell them to pay on the website.
 
-Be warm, friendly, use Kenyan energy! Emojis encouraged: 🛒✨🔥🚚💳`;
+Be warm and friendly! 🛒✨🔥🚚💳`;
             } else {
                 // Standard support mode — no catalog dump, use search_catalog tool on demand
                 const categoryNames = await getCategories();
@@ -451,7 +446,7 @@ RULES:
             // ─── FIRST AI CALL ────────────────────────────────────────
             console.log('[DEBUG] Calling Groq AI...');
             let completion = await groq.chat.completions.create({
-                model: 'llama-3.1-8b-instant',
+                model: 'llama-3.3-70b-versatile',
                 messages: [{ role: 'system', content: systemPrompt }, ...chatHistory],
                 tools,
                 tool_choice: 'auto',
@@ -582,7 +577,7 @@ RULES:
 
                 // Follow-up AI call with tool results
                 completion = await groq.chat.completions.create({
-                    model: 'llama-3.1-8b-instant',
+                    model: 'llama-3.3-70b-versatile',
                     messages: [{ role: 'system', content: systemPrompt }, ...chatHistory],
                     tools,
                     tool_choice: 'auto',
@@ -598,7 +593,7 @@ RULES:
                 // Force a plain-text response from the model (no tools)
                 try {
                     const forceCompletion = await groq.chat.completions.create({
-                        model: 'llama-3.1-8b-instant',
+                        model: 'llama-3.3-70b-versatile',
                         messages: [{ role: 'system', content: systemPrompt }, ...chatHistory,
                             { role: 'user', content: 'Please summarise what just happened and what the customer needs to do next.' }
                         ],
