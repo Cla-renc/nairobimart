@@ -28,7 +28,7 @@ export async function POST(request: Request) {
             customerEmail,
             country,
             deliveryAddress,
-            agreedPriceKes, // The price the customer agreed to (after any negotiation)
+            originalProductPriceKes, // The exact product price extracted by the AI
         } = body;
 
         if (!productId || !customerName || !customerPhone || !country || !deliveryAddress) {
@@ -82,8 +82,8 @@ export async function POST(request: Request) {
         if (product.isFlashSale && product.flashSalePrice) {
             productPriceKes = product.flashSalePrice;
         }
-        if (agreedPriceKes && agreedPriceKes > 0) {
-            productPriceKes = agreedPriceKes;
+        if (originalProductPriceKes && originalProductPriceKes > 0) {
+            productPriceKes = originalProductPriceKes;
         }
 
         const totalKes = productPriceKes * quantity + (countryKey === 'kenya' ? shippingFeeLocal : 0);

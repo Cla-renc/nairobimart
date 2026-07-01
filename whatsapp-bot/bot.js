@@ -360,7 +360,7 @@ RULES:
    d. Phone Number (for M-Pesa payment)
    e. Email (optional, for receipt)
 6. Once you have ALL details (a-d required), call the create_order tool immediately. 
-   - CRITICAL: You MUST extract the exact numeric price from the user's initial message (e.g., if they sent "Price: KES 1,611", pass 1611) and provide it as 'agreedPriceKes'.
+   - CRITICAL: You MUST extract the exact numeric price from the user's initial message (e.g., if they sent "Price: KES 421", pass 421) and provide it as 'originalProductPriceKes'. DO NOT add shipping to this number!
 7. NEVER tell them to pay on the website.
 
 Be warm and friendly! 🛒✨🔥🚚💳`;
@@ -424,14 +424,14 @@ RULES:
                             properties: {
                                 productId: { type: 'string' },
                                 quantity: { type: 'number' },
-                                agreedPriceKes: { type: 'number' },
+                                originalProductPriceKes: { type: 'number', description: 'The exact product price from the initial message (e.g. 421). DO NOT add shipping.' },
                                 customerName: { type: 'string' },
                                 customerPhone: { type: 'string' },
                                 customerEmail: { type: 'string' },
                                 country: { type: 'string' },
                                 deliveryAddress: { type: 'string' }
                             },
-                            required: ['productId', 'quantity', 'agreedPriceKes', 'customerName', 'customerPhone', 'country', 'deliveryAddress']
+                            required: ['productId', 'quantity', 'originalProductPriceKes', 'customerName', 'customerPhone', 'country', 'deliveryAddress']
                         }
                     }
                 },
