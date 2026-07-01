@@ -55,16 +55,6 @@ export default function CheckoutPage() {
             address: "Nairobi West, Apartment 4B",
             county: "Nairobi",
         },
-        Uganda: {
-            phone: "+256 700 000 000",
-            city: "Kampala",
-            address: "Kampala Central, Plot 12",
-        },
-        Tanzania: {
-            phone: "+255 700 000 000",
-            city: "Dar es Salaam",
-            address: "Dar es Salaam, Oyster Bay",
-        },
     };
 
     const getPhonePlaceholder = () => countryPlaceholders[deliveryInfo.country]?.phone || "+254 700 000 000";
@@ -346,8 +336,6 @@ export default function CheckoutPage() {
                                                 className="w-full px-3 py-2 border border-input rounded-md bg-background text-foreground"
                                             >
                                                 <option value="Kenya">Kenya</option>
-                                                <option value="Uganda">Uganda</option>
-                                                <option value="Tanzania">Tanzania</option>
                                             </select>
                                         </div>
 

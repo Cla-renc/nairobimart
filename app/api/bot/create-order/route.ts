@@ -10,16 +10,16 @@ import { fetchCJFreight } from '@/lib/cjdropshipping';
 
 export const dynamic = 'force-dynamic';
 
-// Country → currency + CJ country code + exchange rate (USD→local)
-const COUNTRY_CONFIG: Record<string, { code: string; currency: string; usdRate: number; paymentMethod: 'payhero' | 'pesapal' }> = {
-    'kenya':    { code: 'KE', currency: 'KES', usdRate: 130,  paymentMethod: 'payhero' },
-    'uganda':   { code: 'UG', currency: 'UGX', usdRate: 3700, paymentMethod: 'pesapal' },
-    'tanzania': { code: 'TZ', currency: 'TZS', usdRate: 2600, paymentMethod: 'pesapal' },
+// Country → currency + CJ country code + exchange// Payment info configuration
+const COUNTRY_CONFIG: Record<string, { code: string, currency: string, usdRate: number, paymentMethod: string }> = {
+    'kenya':    { code: 'KE', currency: 'KES', usdRate: 130, paymentMethod: 'mpesa' },
 };
 
 export async function POST(request: Request) {
     try {
         const body = await request.json();
+        console.log("=== CREATE ORDER API CALLED ===", body);
+
         const {
             productId,
             quantity = 1,
@@ -40,7 +40,7 @@ export async function POST(request: Request) {
         if (!config) {
             return NextResponse.json({
                 success: false,
-                error: `Unsupported country: ${country}. Supported: Kenya, Uganda, Tanzania.`
+                error: `Unsupported country: ${country}. Supported: Kenya.`
             }, { status: 400 });
         }
 
@@ -64,17 +64,21 @@ export async function POST(request: Request) {
         let estimatedDays = '15-30';
 
         if (product.cjProductId) {
-            const freight = await fetchCJFreight(config.code, [{ vid: product.cjProductId, quantity }]);
-            if (freight.success && freight.feeUsd) {
-                shippingFeeLocal = Math.round((freight.feeUsd as number) * config.usdRate);
-                shippingMethodName = (freight.methodName as string) || 'Standard Shipping';
-                estimatedDays = (freight.estimatedDays as string) || '15-30';
-            } else {
-                // Fallback flat rates
-                shippingFeeLocal = countryKey === 'kenya' ? 500 : countryKey === 'uganda' ? 8000 : 5000;
+            try {
+                const freight = await fetchCJFreight(config.code, [{ vid: product.cjProductId, quantity }]);
+                if (freight.success && freight.feeUsd) {
+                    shippingFeeLocal = Math.round((freight.feeUsd as number) * config.usdRate);
+                    shippingMethodName = (freight.methodName as string) || 'Standard Shipping';
+                    estimatedDays = (freight.estimatedDays as string) || '15-30';
+                } else {
+                    shippingFeeLocal = 500;
+                }
+            } catch (err) {
+                console.error("Failed to fetch CJ freight, using fallback.", err);
+                shippingFeeLocal = 500;
             }
         } else {
-            shippingFeeLocal = countryKey === 'kenya' ? 500 : countryKey === 'uganda' ? 8000 : 5000;
+            shippingFeeLocal = 500;
         }
 
         // 3. Calculate totals

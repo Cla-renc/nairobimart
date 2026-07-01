@@ -355,7 +355,7 @@ RULES:
 4. DO NOT negotiate or offer discounts.
 5. Ask for the customer's details to complete the order:
    a. Full Name
-   b. Country (Kenya / Uganda / Tanzania)
+   b. Country (Kenya)
    c. Town & Delivery Address
    d. Phone Number (for M-Pesa payment)
    e. Email (optional, for receipt)
@@ -408,7 +408,7 @@ RULES:
                             properties: {
                                 productId: { type: 'string' },
                                 quantity: { type: 'number' },
-                                country: { type: 'string', description: 'kenya, uganda, or tanzania' }
+                                country: { type: 'string', description: 'kenya' }
                             },
                             required: ['productId', 'quantity', 'country']
                         }

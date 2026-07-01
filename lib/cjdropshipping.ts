@@ -146,8 +146,6 @@ export const createCJOrder = async (orderData: CJOrderData) => {
     // Map country name to ISO code and full name for CJ API
     const countryMap: Record<string, { code: string; name: string }> = {
         kenya:    { code: 'KE', name: 'Kenya' },
-        uganda:   { code: 'UG', name: 'Uganda' },
-        tanzania: { code: 'TZ', name: 'Tanzania' },
     };
     const countryKey = (orderData.shippingCountry || 'kenya').toLowerCase().trim();
     const countryInfo = countryMap[countryKey] || { code: 'KE', name: 'Kenya' };

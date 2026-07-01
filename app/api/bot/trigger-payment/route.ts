@@ -1,8 +1,7 @@
 /**
  * /api/bot/trigger-payment
  * Called by the WhatsApp bot after order creation to trigger the payment.
- * - Kenya → PayHero M-Pesa STK Push
- * - Uganda/Tanzania → Pesapal payment link
+ * Called to generate an M-Pesa STK push for Kenya orders.
  */
 
 import { NextResponse } from 'next/server';

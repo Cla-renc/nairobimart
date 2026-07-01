@@ -3,9 +3,7 @@ import { fetchCJFreight } from "@/lib/cjdropshipping";
 import prisma from "@/lib/prisma";
 
 const COUNTRY_CODES: Record<string, string> = {
-    "Kenya": "KE",
-    "Uganda": "UG",
-    "Tanzania": "TZ"
+    "Kenya": "KE"
 };
 
 export async function POST(req: Request) {
