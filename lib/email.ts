@@ -1,6 +1,13 @@
-import { Resend } from "resend";
+import nodemailer from "nodemailer";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Create reusable transporter object using the default SMTP transport
+const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_APP_PASSWORD,
+    },
+});
 
 export const sendOrderConfirmationEmail = async (
     email: string,
@@ -19,20 +26,21 @@ export const sendMarketingEmail = async (
     subject: string,
     htmlContent: string
 ) => {
-    const apiKey = process.env.RESEND_API_KEY;
-    if (!apiKey || apiKey === "re_..." || apiKey.length < 10) {
-        console.warn("[Email] RESEND_API_KEY is missing or is a placeholder. Email not sent.");
-        console.warn("[Email] Set a real key from https://resend.com/api-keys in your .env.local / Vercel environment.");
-        return { success: false, error: "Missing RESEND_API_KEY" };
+    const user = process.env.EMAIL_USER;
+    const pass = process.env.EMAIL_APP_PASSWORD;
+
+    if (!user || !pass) {
+        console.warn("[Email] EMAIL_USER or EMAIL_APP_PASSWORD is missing in environment variables. Email not sent.");
+        return { success: false, error: "Missing email credentials" };
     }
 
-    console.log(`[Email] Attempting to send email to: ${email}, subject: ${subject}`);
+    console.log(`[Email] Attempting to send email via Gmail to: ${email}, subject: ${subject}`);
 
     try {
-        const data = await resend.emails.send({
-            from: "NairobiMart <onboarding@resend.dev>",
-            to: [email],
-            subject,
+        const info = await transporter.sendMail({
+            from: `"NairobiMart" <${user}>`,
+            to: email,
+            subject: subject,
             html: `
         <div style="font-family: sans-serif; max-width: 600px; margin: auto; color: #0D1B2A;">
           <div style="background: #0D1B2A; padding: 24px; border-radius: 8px 8px 0 0; text-align: center;">
@@ -52,10 +60,10 @@ export const sendMarketingEmail = async (
       `,
         });
 
-        console.log(`[Email] Successfully sent to ${email}. Resend ID:`, (data as { id?: string })?.id);
-        return { success: true, data };
+        console.log(`[Email] Successfully sent to ${email}. Message ID: ${info.messageId}`);
+        return { success: true, data: info };
     } catch (error) {
-        console.error("[Email] Resend send failed:", error);
+        console.error("[Email] Nodemailer send failed:", error);
         return { success: false, error };
     }
 };
@@ -93,4 +101,4 @@ export const sendContactTicketResponseEmail = async (
     );
 };
 
-export default resend;
+export default transporter;
