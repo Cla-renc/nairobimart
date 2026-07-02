@@ -144,7 +144,7 @@ export default async function HomePage() {
         name: p.name,
         slug: p.slug,
         price: p.flashSalePrice ?? p.price,
-        comparePrice: p.price,
+        comparePrice: p.comparePrice ?? p.price,
         image: p.images?.[0]?.url || "/images/placeholder.jpg",
         category: p.category?.name || "Uncategorized",
         rating: 4.5,

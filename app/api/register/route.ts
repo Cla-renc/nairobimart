@@ -82,21 +82,52 @@ export async function POST(req: Request) {
             }
         }
 
-        // Generate Welcome Coupon
+        // Generate and send Welcome Coupon via Email + SMS + WhatsApp
         try {
             const { createWelcomeCoupon } = await import("@/lib/coupons");
             const { sendMarketingEmail } = await import("@/lib/email");
+            const { sendSMS } = await import("@/lib/sms");
 
             const welcomeCoupon = await createWelcomeCoupon(user.id, 10, 30);
+            const couponCode = welcomeCoupon.code;
+            const userName = user.name || "there";
+
+            // 1. EMAIL
             await sendMarketingEmail(
                 user.email,
-                "Welcome to NairobiMart! Here is 10% off your first order",
-                `<h1>Welcome to NairobiMart, ${user.name}!</h1><p>We are thrilled to have you.</p><p>Use coupon code <strong>${welcomeCoupon.code}</strong> to get 10% off your first purchase.</p><p>This code expires in 30 days.</p>`
+                "Welcome to NairobiMart! Here is 10% off your first order 🎉",
+                `<h2>Welcome to NairobiMart, ${userName}! 🎉</h2>
+                <p>We are thrilled to have you as part of our family.</p>
+                <p>As a special welcome gift, here is a <strong>10% discount</strong> on your very first order:</p>
+                <div style="text-align:center; margin: 24px 0;">
+                  <span style="background:#F4A522; color:#0D1B2A; font-size:24px; font-weight:bold; padding:12px 28px; border-radius:8px; letter-spacing:2px;">${couponCode}</span>
+                </div>
+                <p>Simply enter this code at checkout. This code expires in <strong>30 days</strong> and is valid for a single use.</p>
+                <p><a href="${process.env.NEXT_PUBLIC_URL || 'https://nairobimart-gwna.vercel.app'}/products" style="background:#0D1B2A; color:#F4A522; padding:12px 24px; border-radius:6px; text-decoration:none; font-weight:bold;">Start Shopping →</a></p>`
             );
+
+            // 2. SMS (if phone provided)
+            if (user.phone) {
+                const smsMsg = `Welcome to NairobiMart, ${userName}! 🎉 Use code ${couponCode} for 10% OFF your first order. Valid for 30 days. Shop now: ${process.env.NEXT_PUBLIC_URL || 'https://nairobimart-gwna.vercel.app'}`;
+                await sendSMS(user.phone, smsMsg);
+            }
+
+            // 3. WhatsApp (if phone provided and bot server is configured)
+            if (user.phone && process.env.BOT_SERVER_URL) {
+                const waPhone = user.phone.replace(/\D/g, '').replace(/^0/, '254');
+                const waMsg = `🎉 *Welcome to NairobiMart, ${userName}!*\n\nWe're excited to have you on board! As a special welcome gift, here's *10% OFF* your first order:\n\n🏷️ *Coupon Code:* \`${couponCode}\`\n\nJust enter this code at checkout. Expires in 30 days (single use).\n\n👉 Shop now: ${process.env.NEXT_PUBLIC_URL || 'https://nairobimart-gwna.vercel.app'}/products\n\nHappy Shopping! 🛒✨`;
+                await fetch(`${process.env.BOT_SERVER_URL}/api/send-message`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone: waPhone, message: waMsg }),
+                }).catch(e => console.error("WhatsApp welcome send failed:", e));
+            }
+
         } catch (couponError) {
-            console.error("Failed to generate welcome coupon:", couponError);
+            console.error("Failed to generate/send welcome coupon:", couponError);
             // Non-fatal, allow registration to succeed
         }
+
 
         console.log("Registration Successful for:", { id: user.id, email: user.email, name: user.name });
 
