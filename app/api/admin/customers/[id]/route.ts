@@ -1,7 +1,8 @@
-export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { auth } from "@/auth";
+
+export const dynamic = "force-dynamic";
 
 // GET single customer with full details
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
