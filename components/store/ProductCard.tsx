@@ -143,40 +143,40 @@ const ProductCard = ({ product }: ProductCardProps) => {
                     <Heart className="h-4 w-4" />
                 </button>
             </div>
-            <Link href={`/products/${product.slug}`} className="block">
-                <CardContent className="p-4">
-                    <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">
-                        {product.category}
-                    </p>
-                    <h3 className="font-semibold text-primary line-clamp-1 group-hover:text-accent transition-colors">
+            <CardContent className="p-4">
+                <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">
+                    {product.category}
+                </p>
+                <Link href={`/products/${product.slug}`}>
+                    <h3 className="font-semibold text-primary line-clamp-1 group-hover:text-accent transition-colors hover:underline">
                         {product.name}
                     </h3>
-                    <div className="flex items-center mt-1 space-x-1">
-                        {Array.from({ length: 5 }).map((_, i) => (
-                            <Star
-                                key={i}
-                                className={`h-3 w-3 ${i < Math.floor(product.rating || 0)
-                                    ? "fill-accent text-accent"
-                                    : "fill-muted text-muted"
-                                    }`}
-                            />
-                        ))}
-                        <span className="text-xs text-muted-foreground ml-1">
-                            ({product.rating || 0})
+                </Link>
+                <div className="flex items-center mt-1 space-x-1">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                        <Star
+                            key={i}
+                            className={`h-3 w-3 ${i < Math.floor(product.rating || 0)
+                                ? "fill-accent text-accent"
+                                : "fill-muted text-muted"
+                                }`}
+                        />
+                    ))}
+                    <span className="text-xs text-muted-foreground ml-1">
+                        ({product.rating || 0})
+                    </span>
+                </div>
+                <div className="flex items-center mt-2 space-x-2">
+                    <span className="text-lg font-bold text-primary">
+                        {formatPrice(product.price)}
+                    </span>
+                    {product.comparePrice && (
+                        <span className="text-sm text-muted-foreground line-through">
+                            {formatPrice(product.comparePrice)}
                         </span>
-                    </div>
-                    <div className="flex items-center mt-2 space-x-2">
-                        <span className="text-lg font-bold text-primary">
-                            {formatPrice(product.price)}
-                        </span>
-                        {product.comparePrice && (
-                            <span className="text-sm text-muted-foreground line-through">
-                                {formatPrice(product.comparePrice)}
-                            </span>
-                        )}
-                    </div>
-                </CardContent>
-            </Link>
+                    )}
+                </div>
+            </CardContent>
             <CardFooter className="p-4 pt-0 flex flex-col gap-2">
                 <Button
                     onClick={handleAddToCart}

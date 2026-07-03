@@ -2,8 +2,6 @@ import HeroBanner from "@/components/store/HeroBanner";
 import ProductCard from "@/components/store/ProductCard";
 import FlashSaleCountdown from "@/components/store/FlashSaleCountdown";
 import RecommendedProducts from "@/components/store/RecommendedProducts";
-
-export const dynamic = "force-dynamic";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import Image from "next/image";
@@ -63,6 +61,8 @@ const COLOR_MAP: Record<string, string> = {
 };
 
 import prisma from "@/lib/prisma";
+
+export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
     const banners = await prisma.banner.findMany({
