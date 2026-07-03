@@ -1,9 +1,10 @@
-import { NextResponse } from "next/server";
+export const dynamic = "force-dynamic";
+import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { auth } from "@/auth";
 
 // GET single customer with full details
-export async function GET(req: Request, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
     try {
         const session = await auth();
         if (!session || (session.user as { role?: string }).role !== "admin") {
@@ -64,7 +65,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
 }
 
 // PATCH - update role or suspended status
-export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
     try {
         const session = await auth();
         if (!session || (session.user as { role?: string }).role !== "admin") {
@@ -88,7 +89,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 }
 
 // DELETE - remove customer account
-export async function DELETE(req: Request, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
     try {
         const session = await auth();
         if (!session || (session.user as { role?: string }).role !== "admin") {
@@ -99,6 +100,22 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
         if ((session.user as { id?: string }).id === params.id) {
             return new NextResponse("Cannot delete your own account", { status: 400 });
         }
+
+        // Unlink relations that don't cascade automatically
+        await prisma.order.updateMany({
+            where: { userId: params.id },
+            data: { userId: null }
+        });
+
+        await prisma.contactMessage.updateMany({
+            where: { userId: params.id },
+            data: { userId: null }
+        });
+
+        await prisma.user.updateMany({
+            where: { referredById: params.id },
+            data: { referredById: null }
+        });
 
         await prisma.user.delete({ where: { id: params.id } });
 
