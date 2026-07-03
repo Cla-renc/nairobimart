@@ -1,13 +1,15 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
     try {
         const notifications = await prisma.notification.findMany({
             orderBy: { createdAt: "desc" },
-            take: 30, // Get the latest 30 notifications
+            take: 30,
         });
-        
+
         return NextResponse.json(notifications);
     } catch (error) {
         console.error("Failed to fetch notifications:", error);
