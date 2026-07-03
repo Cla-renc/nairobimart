@@ -1,22 +1,20 @@
 import * as Sentry from "@sentry/nextjs";
 
 export const sendSMS = async (to: string, message: string) => {
-    const username = process.env.AFRICASTALKING_USERNAME;
-    const apiKey = process.env.AFRICASTALKING_API_KEY;
+    const token = process.env.TALKSASA_TOKEN;
+    const senderId = process.env.TALKSASA_SENDER_ID || "TalkSasa";
 
-    if (!username || !apiKey) {
-        const errorMsg = `SMS not sent to ${to}: Africa's Talking credentials missing.`;
+    if (!token) {
+        const errorMsg = `SMS not sent to ${to}: TalkSasa Token missing.`;
         console.warn(errorMsg);
         if (process.env.NODE_ENV === "production") {
             Sentry.captureMessage(errorMsg, "warning");
         }
-        return { success: false, error: "Missing credentials" };
+        return { success: false, error: "Missing TalkSasa Token" };
     }
 
     try {
-        // Africa's Talking expects numbers in international format, e.g., +2547...
-        // For testing/development without a shortcode, we use the shared one or alphanumeric if registered.
-        // If 'to' doesn't have a '+', assume it's a Kenyan number and prepend '+254'
+        // Format number to international format e.g. +2547...
         let formattedTo = to;
         if (formattedTo.startsWith("0")) {
             formattedTo = "+254" + formattedTo.substring(1);
@@ -24,32 +22,28 @@ export const sendSMS = async (to: string, message: string) => {
             formattedTo = "+" + formattedTo;
         }
 
-        const body = new URLSearchParams();
-        body.append("username", username);
-        body.append("to", formattedTo);
-        body.append("message", message);
-
-        const url = username === "sandbox" 
-            ? "https://api.sandbox.africastalking.com/version1/messaging"
-            : "https://api.africastalking.com/version1/messaging";
-
-        const response = await fetch(url, {
+        const response = await fetch("https://bulksms.talksasa.com/api/v3/sms/send", {
             method: "POST",
             headers: {
+                "Content-Type": "application/json",
                 "Accept": "application/json",
-                "Content-Type": "application/x-www-form-urlencoded",
-                "apiKey": apiKey,
+                "Authorization": `Bearer ${token}`,
             },
-            body: body.toString(),
+            body: JSON.stringify({
+                recipient: formattedTo,
+                sender_id: senderId,
+                type: "plain",
+                message: message,
+            }),
         });
 
         const data = await response.json();
 
         if (response.ok) {
-            console.log("SMS sent successfully:", data);
+            console.log("TalkSasa SMS sent successfully:", data);
             return { success: true, data };
         } else {
-            const errMsg = `SMS to ${to} failed: ${JSON.stringify(data)}`;
+            const errMsg = `TalkSasa SMS to ${to} failed: ${JSON.stringify(data)}`;
             console.error(errMsg);
             if (process.env.NODE_ENV === "production") {
                 Sentry.captureMessage(errMsg, "error");
@@ -57,7 +51,7 @@ export const sendSMS = async (to: string, message: string) => {
             return { success: false, error: data };
         }
     } catch (error) {
-        console.error("SMS exception:", error);
+        console.error("TalkSasa SMS exception:", error);
         if (process.env.NODE_ENV === "production") {
             Sentry.captureException(error);
         }
