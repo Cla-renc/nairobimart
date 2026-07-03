@@ -106,9 +106,9 @@ export async function POST(req: Request) {
                 <p><a href="${process.env.NEXT_PUBLIC_URL || 'https://nairobimart-gwna.vercel.app'}/products" style="background:#0D1B2A; color:#F4A522; padding:12px 24px; border-radius:6px; text-decoration:none; font-weight:bold;">Start Shopping →</a></p>`
             );
 
-            // 2. SMS via TalkSasa (if phone provided)
+            // 2. SMS via TalkSasa (if phone provided) - NO EMOJIS to avoid Unicode rejection
             if (user.phone) {
-                const smsMsg = `Welcome to NairobiMart, ${userName}! 🎉 Use code ${couponCode} for 10% OFF your first order. Valid 30 days. Shop: ${process.env.NEXT_PUBLIC_URL || 'https://nairobimart-gwna.vercel.app'}`;
+                const smsMsg = `Welcome to NairobiMart, ${userName}! Use code ${couponCode} for 10% OFF your first order. Valid for 30 days. Shop: ${process.env.NEXT_PUBLIC_URL || 'https://nairobimart-gwna.vercel.app'}`;
                 await sendSMS(user.phone, smsMsg);
             }
 

@@ -117,7 +117,7 @@ export async function GET(req: Request) {
             // 2. SMS
             if (data.user.phone) {
                 try {
-                    const smsMsg = `NairobiMart: Hi ${userName}! 🛒 You left ${itemCount} item(s) in your cart (${firstItem}${itemCount > 1 ? ' + more' : ''}). Use code ${couponCode} for 10% OFF to complete your purchase! Valid 7 days: ${siteUrl}/cart`;
+                    const smsMsg = `NairobiMart: Hi ${userName}! You left ${itemCount} item(s) in your cart (${firstItem}${itemCount > 1 ? ' + more' : ''}). Use code ${couponCode} for 10% OFF to complete your purchase! Valid 7 days: ${siteUrl}/cart`;
                     await sendSMS(data.user.phone, smsMsg);
                     smsResult = true;
                     smsSent++;

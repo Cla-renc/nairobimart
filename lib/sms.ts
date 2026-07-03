@@ -70,9 +70,9 @@ export async function sendOrderConfirmationSMS(params: {
     deliveryAddress: string;
 }) {
     const message =
-        `NairobiMart: Hi ${params.customerName}! ✅ Order #${params.orderNumber} confirmed. ` +
+        `NairobiMart: Hi ${params.customerName}! Order #${params.orderNumber} confirmed. ` +
         `Amount: ${params.total}. Delivery to: ${params.deliveryAddress}. ` +
-        `We'll update you when it ships. Thank you! 🛒`;
+        `We'll update you when it ships. Thank you!`;
     return sendSMS(params.phone, message);
 }
 
@@ -86,7 +86,7 @@ export async function sendDispatchSMS(params: {
     trackingUrl?: string;
 }) {
     const message =
-        `NairobiMart: Hi ${params.customerName}! 🚚 Order #${params.orderNumber} has been dispatched. ` +
+        `NairobiMart: Hi ${params.customerName}! Order #${params.orderNumber} has been dispatched. ` +
         (params.trackingUrl ? `Track here: ${params.trackingUrl}` : `We'll keep you updated!`);
     return sendSMS(params.phone, message);
 }
