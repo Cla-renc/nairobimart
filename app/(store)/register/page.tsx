@@ -79,8 +79,9 @@ export default function RegisterPage() {
 
             if (response.ok) {
                 toast({
-                    title: "Registration Successful",
-                    description: "Your account has been created. Please login.",
+                    title: "🎉 Registration Successful! Welcome to NairobiMart",
+                    description: "Your account has been created! Check your Email (including Spam folder), SMS, and WhatsApp for a special 10% OFF coupon code on your first purchase. Login now to start shopping!",
+                    duration: 8000,
                 });
                 router.push("/login?registered=true");
             } else {
