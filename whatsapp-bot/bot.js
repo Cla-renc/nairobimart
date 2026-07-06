@@ -330,6 +330,15 @@ async function startBot() {
 
             console.log(`✅ Received from ${remoteJid}: ${textMessage}`);
 
+            // Mark message as read
+            try {
+                await sock.readMessages([msg.key]);
+                await sock.presenceSubscribe(remoteJid);
+                await sock.sendPresenceUpdate('composing', remoteJid);
+            } catch (err) {
+                console.log('[DEBUG] Error updating presence/read status:', err);
+            }
+
             // If it's a lid, dump the entire msg structure to logs so we can find the hidden phone number
             if (remoteJid.includes('@lid')) {
                 console.log('[DEBUG] LID payload dump:', JSON.stringify(msg, (key, value) => 
@@ -631,7 +640,11 @@ RULES:
                 create: { remoteJid, messages: chatHistory }
             });
 
-            await sock.sendMessage(remoteJid, { text: replyText });
+            try {
+                await sock.sendPresenceUpdate('paused', remoteJid);
+            } catch(err) {}
+            
+            await sock.sendMessage(remoteJid, { text: replyText }, { quoted: msg });
             console.log(`✅ Replied to ${remoteJid}!`);
 
         } catch (error) {
