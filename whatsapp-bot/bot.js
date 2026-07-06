@@ -1,5 +1,5 @@
 /* eslint-disable */
-const { makeWASocket, useMultiFileAuthState, DisconnectReason, makeCacheableSignalKeyStore, Browsers } = require('@whiskeysockets/baileys');
+const { makeWASocket, useMultiFileAuthState, DisconnectReason, makeCacheableSignalKeyStore, Browsers, makeInMemoryStore } = require('@whiskeysockets/baileys');
 const qrcode = require('qrcode-terminal');
 const { PrismaClient } = require('@prisma/client');
 const { useMongoDBAuthState } = require('./mongoAuthState');
@@ -8,6 +8,15 @@ const pino = require('pino');
 const http = require('http');
 const path = require('path');
 require('dotenv').config({ path: path.resolve(__dirname, '../.env.local') });
+
+// IMPORTANT: The in-memory store is required to extract and save the `tcToken` from incoming messages.
+// Without the `tcToken`, WhatsApp Business accounts will reject outgoing replies with Error 463.
+const store = makeInMemoryStore({ logger: pino().child({ level: 'silent', stream: 'store' }) });
+store.readFromFile(path.resolve(__dirname, 'baileys_store.json'));
+// Save the store periodically to persist the tcTokens across minor restarts
+setInterval(() => {
+    store.writeToFile(path.resolve(__dirname, 'baileys_store.json'));
+}, 10000);
 
 
 // HTTP server to satisfy Render's port binding requirement and handle API requests
@@ -224,9 +233,15 @@ async function startBot() {
         syncFullHistory: false,
         generateHighQualityLinkPreview: false,
         getMessage: async (key) => {
+            if (store) {
+                const msg = await store.loadMessage(key.remoteJid, key.id);
+                return msg?.message || undefined;
+            }
             return { conversation: 'hello' };
         }
     });
+
+    store.bind(sock.ev); // Bind store to automatically cache tcTokens and history
 
     whatsappSocket = sock; // Expose socket to Express for dispatch notifications
 
