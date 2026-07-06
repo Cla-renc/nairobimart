@@ -414,10 +414,14 @@ async function startBot() {
                         ? msg.key.senderPn
                         : msg.key.senderPn + '@s.whatsapp.net';
                 } else {
-                    phoneJid = rawJid; // fallback
+                    phoneJid = rawJid; // fallback (shouldn't happen)
                 }
-                // IMPORTANT: keep replyJid as @lid — WhatsApp Business requires replies go to @lid
-                console.log(`[DEBUG] @lid detected. replyJid=${replyJid}, phoneJid=${phoneJid}`);
+                // CRITICAL FIX: ALWAYS reply to phoneJid, NOT @lid.
+                // @lid replies require a customer-specific tcToken we never receive.
+                // The privacy token stored is the BOT'S own lid token — useless for replying to customers.
+                // WhatsApp's 24-hour active conversation window works fine with phoneJid.
+                replyJid = phoneJid;
+                console.log(`[DEBUG] @lid detected. Replying to phoneJid=${phoneJid} (raw lid was ${rawJid})`);
             }
 
             // remoteJid used for conversation history is the stable phone number
@@ -736,64 +740,21 @@ RULES:
             });
 
             try {
-                await sock.sendPresenceUpdate('paused', replyJid);
+                await sock.sendPresenceUpdate('paused', phoneJid);
             } catch(err) {}
 
-            // ── Attach tcToken before sending (FIXES ERROR 463) ──────
-            // Calling presenceSubscribe with the stored tcToken proves to WhatsApp
-            // that we are replying to an existing conversation, not cold-reaching out.
-            let cachedEntry = await waitForTcToken([replyJid, phoneJid], 5000);
-            
-            // Fallback: If we couldn't find a direct token, try using ANY token we have 
-            // (e.g., the bot's own lid token that was emitted)
-            if (!cachedEntry) {
-                const allKeys = Object.keys(tcTokenStore);
-                if (allKeys.length > 0) {
-                    const latestKey = allKeys[allKeys.length - 1];
-                    cachedEntry = { jid: replyJid, token: tcTokenStore[latestKey] };
-                    console.warn(`[tcToken] No direct token for ${replyJid}, falling back to token from ${latestKey}`);
-                }
-            }
+            // ── Send reply ──────────────────────────────────────────
+            // Always send to phoneJid (real @s.whatsapp.net number).
+            // We quote the original message so WhatsApp treats it as a
+            // conversation reply, not cold outreach.
+            const finalSendJid = phoneJid;
 
-            let finalSendJid = replyJid;
-            if (cachedEntry) {
-                try {
-                    await sock.presenceSubscribe(cachedEntry.jid, cachedEntry.token);
-                    console.log(`[tcToken] Subscribed presence with token for ${cachedEntry.jid} (replyJid=${replyJid}, phoneJid=${phoneJid})`);
-                } catch(e) {
-                    console.warn(`[tcToken] presenceSubscribe failed for ${cachedEntry.jid}:`, e.message);
-                }
-                
-                // Only switch to phoneJid if the token specifically belongs to phoneJid and NOT replyJid
-                // (but if we used the fallback, we want to keep replyJid)
-                if (cachedEntry.jid === phoneJid && phoneJid !== replyJid && tcTokenStore[phoneJid]) {
-                    finalSendJid = phoneJid;
-                    console.log(`[tcToken] Using phoneJid ${phoneJid} because token was only available there.`);
-                }
-            } else {
-                console.warn(`[tcToken] No token cached for ${replyJid} or ${phoneJid} after waiting — sending to phoneJid fallback if available.`);
-                console.log(`[tcToken] Current cache keys: ${Object.keys(tcTokenStore).join(', ')}`);
-                if (phoneJid && phoneJid !== replyJid) {
-                    finalSendJid = phoneJid;
-                    console.log(`[tcToken] Fallback: sending message to phoneJid ${phoneJid} instead of replyJid ${replyJid}`);
-                }
-            }
-            
             try {
+                await sock.presenceSubscribe(finalSendJid);
                 const sendResult = await sock.sendMessage(finalSendJid, { text: replyText }, { quoted: msg });
                 console.log(`✅ Replied to ${finalSendJid}! Message ID: ${sendResult?.key?.id}, status: ${sendResult?.status}`);
             } catch (sendErr) {
                 console.error(`❌ sendMessage FAILED to ${finalSendJid}:`, sendErr);
-                if (finalSendJid !== phoneJid && phoneJid && phoneJid !== replyJid) {
-                    try {
-                        console.log(`[DEBUG] Retrying reply on phoneJid ${phoneJid} instead of ${finalSendJid}`);
-                        const retryResult = await sock.sendMessage(phoneJid, { text: replyText }, { quoted: msg });
-                        console.log(`✅ Replied to ${phoneJid} on retry! Message ID: ${retryResult?.key?.id}, status: ${retryResult?.status}`);
-                        finalSendJid = phoneJid;
-                    } catch (retryErr) {
-                        console.error(`❌ Retry also FAILED to ${phoneJid}:`, retryErr);
-                    }
-                }
             }
 
         } catch (error) {
