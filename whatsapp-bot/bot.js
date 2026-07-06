@@ -315,6 +315,9 @@ async function startBot() {
             // CRITICAL FIX: If WhatsApp Business masks the user as @lid, extract the real phone number!
             if (remoteJid.includes('@lid') && msg.key.senderPn) {
                 remoteJid = msg.key.senderPn;
+                if (!remoteJid.includes('@s.whatsapp.net')) {
+                    remoteJid += '@s.whatsapp.net';
+                }
             }
 
             if (remoteJid.includes('@g.us') || remoteJid === 'status@broadcast') return;
