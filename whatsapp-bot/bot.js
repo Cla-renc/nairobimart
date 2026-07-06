@@ -713,6 +713,7 @@ RULES:
             // Calling presenceSubscribe with the stored tcToken proves to WhatsApp
             // that we are replying to an existing conversation, not cold-reaching out.
             const cachedEntry = await waitForTcToken([replyJid, phoneJid], 5000);
+            let finalSendJid = replyJid;
             if (cachedEntry) {
                 try {
                     await sock.presenceSubscribe(cachedEntry.jid, cachedEntry.token);
@@ -720,18 +721,25 @@ RULES:
                 } catch(e) {
                     console.warn(`[tcToken] presenceSubscribe failed for ${cachedEntry.jid}:`, e.message);
                 }
+                if (cachedEntry.jid === phoneJid && phoneJid !== replyJid) {
+                    finalSendJid = phoneJid;
+                    console.log(`[tcToken] Using phoneJid ${phoneJid} because token was only available there.`);
+                }
             } else {
-                console.warn(`[tcToken] No token cached for ${replyJid} or ${phoneJid} after waiting — message may get 463`);
+                console.warn(`[tcToken] No token cached for ${replyJid} or ${phoneJid} after waiting — sending to phoneJid fallback if available.`);
                 console.log(`[tcToken] Current cache keys: ${Object.keys(tcTokenStore).join(', ')}`);
+                if (phoneJid && phoneJid !== replyJid) {
+                    finalSendJid = phoneJid;
+                    console.log(`[tcToken] Fallback: sending message to phoneJid ${phoneJid} instead of replyJid ${replyJid}`);
+                }
             }
             
-            let finalSendJid = replyJid;
             try {
                 const sendResult = await sock.sendMessage(finalSendJid, { text: replyText });
                 console.log(`✅ Replied to ${finalSendJid}! Message ID: ${sendResult?.key?.id}, status: ${sendResult?.status}`);
             } catch (sendErr) {
                 console.error(`❌ sendMessage FAILED to ${finalSendJid}:`, sendErr);
-                if (phoneJid && phoneJid !== finalSendJid) {
+                if (finalSendJid !== phoneJid && phoneJid && phoneJid !== replyJid) {
                     try {
                         console.log(`[DEBUG] Retrying reply on phoneJid ${phoneJid} instead of ${finalSendJid}`);
                         const retryResult = await sock.sendMessage(phoneJid, { text: replyText });
