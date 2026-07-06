@@ -64,11 +64,13 @@ app.post('/api/send-message', async (req, res) => {
     }
 });
 
-// Admin endpoint to clear WhatsApp session from MongoDB and force fresh pairing
+// Admin endpoint to clear WhatsApp session from MongoDB and force fresh restart
 app.get('/clear-session', async (req, res) => {
     try {
         await prisma.whatsAppSession.deleteMany({});
-        res.json({ success: true, message: '✅ Session cleared. Restart the Render service to get a fresh pairing code or QR code.' });
+        res.json({ success: true, message: '✅ Session cleared. Bot will now restart and show a fresh QR code in the Render logs.' });
+        // Force restart AFTER sending response so it reconnects with empty session
+        setTimeout(() => process.exit(1), 1000);
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });
     }
@@ -221,7 +223,7 @@ async function startBot() {
         keepAliveIntervalMs: 30000,
         retryRequestDelayMs: 2000,
         defaultQueryTimeoutMs: 60000,
-        syncFullHistory: true,
+        syncFullHistory: false,
         generateHighQualityLinkPreview: false,
         getMessage: async (key) => {
             return { conversation: 'hello' };
@@ -242,6 +244,16 @@ async function startBot() {
 
     sock.ev.on('connection.update', async (update) => {
         const { connection, lastDisconnect, qr } = update;
+
+        // Always log when QR fires so we know it's being generated
+        if (qr) {
+            console.log('\n📱 ===== NEW QR CODE GENERATED =====');
+            console.log('👉 SCAN THIS LINK IN YOUR BROWSER TO GET THE QR IMAGE:');
+            console.log(`🔗 https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(qr)}`);
+            console.log('====================================\n');
+            // Also try terminal render
+            try { qrcode.generate(qr, { small: true }); } catch(e) {}
+        }
         
         if (qr && !sock.authState.creds.registered) {
             if (process.env.BOT_PHONE_NUMBER) {
