@@ -320,16 +320,30 @@ async function startBot() {
 
             if (!msg.message || msg.key.fromMe) return;
 
-            let remoteJid = msg.key.remoteJid;
-            // CRITICAL FIX: If WhatsApp Business masks the user as @lid, extract the real phone number!
-            if (remoteJid.includes('@lid') && msg.key.senderPn) {
-                remoteJid = msg.key.senderPn;
-                if (!remoteJid.includes('@s.whatsapp.net')) {
-                    remoteJid += '@s.whatsapp.net';
+            // replyJid = the JID to use for sock.sendMessage (keep @lid if that's what WA sent)
+            // phoneJid = the real phone number JID (for orders, M-Pesa, conversation history)
+            const rawJid = msg.key.remoteJid;
+            
+            let replyJid = rawJid; // Always reply to the original JID WhatsApp used
+            let phoneJid = rawJid; // Used for orders/payments/history (needs real number)
+
+            if (rawJid.includes('@lid')) {
+                // Extract the real phone number for orders/history
+                if (msg.key.senderPn) {
+                    phoneJid = msg.key.senderPn.includes('@s.whatsapp.net')
+                        ? msg.key.senderPn
+                        : msg.key.senderPn + '@s.whatsapp.net';
+                } else {
+                    phoneJid = rawJid; // fallback
                 }
+                // IMPORTANT: keep replyJid as @lid — WhatsApp Business requires replies go to @lid
+                console.log(`[DEBUG] @lid detected. replyJid=${replyJid}, phoneJid=${phoneJid}`);
             }
 
-            if (remoteJid.includes('@g.us') || remoteJid === 'status@broadcast') return;
+            // remoteJid used for conversation history is the stable phone number
+            const remoteJid = phoneJid;
+
+            if (rawJid.includes('@g.us') || rawJid === 'status@broadcast') return;
 
             const textMessage = msg.message.conversation || msg.message.extendedTextMessage?.text;
             if (!textMessage) {
@@ -337,23 +351,15 @@ async function startBot() {
                 return;
             }
 
-            console.log(`✅ Received from ${remoteJid}: ${textMessage}`);
+            console.log(`✅ Received from ${phoneJid}: ${textMessage}`);
 
-            // Mark message as read
+            // Mark message as read and show typing indicator
             try {
                 await sock.readMessages([msg.key]);
-                await sock.presenceSubscribe(remoteJid);
-                await sock.sendPresenceUpdate('composing', remoteJid);
+                await sock.presenceSubscribe(replyJid);
+                await sock.sendPresenceUpdate('composing', replyJid);
             } catch (err) {
                 console.log('[DEBUG] Error updating presence/read status:', err);
-            }
-
-            // If it's a lid, dump the entire msg structure to logs so we can find the hidden phone number
-            if (remoteJid.includes('@lid')) {
-                console.log('[DEBUG] LID payload dump:', JSON.stringify(msg, (key, value) => 
-                    typeof value === 'bigint' ? value.toString() : 
-                    (value && value.type === 'Buffer' ? '<Buffer>' : value)
-                , 2));
             }
 
             // ─── LOAD CHAT HISTORY FIRST ─────────────────────────────
@@ -579,7 +585,7 @@ RULES:
                                     update: { messages: chatHistory },
                                     create: { remoteJid, messages: chatHistory }
                                 });
-                                await sock.sendMessage(remoteJid, { text: pendingMsg });
+                                await sock.sendMessage(replyJid, { text: pendingMsg });
                                 console.log(`✅ M-Pesa STK push sent successfully for order ${orderResult.orderNumber}`);
                                 return; // Done — webhook will send order confirmation after payment
                             } else {
@@ -592,7 +598,7 @@ RULES:
                                     update: { messages: chatHistory },
                                     create: { remoteJid, messages: chatHistory }
                                 });
-                                await sock.sendMessage(remoteJid, { text: errorMsg });
+                                await sock.sendMessage(replyJid, { text: errorMsg });
                                 console.error(`❌ M-Pesa STK push failed:`, payResult.error);
                                 return; // Stop here so AI doesn't hallucinate
                             }
@@ -650,18 +656,18 @@ RULES:
             });
 
             try {
-                await sock.sendPresenceUpdate('paused', remoteJid);
+                await sock.sendPresenceUpdate('paused', replyJid);
             } catch(err) {}
             
             try {
-                const sendResult = await sock.sendMessage(remoteJid, { text: replyText }, { quoted: msg });
-                console.log(`✅ Replied to ${remoteJid}! Message ID: ${sendResult?.key?.id}, status: ${sendResult?.status}`);
+                const sendResult = await sock.sendMessage(replyJid, { text: replyText }, { quoted: msg });
+                console.log(`✅ Replied to ${replyJid}! Message ID: ${sendResult?.key?.id}, status: ${sendResult?.status}`);
             } catch (sendErr) {
-                console.error(`❌ sendMessage FAILED to ${remoteJid}:`, sendErr);
-                // Retry once without quoted context in case that caused the error
+                console.error(`❌ sendMessage FAILED to ${replyJid}:`, sendErr);
+                // Retry once without quoted context
                 try {
-                    await sock.sendMessage(remoteJid, { text: replyText });
-                    console.log(`✅ Replied (retry without quote) to ${remoteJid}`);
+                    await sock.sendMessage(replyJid, { text: replyText });
+                    console.log(`✅ Replied (retry without quote) to ${replyJid}`);
                 } catch (retryErr) {
                     console.error(`❌ Retry also FAILED:`, retryErr);
                 }
