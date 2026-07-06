@@ -67,10 +67,15 @@ app.post('/api/send-message', async (req, res) => {
 // Admin endpoint to clear WhatsApp session from MongoDB and force fresh restart
 app.get('/clear-session', async (req, res) => {
     try {
+        // Prevent background WhatsApp process from re-saving the corrupted session!
+        if (whatsappSocket) {
+            whatsappSocket.ev.removeAllListeners('creds.update');
+            whatsappSocket.end(undefined);
+        }
         await prisma.whatsAppSession.deleteMany({});
         res.json({ success: true, message: '✅ Session cleared. Bot will now restart and show a fresh QR code in the Render logs.' });
-        // Force restart AFTER sending response so it reconnects with empty session
-        setTimeout(() => process.exit(1), 1000);
+        // Force restart immediately
+        process.exit(1);
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });
     }
@@ -277,6 +282,30 @@ async function startBot() {
         return null;
     }
 
+    let registrationWatchTimeout = null;
+    function scheduleRegistrationWatch() {
+        if (registrationWatchTimeout) clearTimeout(registrationWatchTimeout);
+        registrationWatchTimeout = setTimeout(async () => {
+            if (!sock.authState.creds.registered) {
+                console.warn('⚠️ WhatsApp session is still not registered after 30 seconds. Clearing stale session and restarting process.');
+                try {
+                    await prisma.whatsAppSession.deleteMany({});
+                    console.log('🗑️  Stale WhatsApp session cleared from MongoDB.');
+                } catch (e) {
+                    console.error('Failed to clear stale WhatsApp session:', e.message);
+                }
+                setTimeout(() => process.exit(1), 1000);
+            }
+        }, 30000);
+    }
+
+    function clearRegistrationWatch() {
+        if (registrationWatchTimeout) {
+            clearTimeout(registrationWatchTimeout);
+            registrationWatchTimeout = null;
+        }
+    }
+
     sock.ev.on('chats.update', (updates) => {
         for (const update of updates) {
             if (update.id && update.tcToken) {
@@ -293,7 +322,11 @@ async function startBot() {
     console.log(`[DEBUG] Is registered?`, sock.authState.creds.registered);
 
     // QR login only. No pairing code will be requested.
-    sock.ev.on('creds.update', saveCreds);
+    sock.ev.on('creds.update', async () => {
+        console.log('[DEBUG] creds.update fired; registered=', sock.authState.creds.registered);
+        await saveCreds();
+        if (sock.authState.creds.registered) clearRegistrationWatch();
+    });
 
     sock.ev.on('connection.update', async (update) => {
         const { connection, lastDisconnect, qr } = update;
@@ -324,12 +357,13 @@ async function startBot() {
             async function clearSessionAndRestart(note) {
                 console.warn(`⚠️  ${note}. Clearing MongoDB session and restarting...`);
                 try {
+                    sock.ev.removeAllListeners('creds.update'); // prevent re-saving!
                     await prisma.whatsAppSession.deleteMany({});
                     console.log('🗑️  MongoDB session cleared. Restarting bot...');
                 } catch (e) {
                     console.error('Failed to clear MongoDB session:', e.message);
                 }
-                setTimeout(startBot, 3000);
+                process.exit(1); // Force process restart instead of nested startBot
             }
 
             if (statusCode === 401 || reason === '401') {
@@ -356,11 +390,6 @@ async function startBot() {
 
     sock.ev.on('messages.upsert', async (m) => {
         try {
-            if (!sock.authState.creds.registered) {
-                console.log('[DEBUG] Ignoring incoming message because WhatsApp session is not yet registered.');
-                return;
-            }
-
             const msg = m.messages[0];
             console.log('\n[DEBUG] Upsert type:', m.type); // 'notify' = new, 'append' = history
             console.log('[DEBUG] Incoming message event:', JSON.stringify(msg.message ? Object.keys(msg.message) : 'No message object'));
