@@ -558,7 +558,7 @@ RULES:
                                     update: { messages: chatHistory },
                                     create: { remoteJid, messages: chatHistory }
                                 });
-                                await sock.sendMessage(remoteJid, { text: pendingMsg }, { quoted: msg });
+                                await sock.sendMessage(remoteJid, { text: pendingMsg });
                                 console.log(`✅ M-Pesa STK push sent successfully for order ${orderResult.orderNumber}`);
                                 return; // Done — webhook will send order confirmation after payment
                             } else {
@@ -571,7 +571,7 @@ RULES:
                                     update: { messages: chatHistory },
                                     create: { remoteJid, messages: chatHistory }
                                 });
-                                await sock.sendMessage(remoteJid, { text: errorMsg }, { quoted: msg });
+                                await sock.sendMessage(remoteJid, { text: errorMsg });
                                 console.error(`❌ M-Pesa STK push failed:`, payResult.error);
                                 return; // Stop here so AI doesn't hallucinate
                             }
@@ -628,7 +628,7 @@ RULES:
                 create: { remoteJid, messages: chatHistory }
             });
 
-            await sock.sendMessage(remoteJid, { text: replyText }, { quoted: msg });
+            await sock.sendMessage(remoteJid, { text: replyText });
             console.log(`✅ Replied to ${remoteJid}!`);
 
         } catch (error) {
