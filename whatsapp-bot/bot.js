@@ -780,14 +780,14 @@ RULES:
             }
             
             try {
-                const sendResult = await sock.sendMessage(finalSendJid, { text: replyText });
+                const sendResult = await sock.sendMessage(finalSendJid, { text: replyText }, { quoted: msg });
                 console.log(`✅ Replied to ${finalSendJid}! Message ID: ${sendResult?.key?.id}, status: ${sendResult?.status}`);
             } catch (sendErr) {
                 console.error(`❌ sendMessage FAILED to ${finalSendJid}:`, sendErr);
                 if (finalSendJid !== phoneJid && phoneJid && phoneJid !== replyJid) {
                     try {
                         console.log(`[DEBUG] Retrying reply on phoneJid ${phoneJid} instead of ${finalSendJid}`);
-                        const retryResult = await sock.sendMessage(phoneJid, { text: replyText });
+                        const retryResult = await sock.sendMessage(phoneJid, { text: replyText }, { quoted: msg });
                         console.log(`✅ Replied to ${phoneJid} on retry! Message ID: ${retryResult?.key?.id}, status: ${retryResult?.status}`);
                         finalSendJid = phoneJid;
                     } catch (retryErr) {
