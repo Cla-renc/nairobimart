@@ -272,7 +272,7 @@ async function startBot() {
             console.log("\n🚨 IF THE QR CODE ABOVE IS DISTORTED BY LOG PREFIXES, CLICK THIS LINK INSTEAD:");
             console.log(`👉 https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(qr)} \n`);
         }
-            }
+
         if (connection === 'close') {
             const statusCode = lastDisconnect?.error?.output?.statusCode;
             const reason = lastDisconnect?.error?.data?.reason || lastDisconnect?.error?.message;
