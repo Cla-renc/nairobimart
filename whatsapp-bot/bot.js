@@ -215,14 +215,13 @@ async function startBot() {
             creds: state.creds,
             keys: makeCacheableSignalKeyStore(state.keys, logger)
         },
-        printQRInTerminal: !process.env.BOT_PHONE_NUMBER,
         logger,
         // macOS Chrome is required for pairing code flow to work correctly
         browser: Browsers.macOS('Chrome'),
         markOnlineOnConnect: true,
         keepAliveIntervalMs: 30000,
         retryRequestDelayMs: 2000,
-        defaultQueryTimeoutMs: 60000,
+        defaultQueryTimeoutMs: 120000,
         syncFullHistory: false,
         generateHighQualityLinkPreview: false,
         getMessage: async (key) => {
@@ -248,14 +247,11 @@ async function startBot() {
     });
 
     // Debugging info for Render
-    console.log(`[DEBUG] BOT_PHONE_NUMBER from env:`, process.env.BOT_PHONE_NUMBER);
+    console.log(`[DEBUG] BOT_PHONE_NUMBER from env:`, process.env.BOT_PHONE_NUMBER ? process.env.BOT_PHONE_NUMBER : '(none)');
     console.log(`[DEBUG] Is registered?`, sock.authState.creds.registered);
 
-    // We will request pairing code only when the socket tells us it's ready (via the qr event)
-
+    // QR login only. No pairing code will be requested.
     sock.ev.on('creds.update', saveCreds);
-
-    let pairingCodeRequested = false;
 
     sock.ev.on('connection.update', async (update) => {
         const { connection, lastDisconnect, qr } = update;
@@ -271,57 +267,33 @@ async function startBot() {
         }
         
         if (qr && !sock.authState.creds.registered) {
-            if (process.env.BOT_PHONE_NUMBER) {
-                if (!pairingCodeRequested) {
-                    pairingCodeRequested = true;
-                    console.log(`[DEBUG] Socket ready! Requesting pairing code...`);
-                    // Short delay to ensure crypto is ready
-                    setTimeout(async () => {
-                    try {
-                        const rawNumber = process.env.BOT_PHONE_NUMBER || '';
-                        const cleanNumber = rawNumber.replace(/[^0-9]/g, '');
-                        console.log(`[PAIRING] Raw BOT_PHONE_NUMBER: "${rawNumber}"`);
-                        console.log(`[PAIRING] Cleaned number being used: "${cleanNumber}"`);
-                        console.log(`[PAIRING] Make sure this EXACTLY matches the WhatsApp Business number on your phone!`);
-                        const code = await sock.requestPairingCode(cleanNumber);
-                        console.log(`\n╔══════════════════════════════════════════════╗`);
-                        console.log(`║   🚀 YOUR PAIRING CODE IS: ${code.padEnd(16)}║`);
-                        console.log(`╚══════════════════════════════════════════════╝\n`);
-                        console.log(`STEPS: Open WhatsApp Business on your phone`);
-                        console.log(`→ Tap (⋮) Menu → Linked Devices → Link a Device`);
-                        console.log(`→ Tap 'Link with phone number instead'`);
-                        console.log(`→ Enter the code above. You have 60 seconds!`);
-                        console.log(`→ The linked number must match: ${cleanNumber}`);
-                    } catch (error) {
-                        console.error("Failed to request pairing code:", error.message);
-                        pairingCodeRequested = false;
-                    }
-                }, 3000);
-                }
-            } else {
-                console.log("\nSCAN THIS QR CODE IN YOUR WHATSAPP TO LOG IN:\n");
-                qrcode.generate(qr, { small: true });
-                console.log("\n🚨 IF THE QR CODE ABOVE IS DISTORTED BY LOG PREFIXES, CLICK THIS LINK INSTEAD:");
-                console.log(`👉 https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(qr)} \n`);
-            }
+            console.log("\nSCAN THIS QR CODE IN YOUR WHATSAPP TO LOG IN:\n");
+            qrcode.generate(qr, { small: true });
+            console.log("\n🚨 IF THE QR CODE ABOVE IS DISTORTED BY LOG PREFIXES, CLICK THIS LINK INSTEAD:");
+            console.log(`👉 https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(qr)} \n`);
         }
-
+            }
         if (connection === 'close') {
             const statusCode = lastDisconnect?.error?.output?.statusCode;
-            const reason = lastDisconnect?.error?.data?.reason;
+            const reason = lastDisconnect?.error?.data?.reason || lastDisconnect?.error?.message;
+            const errorMessage = lastDisconnect?.error?.output?.payload?.message || reason;
             console.log(`connection closed. Status: ${statusCode}, Reason: ${reason}`);
 
-            // 401 = WhatsApp rejected our session (corrupted/expired login)
-            if (statusCode === 401 || reason === '401') {
-                console.log('⚠️  Session rejected by WhatsApp (401). Clearing MongoDB session and restarting...');
-                // Clear the session from MongoDB
+            async function clearSessionAndRestart(note) {
+                console.warn(`⚠️  ${note}. Clearing MongoDB session and restarting...`);
                 try {
                     await prisma.whatsAppSession.deleteMany({});
                     console.log('🗑️  MongoDB session cleared. Restarting bot...');
-                } catch(e) {
+                } catch (e) {
                     console.error('Failed to clear MongoDB session:', e.message);
                 }
                 setTimeout(startBot, 3000);
+            }
+
+            if (statusCode === 401 || reason === '401') {
+                await clearSessionAndRestart('Session rejected by WhatsApp (401)');
+            } else if (statusCode === 440 || /replaced|conflict|timed out/i.test(errorMessage || '')) {
+                await clearSessionAndRestart('WhatsApp stream conflict or timeout');
             } else if (statusCode !== DisconnectReason.loggedOut) {
                 console.log('Reconnecting...');
                 setTimeout(startBot, 5000);
