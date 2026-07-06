@@ -232,6 +232,21 @@ async function startBot() {
 
     whatsappSocket = sock; // Expose socket to Express for dispatch notifications
 
+    // ── tcToken cache ────────────────────────────────────────────────
+    // WhatsApp Business sends privacy tokens ('tcToken') via 'chats.update' events.
+    // These tokens MUST be attached to outgoing messages via presenceSubscribe().
+    // Without them, WhatsApp rejects all replies with Error 463 (Reach-out Time-lock).
+    const tcTokenStore = {}; // { jid: Buffer }
+
+    sock.ev.on('chats.update', (updates) => {
+        for (const update of updates) {
+            if (update.id && update.tcToken) {
+                tcTokenStore[update.id] = update.tcToken;
+                console.log(`[tcToken] Stored privacy token for ${update.id}`);
+            }
+        }
+    });
+
     // Debugging info for Render
     console.log(`[DEBUG] BOT_PHONE_NUMBER from env:`, process.env.BOT_PHONE_NUMBER);
     console.log(`[DEBUG] Is registered?`, sock.authState.creds.registered);
@@ -670,6 +685,21 @@ RULES:
             try {
                 await sock.sendPresenceUpdate('paused', replyJid);
             } catch(err) {}
+
+            // ── Attach tcToken before sending (FIXES ERROR 463) ──────
+            // Calling presenceSubscribe with the stored tcToken proves to WhatsApp
+            // that we are replying to an existing conversation, not cold-reaching out.
+            const cachedToken = tcTokenStore[replyJid] || tcTokenStore[phoneJid];
+            if (cachedToken) {
+                try {
+                    await sock.presenceSubscribe(replyJid, cachedToken);
+                    console.log(`[tcToken] Subscribed presence with token for ${replyJid}`);
+                } catch(e) {
+                    console.warn(`[tcToken] presenceSubscribe failed:`, e.message);
+                }
+            } else {
+                console.warn(`[tcToken] No token cached for ${replyJid} — message may get 463`);
+            }
             
             try {
                 const sendResult = await sock.sendMessage(replyJid, { text: replyText });
