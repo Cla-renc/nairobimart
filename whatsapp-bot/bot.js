@@ -311,16 +311,18 @@ async function startBot() {
             // If we have a 'me' profile but registered is false, the session keys are corrupted.
             // WhatsApp will let us connect and receive messages, but will reject all outbound replies with 463.
             if (sock.authState.creds.me && !sock.authState.creds.registered) {
-                console.error('🚨 CRITICAL ERROR: Bot connected but registration state is corrupted (registered: false). WhatsApp will reject all messages (Error 463).');
+                console.error('🚨 CRITICAL ERROR: Bot connected but registration state is corrupted (registered: false).');
                 console.error('🗑️  Force clearing broken session to trigger a fresh pairing...');
                 try {
+                    // Stop Baileys from re-saving the broken credentials while we wipe the DB
+                    sock.ev.removeAllListeners('creds.update'); 
                     await prisma.whatsAppSession.deleteMany({});
                     console.log('✅ Broken session cleared.');
                 } catch(e) {
                     console.error('Failed to clear broken session:', e.message);
                 }
-                console.log('🔄 Restarting bot container in 3 seconds to generate a new pairing code...');
-                setTimeout(() => process.exit(1), 3000);
+                console.log('🔄 Restarting bot container immediately to generate a new QR/pairing code...');
+                process.exit(1); // Exit immediately to prevent race conditions
             }
         }
     });
