@@ -327,15 +327,7 @@ async function startBot() {
             console.log('[DEBUG] platform:', sock.authState.creds.platform);
 
             if (!sock.authState.creds.registered) {
-                console.warn('⚠️ Bot is open but session is not registered. Clearing stale auth state and restarting to prompt a fresh QR login.');
-                try {
-                    await prisma.whatsAppSession.deleteMany();
-                    console.log('🗑️  Cleared stale WhatsApp session from MongoDB.');
-                } catch (e) {
-                    console.error('Failed to clear stale WhatsApp session:', e.message);
-                }
-                setTimeout(startBot, 3000);
-                return;
+                console.warn('⚠️ Bot is open but session is not registered. Waiting for QR login to complete.');
             }
         }
     });
