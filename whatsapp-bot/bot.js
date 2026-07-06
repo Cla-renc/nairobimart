@@ -237,11 +237,31 @@ async function startBot() {
     // Without them, WhatsApp rejects all replies with Error 463 (Reach-out Time-lock).
     const tcTokenStore = {}; // { jid: Buffer }
 
+    function normalizeJid(jid) {
+        if (!jid) return jid;
+        return jid.toString().trim();
+    }
+
+    async function waitForTcToken(jids, timeout = 3000) {
+        const normalized = jids.map(normalizeJid).filter(Boolean);
+        const start = Date.now();
+        while (Date.now() - start < timeout) {
+            for (const jid of normalized) {
+                if (tcTokenStore[jid]) {
+                    return { jid, token: tcTokenStore[jid] };
+                }
+            }
+            await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        return null;
+    }
+
     sock.ev.on('chats.update', (updates) => {
         for (const update of updates) {
             if (update.id && update.tcToken) {
-                tcTokenStore[update.id] = update.tcToken;
-                console.log(`[tcToken] Stored privacy token for ${update.id}`);
+                const id = normalizeJid(update.id);
+                tcTokenStore[id] = update.tcToken;
+                console.log(`[tcToken] Stored privacy token for ${id}`);
             }
         }
     });
@@ -661,17 +681,16 @@ RULES:
             // ── Attach tcToken before sending (FIXES ERROR 463) ──────
             // Calling presenceSubscribe with the stored tcToken proves to WhatsApp
             // that we are replying to an existing conversation, not cold-reaching out.
-            const cachedToken = tcTokenStore[replyJid] || tcTokenStore[phoneJid];
-            const tokenJid = tcTokenStore[replyJid] ? replyJid : phoneJid;
-            if (cachedToken) {
+            const cachedEntry = await waitForTcToken([replyJid, phoneJid], 3000);
+            if (cachedEntry) {
                 try {
-                    await sock.presenceSubscribe(tokenJid, cachedToken);
-                    console.log(`[tcToken] Subscribed presence with token for ${tokenJid} (replyJid=${replyJid})`);
+                    await sock.presenceSubscribe(cachedEntry.jid, cachedEntry.token);
+                    console.log(`[tcToken] Subscribed presence with token for ${cachedEntry.jid} (replyJid=${replyJid})`);
                 } catch(e) {
-                    console.warn(`[tcToken] presenceSubscribe failed for ${tokenJid}:`, e.message);
+                    console.warn(`[tcToken] presenceSubscribe failed for ${cachedEntry.jid}:`, e.message);
                 }
             } else {
-                console.warn(`[tcToken] No token cached for ${replyJid} or ${phoneJid} — message may get 463`);
+                console.warn(`[tcToken] No token cached for ${replyJid} or ${phoneJid} after waiting — message may get 463`);
             }
             
             let finalSendJid = replyJid;
