@@ -205,7 +205,8 @@ async function startBot() {
     const { version, isLatest } = await fetchLatestBaileysVersion();
     console.log(`Using WhatsApp v${version.join('.')}, isLatest: ${isLatest}`);
 
-    const logger = pino({ level: "silent" });
+    // Use 'warn' so socket-level errors (incl. send failures) appear in Render logs
+    const logger = pino({ level: "warn" });
     const sock = makeWASocket({
         version,
         auth: {
@@ -218,6 +219,8 @@ async function startBot() {
         browser: Browsers.macOS('Chrome'),
         markOnlineOnConnect: true,
         keepAliveIntervalMs: 30000,
+        retryRequestDelayMs: 2000,
+        defaultQueryTimeoutMs: 60000,
         syncFullHistory: false,
         generateHighQualityLinkPreview: false,
         getMessage: async (key) => {
@@ -300,14 +303,20 @@ async function startBot() {
             }
         } else if (connection === 'open') {
             console.log('✅ Bot successfully connected to WhatsApp!');
+            console.log('[DEBUG] me:', JSON.stringify(sock.authState.creds.me));
+            console.log('[DEBUG] registered:', sock.authState.creds.registered);
+            console.log('[DEBUG] platform:', sock.authState.creds.platform);
         }
     });
 
     sock.ev.on('messages.upsert', async (m) => {
         try {
             const msg = m.messages[0];
-            console.log('\n[DEBUG] Incoming message event:', JSON.stringify(msg.message ? Object.keys(msg.message) : 'No message object'));
+            console.log('\n[DEBUG] Upsert type:', m.type); // 'notify' = new, 'append' = history
+            console.log('[DEBUG] Incoming message event:', JSON.stringify(msg.message ? Object.keys(msg.message) : 'No message object'));
             console.log('[DEBUG] Is from me?', msg.key.fromMe);
+            console.log('[DEBUG] remoteJid (raw):', msg.key.remoteJid);
+            console.log('[DEBUG] status:', msg.status);
 
             if (!msg.message || msg.key.fromMe) return;
 
@@ -644,8 +653,19 @@ RULES:
                 await sock.sendPresenceUpdate('paused', remoteJid);
             } catch(err) {}
             
-            await sock.sendMessage(remoteJid, { text: replyText }, { quoted: msg });
-            console.log(`✅ Replied to ${remoteJid}!`);
+            try {
+                const sendResult = await sock.sendMessage(remoteJid, { text: replyText }, { quoted: msg });
+                console.log(`✅ Replied to ${remoteJid}! Message ID: ${sendResult?.key?.id}, status: ${sendResult?.status}`);
+            } catch (sendErr) {
+                console.error(`❌ sendMessage FAILED to ${remoteJid}:`, sendErr);
+                // Retry once without quoted context in case that caused the error
+                try {
+                    await sock.sendMessage(remoteJid, { text: replyText });
+                    console.log(`✅ Replied (retry without quote) to ${remoteJid}`);
+                } catch (retryErr) {
+                    console.error(`❌ Retry also FAILED:`, retryErr);
+                }
+            }
 
         } catch (error) {
             console.error('❌ Error processing message:', error);
