@@ -216,7 +216,8 @@ async function startBot() {
         logger,
         // macOS Chrome is required for pairing code flow to work correctly
         browser: Browsers.macOS('Chrome'),
-        markOnlineOnConnect: false,
+        markOnlineOnConnect: true,
+        keepAliveIntervalMs: 30000,
         syncFullHistory: false,
         generateHighQualityLinkPreview: false,
         getMessage: async (key) => {
@@ -544,7 +545,7 @@ RULES:
                                     update: { messages: chatHistory },
                                     create: { remoteJid, messages: chatHistory }
                                 });
-                                await sock.sendMessage(remoteJid, { text: pendingMsg });
+                                await sock.sendMessage(remoteJid, { text: pendingMsg }, { quoted: msg });
                                 console.log(`✅ M-Pesa STK push sent successfully for order ${orderResult.orderNumber}`);
                                 return; // Done — webhook will send order confirmation after payment
                             } else {
@@ -557,7 +558,7 @@ RULES:
                                     update: { messages: chatHistory },
                                     create: { remoteJid, messages: chatHistory }
                                 });
-                                await sock.sendMessage(remoteJid, { text: errorMsg });
+                                await sock.sendMessage(remoteJid, { text: errorMsg }, { quoted: msg });
                                 console.error(`❌ M-Pesa STK push failed:`, payResult.error);
                                 return; // Stop here so AI doesn't hallucinate
                             }
@@ -614,7 +615,7 @@ RULES:
                 create: { remoteJid, messages: chatHistory }
             });
 
-            await sock.sendMessage(remoteJid, { text: replyText });
+            await sock.sendMessage(remoteJid, { text: replyText }, { quoted: msg });
             console.log(`✅ Replied to ${remoteJid}!`);
 
         } catch (error) {
