@@ -363,7 +363,8 @@ async function startBot() {
                 } catch (e) {
                     console.error('Failed to clear MongoDB session:', e.message);
                 }
-                process.exit(1); // Force process restart instead of nested startBot
+                // Use in-memory restart so Render doesn't mark the deploy as Failed
+                setTimeout(startBot, 3000);
             }
 
             if (statusCode === 401 || reason === '401') {
