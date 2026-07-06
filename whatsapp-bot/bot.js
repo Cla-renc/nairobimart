@@ -65,10 +65,10 @@ app.post('/api/send-message', async (req, res) => {
 });
 
 // Admin endpoint to clear WhatsApp session from MongoDB and force fresh pairing
-app.post('/clear-session', async (req, res) => {
+app.get('/clear-session', async (req, res) => {
     try {
         await prisma.whatsAppSession.deleteMany({});
-        res.json({ success: true, message: '✅ Session cleared. Restart the Render service to get a fresh pairing code.' });
+        res.json({ success: true, message: '✅ Session cleared. Restart the Render service to get a fresh pairing code or QR code.' });
     } catch (e) {
         res.status(500).json({ success: false, error: e.message });
     }
