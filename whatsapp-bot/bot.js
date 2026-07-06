@@ -322,6 +322,14 @@ async function startBot() {
 
             console.log(`✅ Received from ${remoteJid}: ${textMessage}`);
 
+            // If it's a lid, dump the entire msg structure to logs so we can find the hidden phone number
+            if (remoteJid.includes('@lid')) {
+                console.log('[DEBUG] LID payload dump:', JSON.stringify(msg, (key, value) => 
+                    typeof value === 'bigint' ? value.toString() : 
+                    (value && value.type === 'Buffer' ? '<Buffer>' : value)
+                , 2));
+            }
+
             // ─── LOAD CHAT HISTORY FIRST ─────────────────────────────
             let conversationRecord = await prisma.whatsAppConversation.findUnique({ where: { remoteJid } });
             let chatHistory = conversationRecord ? conversationRecord.messages : [];
