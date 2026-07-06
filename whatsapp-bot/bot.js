@@ -311,7 +311,12 @@ async function startBot() {
 
             if (!msg.message || msg.key.fromMe) return;
 
-            const remoteJid = msg.key.remoteJid;
+            let remoteJid = msg.key.remoteJid;
+            // CRITICAL FIX: If WhatsApp Business masks the user as @lid, extract the real phone number!
+            if (remoteJid.includes('@lid') && msg.key.senderPn) {
+                remoteJid = msg.key.senderPn;
+            }
+
             if (remoteJid.includes('@g.us') || remoteJid === 'status@broadcast') return;
 
             const textMessage = msg.message.conversation || msg.message.extendedTextMessage?.text;
