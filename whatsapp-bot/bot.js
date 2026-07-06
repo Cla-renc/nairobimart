@@ -242,13 +242,34 @@ async function startBot() {
         return jid.toString().trim();
     }
 
-    async function waitForTcToken(jids, timeout = 3000) {
+    function canonicalJids(jid) {
+        const normalized = normalizeJid(jid);
+        if (!normalized) return [];
+        const result = new Set([normalized]);
+        const match = normalized.match(/^(.+?):\d+(@.+)$/);
+        if (match) {
+            result.add(`${match[1]}${match[2]}`);
+        }
+        return [...result];
+    }
+
+    function findTcToken(jid) {
+        for (const candidate of canonicalJids(jid)) {
+            if (tcTokenStore[candidate]) {
+                return { jid: candidate, token: tcTokenStore[candidate] };
+            }
+        }
+        return null;
+    }
+
+    async function waitForTcToken(jids, timeout = 5000) {
         const normalized = jids.map(normalizeJid).filter(Boolean);
         const start = Date.now();
         while (Date.now() - start < timeout) {
             for (const jid of normalized) {
-                if (tcTokenStore[jid]) {
-                    return { jid, token: tcTokenStore[jid] };
+                const found = findTcToken(jid);
+                if (found) {
+                    return found;
                 }
             }
             await new Promise(resolve => setTimeout(resolve, 100));
@@ -259,9 +280,10 @@ async function startBot() {
     sock.ev.on('chats.update', (updates) => {
         for (const update of updates) {
             if (update.id && update.tcToken) {
-                const id = normalizeJid(update.id);
-                tcTokenStore[id] = update.tcToken;
-                console.log(`[tcToken] Stored privacy token for ${id}`);
+                for (const id of canonicalJids(update.id)) {
+                    tcTokenStore[id] = update.tcToken;
+                    console.log(`[tcToken] Stored privacy token for ${id}`);
+                }
             }
         }
     });
@@ -334,6 +356,11 @@ async function startBot() {
 
     sock.ev.on('messages.upsert', async (m) => {
         try {
+            if (!sock.authState.creds.registered) {
+                console.log('[DEBUG] Ignoring incoming message because WhatsApp session is not yet registered.');
+                return;
+            }
+
             const msg = m.messages[0];
             console.log('\n[DEBUG] Upsert type:', m.type); // 'notify' = new, 'append' = history
             console.log('[DEBUG] Incoming message event:', JSON.stringify(msg.message ? Object.keys(msg.message) : 'No message object'));
@@ -685,16 +712,17 @@ RULES:
             // ── Attach tcToken before sending (FIXES ERROR 463) ──────
             // Calling presenceSubscribe with the stored tcToken proves to WhatsApp
             // that we are replying to an existing conversation, not cold-reaching out.
-            const cachedEntry = await waitForTcToken([replyJid, phoneJid], 3000);
+            const cachedEntry = await waitForTcToken([replyJid, phoneJid], 5000);
             if (cachedEntry) {
                 try {
                     await sock.presenceSubscribe(cachedEntry.jid, cachedEntry.token);
-                    console.log(`[tcToken] Subscribed presence with token for ${cachedEntry.jid} (replyJid=${replyJid})`);
+                    console.log(`[tcToken] Subscribed presence with token for ${cachedEntry.jid} (replyJid=${replyJid}, phoneJid=${phoneJid})`);
                 } catch(e) {
                     console.warn(`[tcToken] presenceSubscribe failed for ${cachedEntry.jid}:`, e.message);
                 }
             } else {
                 console.warn(`[tcToken] No token cached for ${replyJid} or ${phoneJid} after waiting — message may get 463`);
+                console.log(`[tcToken] Current cache keys: ${Object.keys(tcTokenStore).join(', ')}`);
             }
             
             let finalSendJid = replyJid;
