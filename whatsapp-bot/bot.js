@@ -306,6 +306,22 @@ async function startBot() {
             console.log('[DEBUG] me:', JSON.stringify(sock.authState.creds.me));
             console.log('[DEBUG] registered:', sock.authState.creds.registered);
             console.log('[DEBUG] platform:', sock.authState.creds.platform);
+
+            // CRITICAL FIX FOR ERROR 463 & "unexpected error in init queries":
+            // If we have a 'me' profile but registered is false, the session keys are corrupted.
+            // WhatsApp will let us connect and receive messages, but will reject all outbound replies with 463.
+            if (sock.authState.creds.me && !sock.authState.creds.registered) {
+                console.error('🚨 CRITICAL ERROR: Bot connected but registration state is corrupted (registered: false). WhatsApp will reject all messages (Error 463).');
+                console.error('🗑️  Force clearing broken session to trigger a fresh pairing...');
+                try {
+                    await prisma.whatsAppSession.deleteMany({});
+                    console.log('✅ Broken session cleared.');
+                } catch(e) {
+                    console.error('Failed to clear broken session:', e.message);
+                }
+                console.log('🔄 Restarting bot container in 3 seconds to generate a new pairing code...');
+                setTimeout(() => process.exit(1), 3000);
+            }
         }
     });
 
