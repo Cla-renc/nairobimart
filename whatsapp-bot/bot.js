@@ -20,6 +20,40 @@ app.get('/', (req, res) => {
     res.send('WhatsApp Bot is running!');
 });
 
+// ── INLINE JID SANITIZATION ──────────────────────────────────
+// Duplicated here to ensure it's always available and bypass module caching
+function inlineSanitizeJid(jid) {
+  if (!jid) return null;
+  let normalized = jid.toString().trim();
+  
+  // Fix malformed JIDs: 248176548290605alid -> 248176548290605@lid
+  if (normalized.includes('alid') && !normalized.includes('@lid')) {
+    normalized = normalized.replace('alid', '@lid');
+  }
+  if (normalized.includes('as.whatsapp.net') && !normalized.includes('@s.whatsapp.net')) {
+    normalized = normalized.replace('as.whatsapp.net', '@s.whatsapp.net');
+  }
+  if (normalized.includes('ag.us') && !normalized.includes('@g.us')) {
+    normalized = normalized.replace('ag.us', '@g.us');
+  }
+  if (normalized.includes('1lId') && !normalized.includes('@lid')) {
+    normalized = normalized.replace('1lId', '@lid');
+  }
+  if (normalized.includes('1s.whatsapp.net') && !normalized.includes('@s.whatsapp.net')) {
+    normalized = normalized.replace('1s.whatsapp.net', '@s.whatsapp.net');
+  }
+  
+  // Ensure JID has a valid domain suffix
+  if (!normalized.includes('@')) {
+    if (/^\d+$/.test(normalized)) {
+      normalized = `${normalized}@s.whatsapp.net`;
+    }
+  }
+  
+  return normalized;
+}
+
+
 // We will inject the sock instance here once it's created
 let whatsappSocket = null;
 
@@ -403,10 +437,12 @@ async function startBot() {
 
             // replyJid = the JID to use for sock.sendMessage (keep @lid if that's what WA sent)
             // phoneJid = the real phone number JID (for orders, M-Pesa, conversation history)
-            const rawJid = sanitizeJid(msg.key.remoteJid);
+            console.log('[DEBUG] BEFORE SANITIZE - msg.key.remoteJid:', msg.key.remoteJid);
+            console.log('[DEBUG] BEFORE SANITIZE - msg.key.senderPn:', msg.key.senderPn);
             
-            console.log('[DEBUG] Raw JID (sanitized):', rawJid);
-            console.log('[DEBUG] msg.key.senderPn:', msg.key.senderPn);
+            const rawJid = inlineSanitizeJid(msg.key.remoteJid);
+            
+            console.log('[DEBUG] AFTER SANITIZE - rawJid:', rawJid);
             
             let replyJid = rawJid; // Always reply to the original JID WhatsApp used
             let phoneJid = rawJid; // Used for orders/payments/history (needs real number)
@@ -414,15 +450,12 @@ async function startBot() {
             if (rawJid && rawJid.includes('@lid')) {
                 // Extract the real phone number for orders/history
                 if (msg.key.senderPn) {
-                    phoneJid = sanitizeJid(msg.key.senderPn);
+                    phoneJid = inlineSanitizeJid(msg.key.senderPn);
                 } else {
                     phoneJid = rawJid; // fallback (shouldn't happen)
                 }
                 
                 // CRITICAL FIX: ALWAYS reply to the rawJid (@lid) when it's present!
-                // Attempting to send a message to the phoneJid (@s.whatsapp.net) instead of the @lid 
-                // causes Error 463 (Reach-out Time-lock) because WhatsApp expects the reply in the @lid context.
-                // Baileys automatically handles the tcToken (Trusted Contact Token) when sending to the @lid.
                 replyJid = rawJid;
                 console.log(`[DEBUG] @lid detected. Replying to replyJid=${replyJid}, phoneJid=${phoneJid}`);
             }
@@ -749,7 +782,7 @@ RULES:
             // ── Send reply ──────────────────────────────────────────
             // We use replyJid (which will be @lid if the user contacted us via @lid)
             // to ensure Baileys attaches the tcToken and avoids Error 463.
-            const finalSendJid = sanitizeJid(replyJid);
+            const finalSendJid = inlineSanitizeJid(replyJid);
 
             try {
                 const replyTargets = buildReplyTargets(msg, finalSendJid, phoneJid);
