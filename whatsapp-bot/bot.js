@@ -444,20 +444,25 @@ async function startBot() {
             
             console.log('[DEBUG] AFTER SANITIZE - rawJid:', rawJid);
             
-            let replyJid = rawJid; // Always reply to the original JID WhatsApp used
-            let phoneJid = rawJid; // Used for orders/payments/history (needs real number)
+            let replyJid = rawJid; // Use raw JID for presence/read operations
+            let phoneJid = rawJid; // Use for orders/payments/history (needs real number)
 
             if (rawJid && rawJid.includes('@lid')) {
-                // Extract the real phone number for orders/history
+                // CRITICAL: Extract the REAL phone number to send TO
+                // @lid is only for receiving; we must reply to the actual phone number
                 if (msg.key.senderPn) {
                     phoneJid = inlineSanitizeJid(msg.key.senderPn);
+                    console.log(`[DEBUG] @lid detected. Extracted phoneJid=${phoneJid}`);
                 } else {
-                    phoneJid = rawJid; // fallback (shouldn't happen)
+                    // Fallback: try to extract from remoteJid if senderPn missing
+                    const match = rawJid.match(/^(\d+)/);
+                    if (match) {
+                        phoneJid = `${match[1]}@s.whatsapp.net`;
+                        console.log(`[DEBUG] @lid but no senderPn. Extracted from remoteJid: phoneJid=${phoneJid}`);
+                    }
                 }
-                
-                // CRITICAL FIX: ALWAYS reply to the rawJid (@lid) when it's present!
-                replyJid = rawJid;
-                console.log(`[DEBUG] @lid detected. Replying to replyJid=${replyJid}, phoneJid=${phoneJid}`);
+                // SEND TO phoneJid, not rawJid (@lid)!
+                replyJid = phoneJid;
             }
 
             // remoteJid used for conversation history is the stable phone number
