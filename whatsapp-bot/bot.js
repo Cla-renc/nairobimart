@@ -416,12 +416,13 @@ async function startBot() {
                 } else {
                     phoneJid = rawJid; // fallback (shouldn't happen)
                 }
-                // CRITICAL FIX: ALWAYS reply to phoneJid, NOT @lid.
-                // @lid replies require a customer-specific tcToken we never receive.
-                // The privacy token stored is the BOT'S own lid token — useless for replying to customers.
-                // WhatsApp's 24-hour active conversation window works fine with phoneJid.
-                replyJid = phoneJid;
-                console.log(`[DEBUG] @lid detected. Replying to phoneJid=${phoneJid} (raw lid was ${rawJid})`);
+                
+                // CRITICAL FIX: ALWAYS reply to the rawJid (@lid) when it's present!
+                // Attempting to send a message to the phoneJid (@s.whatsapp.net) instead of the @lid 
+                // causes Error 463 (Reach-out Time-lock) because WhatsApp expects the reply in the @lid context.
+                // Baileys automatically handles the tcToken (Trusted Contact Token) when sending to the @lid.
+                replyJid = rawJid;
+                console.log(`[DEBUG] @lid detected. Replying to rawJid=${rawJid} (extracted phone was ${phoneJid})`);
             }
 
             // remoteJid used for conversation history is the stable phone number
@@ -740,25 +741,19 @@ RULES:
             });
 
             try {
-                await sock.sendPresenceUpdate('paused', phoneJid);
+                await sock.sendPresenceUpdate('paused', replyJid);
             } catch(err) {}
 
             // ── Send reply ──────────────────────────────────────────
-            // Always send to phoneJid (real @s.whatsapp.net number).
-            // We quote the original message so WhatsApp treats it as a
-            // conversation reply, not cold outreach.
-            const finalSendJid = phoneJid;
+            // We use replyJid (which will be @lid if the user contacted us via @lid)
+            // to ensure Baileys attaches the tcToken and avoids Error 463.
+            const finalSendJid = replyJid;
 
             try {
                 await sock.presenceSubscribe(finalSendJid);
                 
-                // CRITICAL FIX: If we changed the JID (e.g., from @lid to @s.whatsapp.net),
-                // quoting the original message will cause the WhatsApp client to silently drop the reply 
-                // because the quoted message belongs to a different chat context.
-                const sendOptions = {};
-                if (rawJid === finalSendJid) {
-                    sendOptions.quoted = msg;
-                }
+                // Since we are sending to the original JID, it is safe to quote the message
+                const sendOptions = { quoted: msg };
                 
                 const sendResult = await sock.sendMessage(finalSendJid, { text: replyText }, sendOptions);
                 console.log(`✅ Replied to ${finalSendJid}! Message ID: ${sendResult?.key?.id}, status: ${sendResult?.status}`);
