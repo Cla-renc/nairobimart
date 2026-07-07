@@ -751,7 +751,16 @@ RULES:
 
             try {
                 await sock.presenceSubscribe(finalSendJid);
-                const sendResult = await sock.sendMessage(finalSendJid, { text: replyText }, { quoted: msg });
+                
+                // CRITICAL FIX: If we changed the JID (e.g., from @lid to @s.whatsapp.net),
+                // quoting the original message will cause the WhatsApp client to silently drop the reply 
+                // because the quoted message belongs to a different chat context.
+                const sendOptions = {};
+                if (rawJid === finalSendJid) {
+                    sendOptions.quoted = msg;
+                }
+                
+                const sendResult = await sock.sendMessage(finalSendJid, { text: replyText }, sendOptions);
                 console.log(`✅ Replied to ${finalSendJid}! Message ID: ${sendResult?.key?.id}, status: ${sendResult?.status}`);
             } catch (sendErr) {
                 console.error(`❌ sendMessage FAILED to ${finalSendJid}:`, sendErr);
