@@ -121,6 +121,16 @@ app.listen(PORT, () => {
     console.log(`Express HTTP Server listening on port ${PORT}`);
 });
 
+// Global process handlers: log and attempt graceful restart on unexpected errors
+process.on('unhandledRejection', (reason, p) => {
+    console.error('[process] unhandledRejection:', reason, p);
+    try { setTimeout(() => startBot(), 3000); } catch(e) {}
+});
+process.on('uncaughtException', (err) => {
+    console.error('[process] uncaughtException:', err);
+    try { setTimeout(() => startBot(), 3000); } catch(e) {}
+});
+
 const prisma = new PrismaClient();
 
 // Ensure Groq API key exists
@@ -853,4 +863,17 @@ RULES:
     });
 }
 
-startBot();
+// Resilient runner: restart startBot() on unhandled startup errors with backoff
+async function runBot(attempt = 1) {
+    try {
+        await startBot();
+    } catch (err) {
+        const backoff = Math.min(30000, 2000 * attempt);
+        console.error(`[runBot] startBot failed on attempt ${attempt}:`, err?.message || err);
+        console.error(err?.stack || 'no stack');
+        console.log(`[runBot] Restarting bot in ${backoff}ms (attempt ${attempt + 1})`);
+        setTimeout(() => runBot(attempt + 1), backoff);
+    }
+}
+
+runBot();
