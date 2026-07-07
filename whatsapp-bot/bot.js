@@ -424,7 +424,7 @@ async function startBot() {
 
             if (statusCode === 401 || reason === '401') {
                 await clearSessionAndRestart('Session rejected by WhatsApp (401)');
-            } else if (statusCode === 408 || statusCode === 440 || /replaced|conflict|timed out|Request Time-out/i.test(errorMessage || '')) {
+            } else if (statusCode === 408 || statusCode === 440 || /stream errored|stream error|Stream Errored|replaced|conflict|timed out|Request Time-out/i.test(errorMessage || '')) {
                 await clearSessionAndRestart('WhatsApp stream conflict, timeout, or init query failure');
             } else if (statusCode !== DisconnectReason.loggedOut) {
                 console.log('Reconnecting...');
