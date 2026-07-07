@@ -257,8 +257,9 @@ async function startBot() {
     const { version, isLatest } = await fetchLatestBaileysVersion();
     console.log(`Using WhatsApp v${version.join('.')}, isLatest: ${isLatest}`);
 
-    // Use 'warn' so socket-level errors (incl. send failures) appear in Render logs
-    const logger = pino({ level: "warn" });
+    // Use environment toggle for verbose Baileys logging in debug mode
+    const waLogLevel = process.env.WA_DEBUG && process.env.WA_DEBUG !== '0' ? 'debug' : 'warn';
+    const logger = pino({ level: waLogLevel });
     const sock = makeWASocket({
         version,
         auth: {
@@ -357,6 +358,10 @@ async function startBot() {
                 for (const id of canonicalJids(update.id)) {
                     tcTokenStore[id] = update.tcToken;
                     console.log(`[tcToken] Stored privacy token for ${id}`);
+                    // Persist debug record for chats.update
+                    try {
+                        prisma.whatsAppDebug.create({ data: { type: 'chats.update', payload: update } }).catch(() => {});
+                    } catch (e) {}
                 }
             }
         }
@@ -418,6 +423,11 @@ async function startBot() {
             const reason = lastDisconnect?.error?.data?.reason || lastDisconnect?.error?.message;
             const errorMessage = lastDisconnect?.error?.output?.payload?.message || reason;
             console.log(`connection closed. Status: ${statusCode}, Reason: ${reason}`);
+
+            // Persist lastDisconnect payload for post-mortem analysis
+            try {
+                await prisma.whatsAppDebug.create({ data: { type: 'connection.close', payload: lastDisconnect || update } });
+            } catch (e) {}
 
             async function clearSessionAndRestart(note) {
                 console.warn(`⚠️  ${note}. Clearing MongoDB session and restarting...`);

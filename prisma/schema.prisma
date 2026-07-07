@@ -419,3 +419,10 @@ model WhatsAppConversation {
   updatedAt DateTime @updatedAt
 }
 
+model WhatsAppDebug {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  type      String
+  payload   Json
+  createdAt DateTime @default(now())
+}
+
