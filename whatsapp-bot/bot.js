@@ -7,6 +7,7 @@ const { OpenAI } = require('openai');
 const pino = require('pino');
 const http = require('http');
 const path = require('path');
+const { buildReplyTargets, sendWithFallback } = require('./wa-delivery');
 require('dotenv').config({ path: path.resolve(__dirname, '../.env.local') });
 
 
@@ -750,15 +751,21 @@ RULES:
             const finalSendJid = replyJid;
 
             try {
-                await sock.presenceSubscribe(finalSendJid);
-                
-                // Since we are sending to the original JID, it is safe to quote the message
+                const replyTargets = buildReplyTargets(msg, finalSendJid, phoneJid);
                 const sendOptions = { quoted: msg };
-                
-                const sendResult = await sock.sendMessage(finalSendJid, { text: replyText }, sendOptions);
-                console.log(`✅ Replied to ${finalSendJid}! Message ID: ${sendResult?.key?.id}, status: ${sendResult?.status}`);
+
+                for (const jid of replyTargets) {
+                    try {
+                        await sock.presenceSubscribe(jid);
+                    } catch (presenceErr) {
+                        console.warn(`[DEBUG] presenceSubscribe warning for ${jid}:`, presenceErr?.message || presenceErr);
+                    }
+                }
+
+                const sendResult = await sendWithFallback(sock, replyTargets, { text: replyText }, sendOptions);
+                console.log(`✅ Replied to ${sendResult.jid}! Message ID: ${sendResult.result?.key?.id}, status: ${sendResult.result?.status}`);
             } catch (sendErr) {
-                console.error(`❌ sendMessage FAILED to ${finalSendJid}:`, sendErr);
+                console.error(`❌ sendMessage FAILED for all candidates:`, sendErr);
             }
 
         } catch (error) {

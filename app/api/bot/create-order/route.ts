@@ -110,7 +110,7 @@ export async function POST(request: Request) {
                         email: guestEmail,
                     }
                 });
-            } catch (createErr: any) {
+            } catch (createErr) {
                 // Race condition or duplicate — fetch the existing record
                 user = await prisma.user.findFirst({
                     where: { OR: [{ phone: customerPhone }, { email: guestEmail }] }
@@ -171,8 +171,9 @@ export async function POST(request: Request) {
             country: countryKey,
         });
 
-    } catch (error: any) {
+    } catch (error) {
         console.error('WhatsApp order creation error:', error);
-        return NextResponse.json({ success: false, error: error?.message || 'Server error' }, { status: 500 });
+        const errorMessage = error instanceof Error ? error.message : 'Server error';
+        return NextResponse.json({ success: false, error: errorMessage }, { status: 500 });
     }
 }
