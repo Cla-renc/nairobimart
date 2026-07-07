@@ -15,8 +15,9 @@ async function triggerPayheroSTK(phone: string, amount: number, orderId: string,
     try {
         const result = await initiatePayHeroStkPush(amount, phone, orderNumber, "NairobiMart WhatsApp User");
         return result;
-    } catch (error: any) {
-        return { success: false, error: error.message || 'PayHero STK push failed' };
+    } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'PayHero STK push failed';
+        return { success: false, error: errorMessage };
     }
 }
 
@@ -71,7 +72,7 @@ async function triggerPesapalLink(amount: number, orderId: string, orderNumber: 
 
 export async function POST(request: Request) {
     try {
-        const { orderId, orderNumber, paymentMethod, amount, customerPhone, customerName, customerEmail, country } = await request.json();
+        const { orderId, orderNumber, paymentMethod, amount, customerPhone, customerName, customerEmail } = await request.json();
 
         if (!orderId || !paymentMethod || !amount) {
             return NextResponse.json({ success: false, error: 'Missing required fields' }, { status: 400 });
@@ -80,7 +81,7 @@ export async function POST(request: Request) {
         if (paymentMethod === 'payhero') {
             const result = await triggerPayheroSTK(customerPhone, amount, orderId, orderNumber);
             if (result.success) {
-                const ref = (result as any).reference;
+                const ref = (result as { reference?: string }).reference;
                 await prisma.order.update({
                     where: { id: orderId },
                     data: { notes: { set: `WhatsApp Order | payhero_ref: ${ref}` } }
@@ -96,8 +97,9 @@ export async function POST(request: Request) {
 
         return NextResponse.json({ success: false, error: 'Unknown payment method' }, { status: 400 });
 
-    } catch (error: any) {
+    } catch (error) {
         console.error('Bot payment trigger error:', error);
-        return NextResponse.json({ success: false, error: error?.message || 'Server error' }, { status: 500 });
+        const errorMessage = error instanceof Error ? error.message : 'Server error';
+        return NextResponse.json({ success: false, error: errorMessage }, { status: 500 });
     }
 }

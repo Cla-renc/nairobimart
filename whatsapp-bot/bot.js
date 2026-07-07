@@ -7,7 +7,7 @@ const { OpenAI } = require('openai');
 const pino = require('pino');
 const http = require('http');
 const path = require('path');
-const { buildReplyTargets, sendWithFallback } = require('./wa-delivery');
+const { buildReplyTargets, sendWithFallback, sanitizeJid } = require('./wa-delivery');
 require('dotenv').config({ path: path.resolve(__dirname, '../.env.local') });
 
 
@@ -403,17 +403,18 @@ async function startBot() {
 
             // replyJid = the JID to use for sock.sendMessage (keep @lid if that's what WA sent)
             // phoneJid = the real phone number JID (for orders, M-Pesa, conversation history)
-            const rawJid = msg.key.remoteJid;
+            const rawJid = sanitizeJid(msg.key.remoteJid);
+            
+            console.log('[DEBUG] Raw JID (sanitized):', rawJid);
+            console.log('[DEBUG] msg.key.senderPn:', msg.key.senderPn);
             
             let replyJid = rawJid; // Always reply to the original JID WhatsApp used
             let phoneJid = rawJid; // Used for orders/payments/history (needs real number)
 
-            if (rawJid.includes('@lid')) {
+            if (rawJid && rawJid.includes('@lid')) {
                 // Extract the real phone number for orders/history
                 if (msg.key.senderPn) {
-                    phoneJid = msg.key.senderPn.includes('@s.whatsapp.net')
-                        ? msg.key.senderPn
-                        : msg.key.senderPn + '@s.whatsapp.net';
+                    phoneJid = sanitizeJid(msg.key.senderPn);
                 } else {
                     phoneJid = rawJid; // fallback (shouldn't happen)
                 }
@@ -423,13 +424,13 @@ async function startBot() {
                 // causes Error 463 (Reach-out Time-lock) because WhatsApp expects the reply in the @lid context.
                 // Baileys automatically handles the tcToken (Trusted Contact Token) when sending to the @lid.
                 replyJid = rawJid;
-                console.log(`[DEBUG] @lid detected. Replying to rawJid=${rawJid} (extracted phone was ${phoneJid})`);
+                console.log(`[DEBUG] @lid detected. Replying to replyJid=${replyJid}, phoneJid=${phoneJid}`);
             }
 
             // remoteJid used for conversation history is the stable phone number
             const remoteJid = phoneJid;
 
-            if (rawJid.includes('@g.us') || rawJid === 'status@broadcast') return;
+            if (rawJid && (rawJid.includes('@g.us') || rawJid === 'status@broadcast')) return;
 
             const textMessage = msg.message.conversation || msg.message.extendedTextMessage?.text;
             if (!textMessage) {
@@ -748,7 +749,7 @@ RULES:
             // ── Send reply ──────────────────────────────────────────
             // We use replyJid (which will be @lid if the user contacted us via @lid)
             // to ensure Baileys attaches the tcToken and avoids Error 463.
-            const finalSendJid = replyJid;
+            const finalSendJid = sanitizeJid(replyJid);
 
             try {
                 const replyTargets = buildReplyTargets(msg, finalSendJid, phoneJid);
@@ -762,10 +763,18 @@ RULES:
                     }
                 }
 
-                const sendResult = await sendWithFallback(sock, replyTargets, { text: replyText }, sendOptions);
+                const sendResult = await sendWithFallback(sock, replyTargets, { text: replyText }, sendOptions, tcTokenStore);
                 console.log(`✅ Replied to ${sendResult.jid}! Message ID: ${sendResult.result?.key?.id}, status: ${sendResult.result?.status}`);
             } catch (sendErr) {
-                console.error(`❌ sendMessage FAILED for all candidates:`, sendErr);
+                console.error(`❌ sendMessage FAILED for all candidates:`, sendErr?.message || sendErr);
+                // Last-ditch effort: try to send to phoneJid directly
+                try {
+                    console.log(`[DEBUG] Attempting fallback send directly to phoneJid=${phoneJid}`);
+                    const fallbackResult = await sock.sendMessage(phoneJid, { text: replyText });
+                    console.log(`✅ Fallback send succeeded to ${phoneJid}`);
+                } catch (fallbackErr) {
+                    console.error(`❌ Fallback send also failed:`, fallbackErr?.message || fallbackErr);
+                }
             }
 
         } catch (error) {

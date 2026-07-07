@@ -1,6 +1,34 @@
-function normalizeJid(jid) {
+function sanitizeJid(jid) {
   if (!jid) return null;
-  return jid.toString().trim();
+  let normalized = jid.toString().trim();
+  
+  // Fix malformed JIDs: 248176548290605alid -> 248176548290605@lid
+  // Replace 'alid' with '@lid' if @ is missing
+  if (normalized.includes('alid') && !normalized.includes('@lid')) {
+    normalized = normalized.replace('alid', '@lid');
+  }
+  // Replace 'as.whatsapp.net' with '@s.whatsapp.net' if @ is missing
+  if (normalized.includes('as.whatsapp.net') && !normalized.includes('@s.whatsapp.net')) {
+    normalized = normalized.replace('as.whatsapp.net', '@s.whatsapp.net');
+  }
+  // Replace 'ag.us' with '@g.us' if @ is missing
+  if (normalized.includes('ag.us') && !normalized.includes('@g.us')) {
+    normalized = normalized.replace('ag.us', '@g.us');
+  }
+  
+  // Ensure JID has a valid domain suffix
+  if (!normalized.includes('@')) {
+    // If no @ at all, assume it's a phone number for @s.whatsapp.net
+    if (/^\d+$/.test(normalized)) {
+      normalized = `${normalized}@s.whatsapp.net`;
+    }
+  }
+  
+  return normalized;
+}
+
+function normalizeJid(jid) {
+  return sanitizeJid(jid);
 }
 
 function canonicalJids(jid) {
@@ -40,20 +68,42 @@ function buildReplyTargets(msg, replyJid, phoneJid) {
   return candidates;
 }
 
-async function sendWithFallback(socket, candidates, message, sendOptions) {
+async function sendWithFallback(socket, candidates, message, sendOptions, tcTokenStore = {}) {
   let lastError = null;
+  // Sanitize all candidates first, then filter valid ones
+  const validCandidates = candidates
+    .filter(c => c) // Remove null/undefined
+    .map(c => sanitizeJid(c)) // Sanitize to fix malformed JIDs
+    .filter(c => c && c.includes('@')); // Keep only valid JIDs
 
-  for (const jid of candidates) {
+  if (validCandidates.length === 0) {
+    throw new Error('No valid candidates after sanitization');
+  }
+
+  for (const jid of validCandidates) {
     try {
-      const result = await socket.sendMessage(jid, message, sendOptions);
-      return { jid, result };
+      console.log(`[wa-delivery] Attempting send to ${jid}`);
+      
+      // Try to attach tcToken if available
+      const options = { ...sendOptions };
+      const tcToken = tcTokenStore[jid];
+      if (tcToken) {
+        options.tcToken = tcToken;
+        console.log(`[wa-delivery] Attached tcToken for ${jid}`);
+      }
+      
+      const result = await socket.sendMessage(jid, message, options);
+      if (result) {
+        console.log(`[wa-delivery] ✅ Send succeeded to ${jid}`);
+        return { jid, result };
+      }
     } catch (error) {
       lastError = error;
       console.warn(`[wa-delivery] sendMessage failed for ${jid}:`, error?.message || error);
     }
   }
 
-  throw lastError || new Error('Unable to send WhatsApp message');
+  throw lastError || new Error('Unable to send WhatsApp message to any candidate');
 }
 
-module.exports = { buildReplyTargets, sendWithFallback, canonicalJids, normalizeJid };
+module.exports = { buildReplyTargets, sendWithFallback, canonicalJids, normalizeJid, sanitizeJid };
