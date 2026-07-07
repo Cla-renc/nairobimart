@@ -363,6 +363,26 @@ async function startBot() {
         if (sock.authState.creds.registered) clearRegistrationWatch();
     });
 
+    // ── PreKeyError Handler ──────────────────────────────────────────
+    // Detects when encryption keys are out of sync (common after redeploys)
+    sock.ev.on('call', async (node) => {
+        try {
+            if (node.error?.type === 'PreKeyError' || node.error?.message?.includes('PreKey')) {
+                console.error('❌ PreKeyError detected! Session encryption keys are out of sync.');
+                console.error('   This happens when: (a) bot was restarted on a different instance, or (b) WhatsApp invalidated the session.');
+                console.error('   Clearing session and restarting for fresh authentication...');
+                await prisma.whatsAppSession.deleteMany({});
+                setTimeout(() => {
+                    console.log('Restarting bot with fresh session...');
+                    startBot();
+                }, 2000);
+                return false; // Reject the call
+            }
+        } catch (e) {
+            console.error('[PreKeyError Handler] Error:', e.message);
+        }
+    });
+
     sock.ev.on('connection.update', async (update) => {
         const { connection, lastDisconnect, qr } = update;
 
@@ -785,9 +805,21 @@ RULES:
             } catch(err) {}
 
             // ── Send reply ──────────────────────────────────────────
-            // We use replyJid (which will be @lid if the user contacted us via @lid)
-            // to ensure Baileys attaches the tcToken and avoids Error 463.
+            // Ensure we have the correct JID and tcToken (if needed)
             const finalSendJid = inlineSanitizeJid(replyJid);
+            
+            console.log(`[DEBUG] About to send to finalSendJid=${finalSendJid}`);
+            console.log(`[DEBUG] tcTokenStore keys:`, Object.keys(tcTokenStore));
+            
+            // If original message was @lid, ensure we have tcToken for the phoneJid
+            if (rawJid && rawJid.includes('@lid')) {
+                const tcToken = tcTokenStore[finalSendJid] || tcTokenStore[phoneJid];
+                if (!tcToken) {
+                    console.warn(`[DEBUG] ⚠️ No tcToken found for ${finalSendJid}. Message may be rejected with Error 463.`);
+                    console.warn(`[DEBUG] Waiting 2s for tcToken to arrive...`);
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                }
+            }
 
             try {
                 const replyTargets = buildReplyTargets(msg, finalSendJid, phoneJid);
