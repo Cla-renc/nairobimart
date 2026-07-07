@@ -811,13 +811,13 @@ RULES:
             console.log(`[DEBUG] About to send to finalSendJid=${finalSendJid}`);
             console.log(`[DEBUG] tcTokenStore keys:`, Object.keys(tcTokenStore));
             
-            // If original message was @lid, ensure we have tcToken for the phoneJid
+            // If original message was @lid, actively wait for a tcToken for the phone JID.
             if (rawJid && rawJid.includes('@lid')) {
-                const tcToken = tcTokenStore[finalSendJid] || tcTokenStore[phoneJid];
-                if (!tcToken) {
-                    console.warn(`[DEBUG] ⚠️ No tcToken found for ${finalSendJid}. Message may be rejected with Error 463.`);
-                    console.warn(`[DEBUG] Waiting 2s for tcToken to arrive...`);
-                    await new Promise(resolve => setTimeout(resolve, 2000));
+                const foundToken = await waitForTcToken([finalSendJid, phoneJid], 5000);
+                if (foundToken) {
+                    console.log(`[DEBUG] Found tcToken for ${foundToken.jid} before sending reply to ${finalSendJid}`);
+                } else {
+                    console.warn(`[DEBUG] ⚠️ No tcToken found for ${finalSendJid} or ${phoneJid} after waiting. Message may be rejected with Error 463.`);
                 }
             }
 

@@ -52,3 +52,28 @@ test('sendWithFallback sanitizes candidates and retries after failure', async ()
   assert.equal(attempted[1], '254700000000@s.whatsapp.net');
 });
 
+test('sendWithFallback attaches tcToken using canonical JID lookup', async () => {
+  const sendAttempts = [];
+  const socket = {
+    sendMessage: async (jid, message, options) => {
+      sendAttempts.push({ jid, options });
+      return { key: { id: 'sent', status: 1 } };
+    }
+  };
+
+  const tcTokenStore = {
+    '254700000000@s.whatsapp.net': Buffer.from('token123')
+  };
+
+  const result = await sendWithFallback(
+    socket,
+    ['254700000000as.whatsapp.net'],
+    { text: 'hello' },
+    {},
+    tcTokenStore
+  );
+
+  assert.equal(result.jid, '254700000000@s.whatsapp.net');
+  assert.equal(sendAttempts[0].options.tcToken.toString(), 'token123');
+});
+

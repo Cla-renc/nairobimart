@@ -32,7 +32,7 @@ function normalizeJid(jid) {
 }
 
 function canonicalJids(jid) {
-  const normalized = normalizeJid(jid);
+  const normalized = sanitizeJid(jid);
   if (!normalized) return [];
   const result = new Set([normalized]);
   const match = normalized.match(/^(.+?):\d+(@.+)$/);
@@ -40,6 +40,17 @@ function canonicalJids(jid) {
     result.add(`${match[1]}${match[2]}`);
   }
   return [...result];
+}
+
+function findTcToken(tcTokenStore, jid) {
+  const normalized = sanitizeJid(jid);
+  if (!normalized) return null;
+  for (const candidate of canonicalJids(normalized)) {
+    if (tcTokenStore[candidate]) {
+      return { jid: candidate, token: tcTokenStore[candidate] };
+    }
+  }
+  return null;
 }
 
 function buildReplyTargets(msg, replyJid, phoneJid) {
@@ -84,12 +95,12 @@ async function sendWithFallback(socket, candidates, message, sendOptions, tcToke
     try {
       console.log(`[wa-delivery] Attempting send to ${jid}`);
       
-      // Try to attach tcToken if available
+      // Try to attach tcToken if available, using canonical JID lookup.
       const options = { ...sendOptions };
-      const tcToken = tcTokenStore[jid];
-      if (tcToken) {
-        options.tcToken = tcToken;
-        console.log(`[wa-delivery] Attached tcToken for ${jid}`);
+      const tcTokenRecord = findTcToken(tcTokenStore, jid);
+      if (tcTokenRecord) {
+        options.tcToken = tcTokenRecord.token;
+        console.log(`[wa-delivery] Attached tcToken for ${tcTokenRecord.jid} when sending to ${jid}`);
       }
       
       const result = await socket.sendMessage(jid, message, options);
