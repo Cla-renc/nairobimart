@@ -261,7 +261,7 @@ async function startBot() {
         markOnlineOnConnect: true,
         keepAliveIntervalMs: 30000,
         retryRequestDelayMs: 2000,
-        defaultQueryTimeoutMs: 120000,
+        defaultQueryTimeoutMs: 300000,
         syncFullHistory: false,
         generateHighQualityLinkPreview: false,
         getMessage: async (key) => {
@@ -424,8 +424,8 @@ async function startBot() {
 
             if (statusCode === 401 || reason === '401') {
                 await clearSessionAndRestart('Session rejected by WhatsApp (401)');
-            } else if (statusCode === 440 || /replaced|conflict|timed out/i.test(errorMessage || '')) {
-                await clearSessionAndRestart('WhatsApp stream conflict or timeout');
+            } else if (statusCode === 408 || statusCode === 440 || /replaced|conflict|timed out|Request Time-out/i.test(errorMessage || '')) {
+                await clearSessionAndRestart('WhatsApp stream conflict, timeout, or init query failure');
             } else if (statusCode !== DisconnectReason.loggedOut) {
                 console.log('Reconnecting...');
                 setTimeout(startBot, 5000);
