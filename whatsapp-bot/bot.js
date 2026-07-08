@@ -498,18 +498,13 @@ async function startBot() {
                 setTimeout(startBot, 3000);
             }
 
-            if (statusCode === 401 || reason === '401') {
-                await clearSessionAndRestart('Session rejected by WhatsApp (401)');
-            } else if (statusCode === 515) {
-                console.log('⚠️ Stream Errored (515) - Restart Required. Reconnecting WITHOUT clearing session...');
-                setTimeout(startBot, 2000);
-            } else if (statusCode === 408 || statusCode === 440 || /stream errored|stream error|Stream Errored|replaced|conflict|timed out|Request Time-out/i.test(errorMessage || '')) {
-                await clearSessionAndRestart('WhatsApp stream conflict, timeout, or init query failure');
-            } else if (statusCode !== DisconnectReason.loggedOut) {
-                console.log('Reconnecting...');
-                setTimeout(startBot, 5000);
+            if (statusCode === 401 || reason === '401' || statusCode === 403) {
+                await clearSessionAndRestart('Session rejected by WhatsApp (401/403)');
+            } else if (statusCode === DisconnectReason.loggedOut) {
+                await clearSessionAndRestart('User manually logged out from device');
             } else {
-                console.log('Logged out. Please restart the service to get a new pairing code.');
+                console.warn(`Connection dropped (Status: ${statusCode}, Reason: ${reason}). Reconnecting WITHOUT clearing session...`);
+                setTimeout(startBot, 5000);
             }
         } else if (connection === 'open') {
             console.log('✅ Bot successfully connected to WhatsApp!');
@@ -560,8 +555,8 @@ async function startBot() {
                         console.log(`[DEBUG] @lid but no senderPn. Extracted from remoteJid: phoneJid=${phoneJid}`);
                     }
                 }
-                // SEND TO phoneJid, not rawJid (@lid)!
-                replyJid = phoneJid;
+                // DO NOT override replyJid with phoneJid. Replies MUST go back to the @lid
+                // so WhatsApp doesn't silently drop them.
             }
 
             // remoteJid used for conversation history is the stable phone number
