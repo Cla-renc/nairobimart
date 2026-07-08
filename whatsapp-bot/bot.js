@@ -867,45 +867,42 @@ RULES:
             // ── Send reply ──────────────────────────────────────────
             // Ensure we have the correct JID and tcToken (if needed)
             const finalSendJid = inlineSanitizeJid(replyJid);
-            
-            console.log(`[DEBUG] About to send to finalSendJid=${finalSendJid}`);
-            console.log(`[DEBUG] tcTokenStore keys:`, Object.keys(tcTokenStore));
-            
-            // If original message was @lid, actively wait for a tcToken for the phone JID.
+            // ── Determine the best JID to send to ─────────────────────────────────
+            // If the message came via an @lid privacy JID, we MUST have the tcToken
+            // to reply to that @lid. Without it, WhatsApp returns error 463 silently.
+            // In that case, fall back to the real phoneJid (@s.whatsapp.net) directly.
+            let resolvedSendJid = finalSendJid;
+
             if (rawJid && rawJid.includes('@lid')) {
                 const foundToken = await waitForTcToken([finalSendJid, phoneJid], 5000);
                 if (foundToken) {
-                    console.log(`[DEBUG] Found tcToken for ${foundToken.jid} before sending reply to ${finalSendJid}`);
+                    console.log(`[DEBUG] ✅ Found tcToken for ${foundToken.jid} — replying via @lid`);
+                    resolvedSendJid = foundToken.jid; // use the JID the token belongs to
                 } else {
-                    console.warn(`[DEBUG] ⚠️ No tcToken found for ${finalSendJid} or ${phoneJid} after waiting. Message may be rejected with Error 463.`);
+                    console.warn(`[DEBUG] ⚠️ No tcToken for ${finalSendJid}. Routing reply to phoneJid=${phoneJid} to avoid Error 463.`);
+                    resolvedSendJid = phoneJid; // bypass @lid entirely
                 }
             }
 
+            console.log(`[DEBUG] Final resolved send JID: ${resolvedSendJid}`);
+
             try {
-                const replyTargets = buildReplyTargets(msg, finalSendJid, phoneJid);
-                // Removed `quoted: msg` to prevent silent message drops by WhatsApp
-                // due to mismatched or missing message context/store data
-                const sendOptions = {};
+                // presenceSubscribe on the resolved JID so WhatsApp knows we're active
+                try { await sock.presenceSubscribe(resolvedSendJid); } catch(e) {}
 
-                for (const jid of replyTargets) {
-                    try {
-                        await sock.presenceSubscribe(jid);
-                    } catch (presenceErr) {
-                        console.warn(`[DEBUG] presenceSubscribe warning for ${jid}:`, presenceErr?.message || presenceErr);
-                    }
-                }
-
-                const sendResult = await sendWithFallback(sock, replyTargets, { text: replyText }, sendOptions, tcTokenStore);
-                console.log(`✅ Replied to ${sendResult.jid}! Message ID: ${sendResult.result?.key?.id}, status: ${sendResult.result?.status}`);
+                const sendResult = await sock.sendMessage(resolvedSendJid, { text: replyText });
+                console.log(`✅ Replied to ${resolvedSendJid}! Message ID: ${sendResult?.key?.id}, status: ${sendResult?.status}`);
             } catch (sendErr) {
-                console.error(`❌ sendMessage FAILED for all candidates:`, sendErr?.message || sendErr);
-                // Last-ditch effort: try to send to phoneJid directly
-                try {
-                    console.log(`[DEBUG] Attempting fallback send directly to phoneJid=${phoneJid}`);
-                    const fallbackResult = await sock.sendMessage(phoneJid, { text: replyText });
-                    console.log(`✅ Fallback send succeeded to ${phoneJid}`);
-                } catch (fallbackErr) {
-                    console.error(`❌ Fallback send also failed:`, fallbackErr?.message || fallbackErr);
+                console.error(`❌ sendMessage FAILED for ${resolvedSendJid}:`, sendErr?.message || sendErr);
+                // Last-ditch: if resolvedSendJid was @lid, try phoneJid directly
+                if (resolvedSendJid !== phoneJid) {
+                    try {
+                        console.log(`[DEBUG] Last-resort fallback to phoneJid=${phoneJid}`);
+                        const fallbackResult = await sock.sendMessage(phoneJid, { text: replyText });
+                        console.log(`✅ Fallback send succeeded to ${phoneJid}`);
+                    } catch (fallbackErr) {
+                        console.error(`❌ Fallback also failed:`, fallbackErr?.message || fallbackErr);
+                    }
                 }
             }
 
