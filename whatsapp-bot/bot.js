@@ -307,8 +307,8 @@ async function startBot() {
             keys: makeCacheableSignalKeyStore(state.keys, logger)
         },
         logger,
-        // macOS Chrome is required for pairing code flow to work correctly
-        browser: Browsers.macOS('Chrome'),
+        // Ubuntu Chrome is currently the most stable for pairing code flow
+        browser: ['Ubuntu', 'Chrome', '20.0.04'],
         markOnlineOnConnect: true,
         keepAliveIntervalMs: 30000,
         retryRequestDelayMs: 2000,
@@ -500,6 +500,9 @@ async function startBot() {
 
             if (statusCode === 401 || reason === '401') {
                 await clearSessionAndRestart('Session rejected by WhatsApp (401)');
+            } else if (statusCode === 515) {
+                console.log('⚠️ Stream Errored (515) - Restart Required. Reconnecting WITHOUT clearing session...');
+                setTimeout(startBot, 2000);
             } else if (statusCode === 408 || statusCode === 440 || /stream errored|stream error|Stream Errored|replaced|conflict|timed out|Request Time-out/i.test(errorMessage || '')) {
                 await clearSessionAndRestart('WhatsApp stream conflict, timeout, or init query failure');
             } else if (statusCode !== DisconnectReason.loggedOut) {
