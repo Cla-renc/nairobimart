@@ -161,14 +161,14 @@ app.listen(PORT, () => {
     console.log(`Express HTTP Server listening on port ${PORT}`);
 });
 
-// Global process handlers: log and attempt graceful restart on unexpected errors
-process.on('unhandledRejection', (reason, p) => {
-    console.error('[process] unhandledRejection:', reason, p);
-    try { setTimeout(() => startBot(), 3000); } catch(e) {}
+// Global process handlers: only LOG — do NOT call startBot() here.
+// Calling startBot() from unhandledRejection spins up a second bot instance
+// that fights the first one for the WhatsApp connection, causing a 401 loop.
+process.on('unhandledRejection', (reason) => {
+    console.error('[process] unhandledRejection (non-fatal):', reason?.message || reason);
 });
 process.on('uncaughtException', (err) => {
-    console.error('[process] uncaughtException:', err);
-    try { setTimeout(() => startBot(), 3000); } catch(e) {}
+    console.error('[process] uncaughtException:', err?.message || err);
 });
 
 const prisma = new PrismaClient();
@@ -368,29 +368,10 @@ async function startBot() {
         return null;
     }
 
-    let registrationWatchTimeout = null;
-    function scheduleRegistrationWatch() {
-        if (registrationWatchTimeout) clearTimeout(registrationWatchTimeout);
-        registrationWatchTimeout = setTimeout(async () => {
-            if (!sock.authState.creds.registered) {
-                console.warn('⚠️ WhatsApp session is still not registered after 30 seconds. Clearing stale session and restarting process.');
-                try {
-                    await prisma.whatsAppSession.deleteMany({});
-                    console.log('🗑️  Stale WhatsApp session cleared from MongoDB.');
-                } catch (e) {
-                    console.error('Failed to clear stale WhatsApp session:', e.message);
-                }
-                setTimeout(() => process.exit(1), 1000);
-            }
-        }, 30000);
-    }
-
-    function clearRegistrationWatch() {
-        if (registrationWatchTimeout) {
-            clearTimeout(registrationWatchTimeout);
-            registrationWatchTimeout = null;
-        }
-    }
+    // Registration watchdog disabled: it was deleting valid sessions after 30s
+    // during the normal pairing flow. Connection events now handle all reconnects.
+    function scheduleRegistrationWatch() { /* no-op */ }
+    function clearRegistrationWatch() { /* no-op */ }
 
     sock.ev.on('chats.update', (updates) => {
         for (const update of updates) {
@@ -417,8 +398,11 @@ async function startBot() {
         if (sock.authState.creds.registered) clearRegistrationWatch();
     });
 
-    // Request pairing code if phone number is provided and not registered
-    if (!sock.authState.creds.registered && process.env.BOT_PHONE_NUMBER) {
+    // Request pairing code ONLY if this is a completely fresh session (no creds.me yet).
+    // If creds already exist but are just not 'registered' yet (e.g. mid-reconnect),
+    // requesting a new code would invalidate the existing partial session and cause a 401 loop.
+    const isFreshSession = !sock.authState.creds.me;
+    if (isFreshSession && process.env.BOT_PHONE_NUMBER) {
         setTimeout(async () => {
             try {
                 const phoneNumber = process.env.BOT_PHONE_NUMBER.replace(/[^0-9]/g, '');
@@ -432,6 +416,8 @@ async function startBot() {
                 console.error('❌ Failed to request pairing code:', err?.message || err);
             }
         }, 3000);
+    } else if (!isFreshSession && !sock.authState.creds.registered) {
+        console.log('🔄 Existing session found but not yet registered — waiting for WhatsApp to confirm...');
     }
 
     // ── PreKeyError Handler ──────────────────────────────────────────
