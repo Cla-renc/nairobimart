@@ -22,6 +22,36 @@ app.get('/', (req, res) => {
     res.send('WhatsApp Bot is running!');
 });
 
+app.get('/debug/whatsapp-connectivity', async (req, res) => {
+    try {
+        const https = require('https');
+        const request = https.request(
+            'https://web.whatsapp.com',
+            { method: 'HEAD', timeout: 10000 },
+            (response) => {
+                res.json({ ok: true, statusCode: response.statusCode, headers: response.headers });
+            }
+        );
+        request.on('error', (error) => {
+            res.status(500).json({ ok: false, error: error.message });
+        });
+        request.on('timeout', () => {
+            request.destroy(new Error('Request timed out'));
+        });
+        request.end();
+    } catch (error) {
+        res.status(500).json({ ok: false, error: error.message });
+    }
+});
+
+app.get('/debug/session-status', (req, res) => {
+    res.json({
+        ready: Boolean(whatsappSocket),
+        registered: whatsappSocket?.authState?.creds?.registered || false,
+        botPhone: whatsappSocket?.authState?.creds?.me || null,
+    });
+});
+
 // ── INLINE JID SANITIZATION ──────────────────────────────────
 // Duplicated here to ensure it's always available and bypass module caching
 function inlineSanitizeJid(jid) {
