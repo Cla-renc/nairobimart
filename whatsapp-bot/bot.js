@@ -16,6 +16,8 @@ const express = require('express');
 const app = express();
 app.use(express.json());
 
+const allowOutboundWhatsApp = process.env.WHATSAPP_ALLOW_OUTBOUND === 'true';
+
 app.get('/', (req, res) => {
     res.send('WhatsApp Bot is running!');
 });
@@ -58,6 +60,10 @@ function inlineSanitizeJid(jid) {
 let whatsappSocket = null;
 
 app.post('/api/send-dispatch', async (req, res) => {
+    if (!allowOutboundWhatsApp) {
+        return res.status(403).json({ error: 'Outbound WhatsApp sending is disabled. Enable WHATSAPP_ALLOW_OUTBOUND=true to use this endpoint.' });
+    }
+
     try {
         const { phone, customerName, orderNumber, trackingUrl } = req.body;
         
@@ -83,6 +89,10 @@ app.post('/api/send-dispatch', async (req, res) => {
 
 // Generic send-message endpoint — used by webhooks to send any message to a customer
 app.post('/api/send-message', async (req, res) => {
+    if (!allowOutboundWhatsApp) {
+        return res.status(403).json({ error: 'Outbound WhatsApp sending is disabled. Enable WHATSAPP_ALLOW_OUTBOUND=true to use this endpoint.' });
+    }
+
     try {
         const { phone, message } = req.body;
         if (!phone || !message || !whatsappSocket) {
