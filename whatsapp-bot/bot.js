@@ -316,7 +316,7 @@ async function startBot() {
         syncFullHistory: false,
         generateHighQualityLinkPreview: false,
         getMessage: async (key) => {
-            return { conversation: 'hello' };
+            return undefined;
         }
     });
 
@@ -411,12 +411,28 @@ async function startBot() {
     console.log(`[DEBUG] BOT_PHONE_NUMBER from env:`, process.env.BOT_PHONE_NUMBER ? process.env.BOT_PHONE_NUMBER : '(none)');
     console.log(`[DEBUG] Is registered?`, sock.authState.creds.registered);
 
-    // QR login only. No pairing code will be requested.
     sock.ev.on('creds.update', async () => {
         console.log('[DEBUG] creds.update fired; registered=', sock.authState.creds.registered);
         await saveCreds();
         if (sock.authState.creds.registered) clearRegistrationWatch();
     });
+
+    // Request pairing code if phone number is provided and not registered
+    if (!sock.authState.creds.registered && process.env.BOT_PHONE_NUMBER) {
+        setTimeout(async () => {
+            try {
+                const phoneNumber = process.env.BOT_PHONE_NUMBER.replace(/[^0-9]/g, '');
+                console.log(`\n======================================================`);
+                console.log(`📲 REQUESTING PAIRING CODE FOR: ${phoneNumber}`);
+                const code = await sock.requestPairingCode(phoneNumber);
+                console.log(`🔑 PAIRING CODE: ${code}`);
+                console.log(`👉 Enter this code on your phone: Linked Devices -> Link with phone number`);
+                console.log(`======================================================\n`);
+            } catch (err) {
+                console.error('❌ Failed to request pairing code:', err?.message || err);
+            }
+        }, 3000);
+    }
 
     // ── PreKeyError Handler ──────────────────────────────────────────
     // Detects when encryption keys are out of sync (common after redeploys)
@@ -454,7 +470,7 @@ async function startBot() {
         if (qr && !sock.authState.creds.registered) {
             console.log("\nSCAN THIS QR CODE IN YOUR WHATSAPP TO LOG IN:\n");
             qrcode.generate(qr, { small: true });
-            console.log("\n🚨 IF THE QR CODE ABOVE IS DISTORTED BY LOG PREFIXES, CLICK THIS LINK INSTEAD:");
+            console.log("\n🚨 IF THE QR CODE FAILS, USE THE PAIRING CODE ABOVE OR CONFIGURE BOT_PHONE_NUMBER IN ENV.\n");
             console.log(`👉 https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(qr)} \n`);
         }
 
@@ -883,7 +899,9 @@ RULES:
 
             try {
                 const replyTargets = buildReplyTargets(msg, finalSendJid, phoneJid);
-                const sendOptions = { quoted: msg };
+                // Removed `quoted: msg` to prevent silent message drops by WhatsApp
+                // due to mismatched or missing message context/store data
+                const sendOptions = {};
 
                 for (const jid of replyTargets) {
                     try {
