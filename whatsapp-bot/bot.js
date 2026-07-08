@@ -873,69 +873,26 @@ RULES:
             } catch(err) {}
 
             // ── Send reply ──────────────────────────────────────────
-            // Ensure we have the correct JID and tcToken (if needed)
-            const finalSendJid = inlineSanitizeJid(replyJid);
-            // ── Determine the best JID to send to ─────────────────────────────────
-            // If message came via @lid, we MUST send back to @lid WITH the tcToken.
-            // Without the token, WhatsApp returns 463 for BOTH @lid AND phoneJid.
-            // If we truly have no token after waiting, we still try @lid (occasionally works)
-            // and fall through to phoneJid as last resort.
-            let resolvedSendJid = rawJid; // Default: reply to exact JID we received from
-            let sendOptions = {};
-
-            if (rawJid && rawJid.includes('@lid')) {
-                const foundToken = await waitForTcToken([rawJid, phoneJid], 8000);
-                if (foundToken) {
-                    resolvedSendJid = foundToken.jid;
-                    sendOptions.tcToken = foundToken.token;
-                    console.log(`[DEBUG] ✅ tcToken found for ${foundToken.jid} — replying via @lid with token`);
-                } else {
-                    resolvedSendJid = rawJid; // still try @lid without token
-                    console.warn(`[DEBUG] ⚠️ No tcToken found. Attempting @lid anyway, then will fallback to phoneJid.`);
-                }
-            }
+            // Error 463 ("received error in ack") happens when replying to @lid addresses
+            // because of strict Thread Control Token restrictions and cross-JID quoting.
+            // We bypass @lid entirely and ALWAYS reply directly to the customer's real phoneJid.
+            
+            console.log(`[DEBUG] Routing reply directly to phoneJid=${phoneJid} to bypass @lid 463 restrictions`);
 
             // ── Human-like delay ──────────────────────────────────────────────
-            // WhatsApp rate-limits replies that come back instantly (bot detection).
-            // A 1.5-3s delay makes it look like a human is typing.
             const typingDelay = 1500 + Math.floor(Math.random() * 1500);
             await new Promise(resolve => setTimeout(resolve, typingDelay));
 
-            console.log(`[DEBUG] Sending to resolvedSendJid=${resolvedSendJid}`);
-
             try {
-                try { await sock.sendPresenceUpdate('paused', resolvedSendJid); } catch(e) {}
+                try { await sock.sendPresenceUpdate('paused', phoneJid); } catch(e) {}
 
-                // Use quoted context so WhatsApp threads this as a REPLY, not cold outbound.
-                // This is critical for WhatsApp Business to allow delivery without 463.
-                const result = await sock.sendMessage(resolvedSendJid, { text: replyText }, { ...sendOptions, quoted: msg });
-                console.log(`✅ Replied to ${resolvedSendJid}! ID: ${result?.key?.id}`);
+                // CRITICAL: We do NOT use `quoted: msg` here.
+                // Since the original message came from an @lid, quoting it while
+                // sending to a phoneJid causes a cross-JID mismatch, which triggers Error 463.
+                const result = await sock.sendMessage(phoneJid, { text: replyText });
+                console.log(`✅ Successfully replied to ${phoneJid}! Message ID: ${result?.key?.id}`);
             } catch (sendErr) {
-                console.error(`❌ sendMessage failed for ${resolvedSendJid}:`, sendErr?.message);
-                // Fallback 1: try @lid without quoted context
-                if (resolvedSendJid !== rawJid) {
-                    try {
-                        const r = await sock.sendMessage(rawJid, { text: replyText }, sendOptions);
-                        console.log(`✅ Fallback @lid send succeeded: ${r?.key?.id}`);
-                    } catch(e) {
-                        console.error(`❌ @lid fallback also failed:`, e?.message);
-                        // Fallback 2: plain send to phoneJid
-                        try {
-                            const r = await sock.sendMessage(phoneJid, { text: replyText });
-                            console.log(`✅ Plain phoneJid send succeeded: ${r?.key?.id}`);
-                        } catch(e2) {
-                            console.error(`❌ All send attempts failed:`, e2?.message);
-                        }
-                    }
-                } else {
-                    // Fallback: plain send to phoneJid
-                    try {
-                        const r = await sock.sendMessage(phoneJid, { text: replyText });
-                        console.log(`✅ Plain phoneJid send succeeded: ${r?.key?.id}`);
-                    } catch(e) {
-                        console.error(`❌ phoneJid fallback also failed:`, e?.message);
-                    }
-                }
+                console.error(`❌ sendMessage failed for ${phoneJid}:`, sendErr?.message);
             }
 
         } catch (error) {
