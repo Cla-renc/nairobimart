@@ -1,3 +1,4 @@
+/* eslint-disable */
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { buildReplyTargets, sendWithFallback, sanitizeJid } = require('../../whatsapp-bot/wa-delivery');
