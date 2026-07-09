@@ -874,12 +874,21 @@ RULES:
 
             // ── Send reply ──────────────────────────────────────────
             // Error 463 happens when Business APIs strict Thread Control Token checking fails.
-            // Baileys caches the tcToken internally based on the EXACT raw remoteJid.
-            // If we sanitize 'alid' to '@lid', Baileys internal cache lookup fails and it omits the token!
-            // We must use the exact, unsanitized msg.key.remoteJid.
+            // Baileys' internal tcToken interceptor frequently fails for smba accounts.
+            // To fix this, we MUST manually extract the messageSecret directly from the incoming message
+            // and pass it as the tcToken alongside the quoted message.
             
             const exactOriginalJid = msg.key.remoteJid;
-            console.log(`[DEBUG] Routing reply directly to exact original JID=${exactOriginalJid} to leverage Baileys internal tcToken cache.`);
+            console.log(`[DEBUG] Routing reply directly to exact original JID=${exactOriginalJid}`);
+
+            // Manually extract tcToken from the incoming message
+            let sendOptions = {};
+            if (msg.message?.messageContextInfo?.messageSecret) {
+                sendOptions.tcToken = msg.message.messageContextInfo.messageSecret;
+                console.log(`[DEBUG] Manually extracted messageSecret as tcToken directly from the incoming message!`);
+            } else {
+                console.log(`[DEBUG] No messageSecret found in incoming messageContextInfo.`);
+            }
 
             // ── Human-like delay ──────────────────────────────────────────────
             const typingDelay = 1500 + Math.floor(Math.random() * 1500);
@@ -889,8 +898,8 @@ RULES:
                 try { await sock.sendPresenceUpdate('paused', exactOriginalJid); } catch(e) {}
 
                 // We MUST include quoted: msg so Baileys knows this is a reply to the exact thread,
-                // which is required for tcToken to be validated by WhatsApp servers.
-                const result = await sock.sendMessage(exactOriginalJid, { text: replyText }, { quoted: msg });
+                // and we manually pass the tcToken we just extracted.
+                const result = await sock.sendMessage(exactOriginalJid, { text: replyText }, { ...sendOptions, quoted: msg });
                 console.log(`✅ Successfully replied to ${exactOriginalJid}! Message ID: ${result?.key?.id}`);
             } catch (sendErr) {
                 console.error(`❌ sendMessage failed for ${exactOriginalJid}:`, sendErr?.message);
