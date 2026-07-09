@@ -873,43 +873,30 @@ RULES:
             } catch(err) {}
 
             // ── Send reply ──────────────────────────────────────────
-            // Error 463 happens when replying to @lid addresses without a Thread Control Token.
-            // However, it also happens if we initiate a chat to the customer's real phoneJid
-            // when they contacted us via their privacy @lid.
-            // To fix this, we MUST reply to the @lid AND attach the tcToken AND omit the quoted message.
+            // Error 463 happens when Business APIs strict Thread Control Token checking fails.
+            // Baileys caches the tcToken internally based on the EXACT raw remoteJid.
+            // If we sanitize 'alid' to '@lid', Baileys internal cache lookup fails and it omits the token!
+            // We must use the exact, unsanitized msg.key.remoteJid.
             
-            let resolvedSendJid = phoneJid; // Default to phoneJid if not @lid
-            let sendOptions = {};
-
-            if (rawJid && rawJid.includes('@lid')) {
-                const foundToken = await waitForTcToken([rawJid, phoneJid], 8000);
-                if (foundToken) {
-                    resolvedSendJid = foundToken.jid;
-                    sendOptions.tcToken = foundToken.token;
-                    console.log(`[DEBUG] ✅ tcToken found for ${foundToken.jid} — replying via @lid with token`);
-                } else {
-                    console.warn(`[DEBUG] ⚠️ No tcToken found after 8s. Falling back to direct phoneJid send (may trigger 463).`);
-                }
-            } else {
-                console.log(`[DEBUG] Standard JID detected. Routing reply directly to phoneJid=${phoneJid}`);
-            }
+            const exactOriginalJid = msg.key.remoteJid;
+            console.log(`[DEBUG] Routing reply directly to exact original JID=${exactOriginalJid} to leverage Baileys internal tcToken cache.`);
 
             // ── Human-like delay ──────────────────────────────────────────────
             const typingDelay = 1500 + Math.floor(Math.random() * 1500);
             await new Promise(resolve => setTimeout(resolve, typingDelay));
 
             try {
-                try { await sock.sendPresenceUpdate('paused', resolvedSendJid); } catch(e) {}
+                try { await sock.sendPresenceUpdate('paused', exactOriginalJid); } catch(e) {}
 
-                // CRITICAL: We do NOT use `quoted: msg` here anymore.
-                // Sending `quoted: msg` combined with tcToken or cross-JID replies is a known trigger for Error 463 on Business APIs.
-                const result = await sock.sendMessage(resolvedSendJid, { text: replyText }, sendOptions);
-                console.log(`✅ Successfully replied to ${resolvedSendJid}! Message ID: ${result?.key?.id}`);
+                // We MUST include quoted: msg so Baileys knows this is a reply to the exact thread,
+                // which is required for tcToken to be validated by WhatsApp servers.
+                const result = await sock.sendMessage(exactOriginalJid, { text: replyText }, { quoted: msg });
+                console.log(`✅ Successfully replied to ${exactOriginalJid}! Message ID: ${result?.key?.id}`);
             } catch (sendErr) {
-                console.error(`❌ sendMessage failed for ${resolvedSendJid}:`, sendErr?.message);
+                console.error(`❌ sendMessage failed for ${exactOriginalJid}:`, sendErr?.message);
                 
-                // Final fallback if the @lid fails: try phoneJid directly
-                if (resolvedSendJid !== phoneJid) {
+                // Final fallback: try phoneJid directly without quoting
+                if (exactOriginalJid !== phoneJid) {
                     try {
                         console.log(`[DEBUG] Falling back to direct phoneJid send...`);
                         const fallbackResult = await sock.sendMessage(phoneJid, { text: replyText });
