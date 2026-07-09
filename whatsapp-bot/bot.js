@@ -873,26 +873,51 @@ RULES:
             } catch(err) {}
 
             // ── Send reply ──────────────────────────────────────────
-            // Error 463 ("received error in ack") happens when replying to @lid addresses
-            // because of strict Thread Control Token restrictions and cross-JID quoting.
-            // We bypass @lid entirely and ALWAYS reply directly to the customer's real phoneJid.
+            // Error 463 happens when replying to @lid addresses without a Thread Control Token.
+            // However, it also happens if we initiate a chat to the customer's real phoneJid
+            // when they contacted us via their privacy @lid.
+            // To fix this, we MUST reply to the @lid AND attach the tcToken AND omit the quoted message.
             
-            console.log(`[DEBUG] Routing reply directly to phoneJid=${phoneJid} to bypass @lid 463 restrictions`);
+            let resolvedSendJid = phoneJid; // Default to phoneJid if not @lid
+            let sendOptions = {};
+
+            if (rawJid && rawJid.includes('@lid')) {
+                const foundToken = await waitForTcToken([rawJid, phoneJid], 8000);
+                if (foundToken) {
+                    resolvedSendJid = foundToken.jid;
+                    sendOptions.tcToken = foundToken.token;
+                    console.log(`[DEBUG] ✅ tcToken found for ${foundToken.jid} — replying via @lid with token`);
+                } else {
+                    console.warn(`[DEBUG] ⚠️ No tcToken found after 8s. Falling back to direct phoneJid send (may trigger 463).`);
+                }
+            } else {
+                console.log(`[DEBUG] Standard JID detected. Routing reply directly to phoneJid=${phoneJid}`);
+            }
 
             // ── Human-like delay ──────────────────────────────────────────────
             const typingDelay = 1500 + Math.floor(Math.random() * 1500);
             await new Promise(resolve => setTimeout(resolve, typingDelay));
 
             try {
-                try { await sock.sendPresenceUpdate('paused', phoneJid); } catch(e) {}
+                try { await sock.sendPresenceUpdate('paused', resolvedSendJid); } catch(e) {}
 
-                // CRITICAL: We do NOT use `quoted: msg` here.
-                // Since the original message came from an @lid, quoting it while
-                // sending to a phoneJid causes a cross-JID mismatch, which triggers Error 463.
-                const result = await sock.sendMessage(phoneJid, { text: replyText });
-                console.log(`✅ Successfully replied to ${phoneJid}! Message ID: ${result?.key?.id}`);
+                // CRITICAL: We do NOT use `quoted: msg` here anymore.
+                // Sending `quoted: msg` combined with tcToken or cross-JID replies is a known trigger for Error 463 on Business APIs.
+                const result = await sock.sendMessage(resolvedSendJid, { text: replyText }, sendOptions);
+                console.log(`✅ Successfully replied to ${resolvedSendJid}! Message ID: ${result?.key?.id}`);
             } catch (sendErr) {
-                console.error(`❌ sendMessage failed for ${phoneJid}:`, sendErr?.message);
+                console.error(`❌ sendMessage failed for ${resolvedSendJid}:`, sendErr?.message);
+                
+                // Final fallback if the @lid fails: try phoneJid directly
+                if (resolvedSendJid !== phoneJid) {
+                    try {
+                        console.log(`[DEBUG] Falling back to direct phoneJid send...`);
+                        const fallbackResult = await sock.sendMessage(phoneJid, { text: replyText });
+                        console.log(`✅ Fallback successfully replied to ${phoneJid}! Message ID: ${fallbackResult?.key?.id}`);
+                    } catch (fallbackErr) {
+                        console.error(`❌ Fallback sendMessage failed for ${phoneJid}:`, fallbackErr?.message);
+                    }
+                }
             }
 
         } catch (error) {
