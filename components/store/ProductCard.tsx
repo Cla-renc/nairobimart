@@ -117,7 +117,9 @@ const ProductCard = ({ product }: ProductCardProps) => {
     return (
         <Card className="group overflow-hidden border-none shadow-sm hover:shadow-md transition-all duration-300">
             <div className="relative aspect-square overflow-hidden bg-muted">
-                <Link href={`/products/${product.slug}`} className="absolute inset-0 z-10" />
+                <Link href={`/products/${product.slug}`} className="absolute inset-0 z-10">
+                    <span className="sr-only">View {product.name}</span>
+                </Link>
                 <Image
                     src={product.image}
                     alt={product.name}
@@ -187,7 +189,7 @@ const ProductCard = ({ product }: ProductCardProps) => {
                 </Button>
                 <a
                     href={`https://wa.me/254741206995?text=${encodeURIComponent(
-                        `🛒 *ORDER REQUEST*\nProduct: ${product.name}\nProduct ID: ${product.id}\nPrice: KES ${product.price.toLocaleString()}\nQuantity: 1\nFlash Sale: ${product.isSale ? 'true' : 'false'}\n\nProduct Link: ${(process.env.NEXT_PUBLIC_URL || 'https://nairobimart-gwna.vercel.app')}/products/${product.slug}?ref=wa3\n\nI am interested in ordering this item via WhatsApp.`
+                        `🛒 *ORDER REQUEST*\nProduct: ${product.name}\nProduct ID: ${product.id}\nPrice: KES ${product.price}\nQuantity: 1\nFlash Sale: ${product.isSale ? 'true' : 'false'}\n\nProduct Link: ${(process.env.NEXT_PUBLIC_URL || 'https://nairobimart-gwna.vercel.app')}/products/${product.slug}?ref=wa3\n\nI am interested in ordering this item via WhatsApp.`
                     )}`}
                     target="_blank"
                     rel="noopener noreferrer"
