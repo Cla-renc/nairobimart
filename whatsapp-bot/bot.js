@@ -840,6 +840,11 @@ RULES:
                 replyText = responseMessage.content;
             }
 
+            // Clean up any hallucinated XML function tags from Llama 3
+            if (replyText) {
+                replyText = replyText.replace(/<function=.*?>.*?<\/function>/gs, '').trim();
+            }
+
             // ─── GUARD: ensure we always have text to send ──────────
             if (!replyText) {
                 // Force a plain-text response from the model (no tools)
