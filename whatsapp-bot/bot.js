@@ -873,47 +873,26 @@ RULES:
             } catch(err) {}
 
             // ── Send reply ──────────────────────────────────────────
-            // Error 463 happens when Business APIs strict Thread Control Token checking fails.
-            // Baileys' internal tcToken interceptor frequently fails for smba accounts.
-            // To fix this, we MUST manually extract the messageSecret directly from the incoming message
-            // and pass it as the tcToken alongside the quoted message.
+            // Since the bot is now running on a Personal WhatsApp account (android) rather than a Business account,
+            // we do not need to deal with strict Thread Control Tokens or @lid restrictions.
+            // We can safely route the reply directly to the customer's real phone number (phoneJid).
             
-            const exactOriginalJid = msg.key.remoteJid;
-            console.log(`[DEBUG] Routing reply directly to exact original JID=${exactOriginalJid}`);
-
-            // Manually extract tcToken from the incoming message
-            let sendOptions = {};
-            if (msg.message?.messageContextInfo?.messageSecret) {
-                sendOptions.tcToken = msg.message.messageContextInfo.messageSecret;
-                console.log(`[DEBUG] Manually extracted messageSecret as tcToken directly from the incoming message!`);
-            } else {
-                console.log(`[DEBUG] No messageSecret found in incoming messageContextInfo.`);
-            }
+            console.log(`[DEBUG] Routing reply directly to phoneJid=${phoneJid}`);
 
             // ── Human-like delay ──────────────────────────────────────────────
             const typingDelay = 1500 + Math.floor(Math.random() * 1500);
             await new Promise(resolve => setTimeout(resolve, typingDelay));
 
             try {
-                try { await sock.sendPresenceUpdate('paused', exactOriginalJid); } catch(e) {}
+                try { await sock.sendPresenceUpdate('paused', phoneJid); } catch(e) {}
 
-                // We MUST include quoted: msg so Baileys knows this is a reply to the exact thread,
-                // and we manually pass the tcToken we just extracted.
-                const result = await sock.sendMessage(exactOriginalJid, { text: replyText }, { ...sendOptions, quoted: msg });
-                console.log(`✅ Successfully replied to ${exactOriginalJid}! Message ID: ${result?.key?.id}`);
+                // We send directly to phoneJid. We DO NOT use `quoted: msg` because if the incoming message
+                // was originally from an @lid (like a lingering business chat thread), quoting it while
+                // sending to the phoneJid will cause a cross-JID mismatch error (463).
+                const result = await sock.sendMessage(phoneJid, { text: replyText });
+                console.log(`✅ Successfully replied to ${phoneJid}! Message ID: ${result?.key?.id}`);
             } catch (sendErr) {
-                console.error(`❌ sendMessage failed for ${exactOriginalJid}:`, sendErr?.message);
-                
-                // Final fallback: try phoneJid directly without quoting
-                if (exactOriginalJid !== phoneJid) {
-                    try {
-                        console.log(`[DEBUG] Falling back to direct phoneJid send...`);
-                        const fallbackResult = await sock.sendMessage(phoneJid, { text: replyText });
-                        console.log(`✅ Fallback successfully replied to ${phoneJid}! Message ID: ${fallbackResult?.key?.id}`);
-                    } catch (fallbackErr) {
-                        console.error(`❌ Fallback sendMessage failed for ${phoneJid}:`, fallbackErr?.message);
-                    }
-                }
+                console.error(`❌ sendMessage failed for ${phoneJid}:`, sendErr?.message);
             }
 
         } catch (error) {
